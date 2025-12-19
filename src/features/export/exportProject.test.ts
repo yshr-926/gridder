@@ -7,6 +7,7 @@ import {
 } from './exportProject';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useGroupStore } from '@/stores/groupStore';
 import { PROJECT_DATA_VERSION } from './types';
 
 // Store のリセット用
@@ -22,6 +23,9 @@ const resetStores = () => {
     cellSize: 10,
     unit: 'cm',
     zoom: 1,
+  });
+  useGroupStore.setState({
+    groups: [],
   });
 };
 
@@ -204,6 +208,88 @@ describe('exportProject', () => {
       exportProjectAsJSON({ filename: 'custom-name.json' });
 
       expect(mockLink.download).toBe('custom-name.json');
+    });
+  });
+
+  describe('Group Export', () => {
+    it('should include groups in project data when groups exist', () => {
+      vi.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+
+      // Setup objects
+      useCanvasStore.setState({
+        objects: [
+          { id: 'obj-1', cells: [[0, 0]], position: { x: 0, y: 0 }, rotation: 0, color: '#ff0000' },
+          { id: 'obj-2', cells: [[1, 0]], position: { x: 1, y: 0 }, rotation: 0, color: '#00ff00' },
+        ],
+      });
+
+      // Setup groups
+      useGroupStore.setState({
+        groups: [
+          {
+            id: 'group-1',
+            objectIds: ['obj-1', 'obj-2'],
+            anchorObjectId: 'obj-1',
+            name: 'Test Group',
+            createdAt: '2024-01-01T10:00:00.000Z',
+          },
+        ],
+      });
+
+      const data = createProjectData('Group Test');
+
+      expect(data.groups).toBeDefined();
+      expect(data.groups).toHaveLength(1);
+      expect(data.groups![0].id).toBe('group-1');
+      expect(data.groups![0].objectIds).toEqual(['obj-1', 'obj-2']);
+      expect(data.groups![0].name).toBe('Test Group');
+    });
+
+    it('should not include groups field when no groups exist', () => {
+      vi.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+
+      useCanvasStore.setState({
+        objects: [
+          { id: 'obj-1', cells: [[0, 0]], position: { x: 0, y: 0 }, rotation: 0, color: '#ff0000' },
+        ],
+      });
+
+      // No groups
+      useGroupStore.setState({ groups: [] });
+
+      const data = createProjectData('No Groups');
+
+      expect(data.groups).toBeUndefined();
+    });
+
+    it('should deep copy groups', () => {
+      vi.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+
+      const originalGroup = {
+        id: 'group-1',
+        objectIds: ['obj-1', 'obj-2'],
+        anchorObjectId: 'obj-1',
+        createdAt: '2024-01-01T10:00:00.000Z',
+      };
+
+      useCanvasStore.setState({
+        objects: [
+          { id: 'obj-1', cells: [[0, 0]], position: { x: 0, y: 0 }, rotation: 0, color: '#ff0000' },
+          { id: 'obj-2', cells: [[1, 0]], position: { x: 1, y: 0 }, rotation: 0, color: '#00ff00' },
+        ],
+      });
+
+      useGroupStore.setState({
+        groups: [originalGroup],
+      });
+
+      const data = createProjectData('Copy Test');
+
+      // Modify original
+      originalGroup.objectIds.push('obj-3');
+
+      // Exported data should not be affected
+      expect(data.groups![0].objectIds).toEqual(['obj-1', 'obj-2']);
     });
   });
 });

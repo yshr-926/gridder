@@ -31,7 +31,7 @@ export type Environment = 'development' | 'production';
 export const getCSPDirectives = (env: Environment): CSPDirectives => {
   const base: CSPDirectives = {
     'default-src': ["'self'"],
-    'script-src': ["'self'"],
+    'script-src': ["'self'", 'https://plausible.io'],
     'style-src': ["'self'", "'unsafe-inline'"], // Tailwind CSS requires unsafe-inline
     'img-src': ["'self'", 'data:', 'blob:'], // Canvas export support (data: and blob: URLs)
     'font-src': ["'self'"],
@@ -50,6 +50,8 @@ export const getCSPDirectives = (env: Environment): CSPDirectives => {
   }
 
   if (env === 'development') {
+    // Allow inline scripts for HMR and development tools in development
+    base['script-src'].push("'unsafe-inline'");
     // Allow WebSocket connections for HMR in development
     base['connect-src'].push('ws:', 'wss:');
   }

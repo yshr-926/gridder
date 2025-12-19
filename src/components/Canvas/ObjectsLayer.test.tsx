@@ -3,7 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ObjectsLayer } from './ObjectsLayer';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useUIStore } from '@/stores/uiStore';
 import type { GridObject } from '@/types';
+import { DEFAULT_TEXT_SETTINGS, DEFAULT_DIMENSION_SETTINGS } from '@/types';
 
 // Mock react-konva
 vi.mock('react-konva', () => ({
@@ -13,9 +15,13 @@ vi.mock('react-konva', () => ({
     ...props
   }: {
     children?: React.ReactNode;
-    onClick?: () => void;
+    onClick?: (e: { evt: MouseEvent }) => void;
   } & Record<string, unknown>) => (
-    <div data-testid="konva-group" onClick={onClick} {...props}>
+    <div
+      data-testid="konva-group"
+      onClick={(e) => onClick?.({ evt: e.nativeEvent as MouseEvent })}
+      {...props}
+    >
       {children}
     </div>
   ),
@@ -24,6 +30,11 @@ vi.mock('react-konva', () => ({
   ),
   Line: (props: Record<string, unknown>) => (
     <div data-testid="konva-line" {...props} />
+  ),
+  Text: ({ text, ...props }: { text?: string } & Record<string, unknown>) => (
+    <span data-testid="konva-text" data-text={text} {...props}>
+      {text}
+    </span>
   ),
 }));
 
@@ -59,9 +70,20 @@ describe('ObjectsLayer', () => {
     useCanvasStore.setState({
       objects: [],
       selectedObjectId: null,
+      selection: {
+        selectedIds: [],
+        primaryId: null,
+        mode: 'single',
+      },
       toolMode: 'draw',
       drawingCells: [],
       panPosition: { x: 0, y: 0 },
+    });
+    useUIStore.setState({
+      showObjectNames: false,
+      showDimensions: false,
+      textSettings: DEFAULT_TEXT_SETTINGS,
+      dimensionSettings: DEFAULT_DIMENSION_SETTINGS,
     });
   });
 
@@ -88,6 +110,11 @@ describe('ObjectsLayer', () => {
       objects: mockObjects,
       toolMode: 'select',
       selectedObjectId: null,
+      selection: {
+        selectedIds: [],
+        primaryId: null,
+        mode: 'single',
+      },
     });
 
     render(<ObjectsLayer />);
@@ -97,12 +124,14 @@ describe('ObjectsLayer', () => {
 
     // Click on the second group (first object)
     // Note: group[0] is the container, group[1] and [2] are outer groups of objects
+    // The mock onClick receives a synthetic event, so we simulate shiftKey = false
     if (groups[1]) {
-      fireEvent.click(groups[1]);
+      fireEvent.click(groups[1], { shiftKey: false });
     }
 
     // Check if selection was triggered
     const store = useCanvasStore.getState();
+    expect(store.selection.selectedIds).toContain('obj-1');
     expect(store.selectedObjectId).toBe('obj-1');
   });
 
@@ -166,13 +195,28 @@ describe('ObjectsLayer', () => {
     useCanvasStore.setState({
       objects: mockObjects,
       selectedObjectId: 'obj-1',
+      selection: {
+        selectedIds: ['obj-1'],
+        primaryId: 'obj-1',
+        mode: 'single',
+      },
       toolMode: 'select',
     });
 
     render(<ObjectsLayer />);
 
-    // Selected object should have selection line
-    const lines = screen.getAllByTestId('konva-line');
-    expect(lines.length).toBeGreaterThan(0);
+    // Selected object should have selection rect (our selection indicator)
+    // There are object cell rects + selection indicator rect
+    const rects = screen.getAllByTestId('konva-rect');
+    // At least 1 object rect + 1 selection indicator rect
+    expect(rects.length).toBeGreaterThan(1);
+
+    // Check that one rect has selection stroke color
+    const hasSelectionRect = rects.some(
+      (rect) =>
+        rect.getAttribute('stroke') === '#0066cc' ||
+        rect.getAttribute('stroke') === '#66aaff'
+    );
+    expect(hasSelectionRect).toBe(true);
   });
 });

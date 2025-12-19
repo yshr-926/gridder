@@ -3,13 +3,15 @@ import {
   validateProjectData,
   validateGridObject,
   validateMetadata,
+  validateObjectGroup,
+  checkVersion,
   isProjectData,
   isGridObject,
   isPosition,
   isCellCoordinate,
   ProjectValidationError,
 } from './validation';
-import { PROJECT_DATA_VERSION } from './types';
+import { PROJECT_DATA_VERSION, LEGACY_VERSION } from './types';
 import type { ProjectData } from './types';
 
 /**
@@ -91,8 +93,9 @@ describe('validation', () => {
     });
 
     it('should include detailed error messages', () => {
+      // Use a compatible version so other validation errors can be collected
       const data = {
-        version: '2.0',
+        version: PROJECT_DATA_VERSION,
         name: 123,
         gridSettings: { cellSize: -1, unit: 'invalid' },
         objects: [],
@@ -105,7 +108,25 @@ describe('validation', () => {
         expect(error).toBeInstanceOf(ProjectValidationError);
         const validationError = error as ProjectValidationError;
         expect(validationError.errors.length).toBeGreaterThan(0);
-        expect(validationError.getDetailedMessage()).toContain('version');
+        // Check for name, gridSettings, or metadata errors
+        expect(validationError.getDetailedMessage()).toContain('name');
+      }
+    });
+
+    it('should reject future versions', () => {
+      const data = {
+        version: '9.0',
+        name: 'Test',
+        gridSettings: { cellSize: 10, unit: 'cm' },
+        objects: [],
+        metadata: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z', exportedFrom: 'Test' },
+      };
+      try {
+        validateProjectData(data);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProjectValidationError);
+        expect((error as ProjectValidationError).message).toContain('新しいバージョン');
       }
     });
 
@@ -325,6 +346,156 @@ describe('validation', () => {
       expect(detailed).toContain('Error 1');
       expect(detailed).toContain('field2');
       expect(detailed).toContain('Error 2');
+    });
+  });
+
+  describe('checkVersion', () => {
+    it('should return compatible for current version', () => {
+      const result = checkVersion(PROJECT_DATA_VERSION);
+      expect(result.compatible).toBe(true);
+      expect(result.warning).toBeUndefined();
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should return compatible with warning for legacy version', () => {
+      const result = checkVersion(LEGACY_VERSION);
+      expect(result.compatible).toBe(true);
+      expect(result.warning).toBeDefined();
+      expect(result.warning).toContain('古いバージョン');
+    });
+
+    it('should return incompatible for future version', () => {
+      const result = checkVersion('9.0');
+      expect(result.compatible).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('新しいバージョン');
+    });
+
+    it('should return incompatible for unknown version', () => {
+      const result = checkVersion('0.5');
+      expect(result.compatible).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('validateObjectGroup', () => {
+    it('should validate correct group', () => {
+      const group = {
+        id: 'group-1',
+        objectIds: ['obj-1', 'obj-2'],
+        anchorObjectId: 'obj-1',
+        name: 'Test Group',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should allow group without name', () => {
+      const group = {
+        id: 'group-1',
+        objectIds: ['obj-1', 'obj-2'],
+        anchorObjectId: 'obj-1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(true);
+    });
+
+    it('should report error for empty id', () => {
+      const group = {
+        id: '',
+        objectIds: ['obj-1', 'obj-2'],
+        anchorObjectId: 'obj-1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.path.includes('id'))).toBe(true);
+    });
+
+    it('should report error for non-array objectIds', () => {
+      const group = {
+        id: 'group-1',
+        objectIds: 'not an array',
+        anchorObjectId: 'obj-1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.path.includes('objectIds'))).toBe(true);
+    });
+
+    it('should report error for invalid objectIds items', () => {
+      const group = {
+        id: 'group-1',
+        objectIds: ['obj-1', '', 123],
+        anchorObjectId: 'obj-1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(false);
+    });
+
+    it('should report error for missing anchorObjectId', () => {
+      const group = {
+        id: 'group-1',
+        objectIds: ['obj-1', 'obj-2'],
+        anchorObjectId: '',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = validateObjectGroup(group, 'test');
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.path.includes('anchorObjectId'))).toBe(true);
+    });
+  });
+
+  describe('validateProjectData with groups', () => {
+    it('should validate project with groups', () => {
+      const data: ProjectData = {
+        ...createValidProjectData(),
+        groups: [
+          {
+            id: 'group-1',
+            objectIds: ['obj-1', 'obj-2'],
+            anchorObjectId: 'obj-1',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      };
+      const result = validateProjectData(data);
+      expect(result.groups).toBeDefined();
+      expect(result.groups).toHaveLength(1);
+    });
+
+    it('should validate project without groups', () => {
+      const data = createValidProjectData();
+      const result = validateProjectData(data);
+      expect(result.groups).toBeUndefined();
+    });
+
+    it('should report error for invalid groups array', () => {
+      const data = {
+        ...createValidProjectData(),
+        groups: 'not an array',
+      };
+      expect(() => validateProjectData(data)).toThrow(ProjectValidationError);
+    });
+
+    it('should report error for invalid group in array', () => {
+      const data = {
+        ...createValidProjectData(),
+        groups: [
+          {
+            id: '',
+            objectIds: [],
+            anchorObjectId: '',
+            createdAt: '',
+          },
+        ],
+      };
+      expect(() => validateProjectData(data)).toThrow(ProjectValidationError);
     });
   });
 });

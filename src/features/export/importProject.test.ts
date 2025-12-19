@@ -9,7 +9,8 @@ import {
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useHistoryStore } from '@/stores/historyStore';
-import { PROJECT_DATA_VERSION } from './types';
+import { useGroupStore } from '@/stores/groupStore';
+import { PROJECT_DATA_VERSION, LEGACY_VERSION } from './types';
 import type { ProjectData } from './types';
 
 /**
@@ -53,8 +54,79 @@ const resetStores = () => {
     unit: 'cm',
     zoom: 1,
   });
+  useGroupStore.setState({
+    groups: [],
+  });
   useHistoryStore.getState().clearHistory();
 };
+
+/**
+ * グループ付きプロジェクトデータのサンプル
+ */
+const createValidProjectDataWithGroups = (): ProjectData => ({
+  version: PROJECT_DATA_VERSION,
+  name: 'Test Project with Groups',
+  gridSettings: {
+    cellSize: 20,
+    unit: 'mm',
+  },
+  objects: [
+    {
+      id: 'obj-1',
+      cells: [[0, 0], [1, 0]],
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      color: '#ff0000',
+    },
+    {
+      id: 'obj-2',
+      cells: [[0, 0], [0, 1]],
+      position: { x: 5, y: 0 },
+      rotation: 0,
+      color: '#00ff00',
+    },
+  ],
+  groups: [
+    {
+      id: 'group-1',
+      objectIds: ['obj-1', 'obj-2'],
+      anchorObjectId: 'obj-1',
+      name: 'Test Group',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    },
+  ],
+  metadata: {
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T12:00:00.000Z',
+    exportedFrom: 'Gridder v1.1',
+  },
+});
+
+/**
+ * レガシー（v1.0）プロジェクトデータのサンプル
+ */
+const createLegacyProjectData = (): ProjectData => ({
+  version: LEGACY_VERSION,
+  name: 'Legacy Project',
+  gridSettings: {
+    cellSize: 10,
+    unit: 'cm',
+  },
+  objects: [
+    {
+      id: 'obj-1',
+      cells: [[0, 0]],
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      color: '#333333',
+    },
+  ],
+  metadata: {
+    createdAt: '2023-01-01T00:00:00.000Z',
+    updatedAt: '2023-01-01T00:00:00.000Z',
+    exportedFrom: 'Gridder v1.0',
+  },
+});
 
 describe('importProject', () => {
   beforeEach(() => {
@@ -245,6 +317,90 @@ describe('importProject', () => {
       });
 
       expect(hasUnsavedChanges()).toBe(true);
+    });
+  });
+
+  describe('Group Import', () => {
+    it('should import project with groups', () => {
+      const data = createValidProjectDataWithGroups();
+      const json = JSON.stringify(data);
+      const result = importProjectFromJSON(json);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.groups).toBeDefined();
+      expect(result.data?.groups).toHaveLength(1);
+      expect(result.data?.groups![0].id).toBe('group-1');
+    });
+
+    it('should apply groups to store', () => {
+      const data = createValidProjectDataWithGroups();
+      applyProjectData(data);
+
+      const groupState = useGroupStore.getState();
+      expect(groupState.groups).toHaveLength(1);
+      expect(groupState.groups[0].id).toBe('group-1');
+      expect(groupState.groups[0].objectIds).toEqual(['obj-1', 'obj-2']);
+    });
+
+    it('should clear groups when importing legacy project', () => {
+      // First set some groups
+      useGroupStore.setState({
+        groups: [
+          {
+            id: 'existing-group',
+            objectIds: ['a', 'b'],
+            anchorObjectId: 'a',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+
+      const data = createLegacyProjectData();
+      applyProjectData(data);
+
+      const groupState = useGroupStore.getState();
+      expect(groupState.groups).toHaveLength(0);
+    });
+
+    it('should return warning for legacy version', () => {
+      const data = createLegacyProjectData();
+      const json = JSON.stringify(data);
+      const result = importProjectFromJSON(json);
+
+      expect(result.success).toBe(true);
+      expect(result.warning).toBeDefined();
+      expect(result.warning).toContain('古いバージョン');
+    });
+
+    it('should clear groups when creating new project', () => {
+      // Setup groups
+      useGroupStore.setState({
+        groups: [
+          {
+            id: 'existing-group',
+            objectIds: ['a', 'b'],
+            anchorObjectId: 'a',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+
+      createNewProject();
+
+      const groupState = useGroupStore.getState();
+      expect(groupState.groups).toHaveLength(0);
+    });
+
+    it('should deep copy groups when applying project data', () => {
+      const data = createValidProjectDataWithGroups();
+      applyProjectData(data);
+
+      // Modify original
+      data.groups![0].objectIds.push('obj-3');
+
+      // Store should not be affected
+      const groupState = useGroupStore.getState();
+      expect(groupState.groups[0].objectIds).toEqual(['obj-1', 'obj-2']);
     });
   });
 });

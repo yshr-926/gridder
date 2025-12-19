@@ -1,7 +1,8 @@
 import { useEffect, useCallback } from 'react';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
-import { useSelection } from '@/features/selection';
+import { useGroupStore } from '@/stores/groupStore';
+import { useSelection, useMultiSelection } from '@/features/selection';
 
 /**
  * キーボードショートカットの設定
@@ -16,6 +17,8 @@ const SHORTCUTS = {
   ZOOM_IN: ['Equal', 'NumpadAdd'] as const, // = or +
   ZOOM_OUT: ['Minus', 'NumpadSubtract'] as const, // - or _
   DUPLICATE: 'KeyD', // with Ctrl/Cmd
+  SELECT_ALL: 'KeyA', // with Ctrl/Cmd
+  GROUP: 'KeyG', // with Ctrl/Cmd
   ARROW_UP: 'ArrowUp',
   ARROW_DOWN: 'ArrowDown',
   ARROW_LEFT: 'ArrowLeft',
@@ -60,11 +63,16 @@ const isInputElement = (target: EventTarget | null): boolean => {
  * - Escape: 選択解除
  * - Ctrl/Cmd + +: ズームイン
  * - Ctrl/Cmd + -: ズームアウト
+ * - Ctrl/Cmd + A: 全選択
+ * - Ctrl/Cmd + G: グループ化
+ * - Ctrl/Cmd + Shift + G: グループ解除
  */
 export const useCanvasKeyboard = () => {
-  const { toolMode, setToolMode, selectedObjectId } = useCanvasStore();
+  const { toolMode, setToolMode, selectedObjectId, selectAll, selection } = useCanvasStore();
 
   const { zoomIn, zoomOut } = useGridSettingsStore();
+
+  const { createGroup, deleteGroup, getGroupByObjectId } = useGroupStore();
 
   // Selection hook for rotate, delete, duplicate, move operations
   const {
@@ -75,12 +83,41 @@ export const useCanvasKeyboard = () => {
     moveSelectedObject,
   } = useSelection();
 
+  const { deleteSelectedObjects, duplicateSelectedObjects } = useMultiSelection();
+
   /**
    * 選択解除
    */
   const clearSelection = useCallback(() => {
     deselect();
   }, [deselect]);
+
+  /**
+   * グループ化
+   */
+  const handleGroup = useCallback(() => {
+    if (selection.selectedIds.length >= 2) {
+      createGroup(selection.selectedIds);
+    }
+  }, [selection.selectedIds, createGroup]);
+
+  /**
+   * グループ解除
+   */
+  const handleUngroup = useCallback(() => {
+    const groupsToDelete = new Set<string>();
+
+    for (const id of selection.selectedIds) {
+      const group = getGroupByObjectId(id);
+      if (group) {
+        groupsToDelete.add(group.id);
+      }
+    }
+
+    for (const groupId of groupsToDelete) {
+      deleteGroup(groupId);
+    }
+  }, [selection.selectedIds, getGroupByObjectId, deleteGroup]);
 
   /**
    * キーボードイベントハンドラ
@@ -97,7 +134,12 @@ export const useCanvasKeyboard = () => {
         // Ctrl/Cmd + D: 複製
         if (e.code === SHORTCUTS.DUPLICATE) {
           e.preventDefault();
-          duplicateSelectedObject();
+          // 複数選択時は複数複製、単一選択時は単一複製
+          if (selection.selectedIds.length > 1) {
+            duplicateSelectedObjects();
+          } else {
+            duplicateSelectedObject();
+          }
           return;
         }
 
@@ -112,6 +154,24 @@ export const useCanvasKeyboard = () => {
         if (includesCode(SHORTCUTS.ZOOM_OUT, e.code)) {
           e.preventDefault();
           zoomOut();
+          return;
+        }
+
+        // Ctrl/Cmd + A: 全選択
+        if (e.code === SHORTCUTS.SELECT_ALL) {
+          e.preventDefault();
+          selectAll();
+          return;
+        }
+
+        // Ctrl/Cmd + G: グループ化 / Ctrl/Cmd + Shift + G: グループ解除
+        if (e.code === SHORTCUTS.GROUP) {
+          e.preventDefault();
+          if (e.shiftKey) {
+            handleUngroup();
+          } else {
+            handleGroup();
+          }
           return;
         }
       }
@@ -165,7 +225,12 @@ export const useCanvasKeyboard = () => {
           // Delete / Backspace
           if (includesCode(SHORTCUTS.DELETE, e.code)) {
             e.preventDefault();
-            deleteSelectedObject();
+            // 複数選択時は複数削除、単一選択時は単一削除
+            if (selection.selectedIds.length > 1) {
+              deleteSelectedObjects();
+            } else {
+              deleteSelectedObject();
+            }
           }
           break;
       }
@@ -174,11 +239,17 @@ export const useCanvasKeyboard = () => {
       setToolMode,
       rotateSelectedObject,
       deleteSelectedObject,
+      deleteSelectedObjects,
       duplicateSelectedObject,
+      duplicateSelectedObjects,
       clearSelection,
       moveSelectedObject,
       zoomIn,
       zoomOut,
+      selectAll,
+      handleGroup,
+      handleUngroup,
+      selection.selectedIds.length,
     ]
   );
 
@@ -200,5 +271,7 @@ export const useCanvasKeyboard = () => {
     duplicateSelectedObject,
     clearSelection,
     moveSelectedObject,
+    handleGroup,
+    handleUngroup,
   };
 };

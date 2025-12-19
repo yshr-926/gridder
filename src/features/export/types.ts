@@ -1,9 +1,22 @@
 import type { GridObject, Unit, CellCoordinate, Position } from '@/types';
+import type { ObjectGroup } from '@/types/group';
 
 /**
  * プロジェクトデータのバージョン
+ * - 1.0: 初期バージョン（グループ非対応）
+ * - 1.1: グループ対応版
  */
-export const PROJECT_DATA_VERSION = '1.0';
+export const PROJECT_DATA_VERSION = '1.1';
+
+/**
+ * レガシーバージョン（グループ非対応）
+ */
+export const LEGACY_VERSION = '1.0';
+
+/**
+ * サポートされるバージョン一覧
+ */
+export const SUPPORTED_VERSIONS = [LEGACY_VERSION, PROJECT_DATA_VERSION] as const;
 
 /**
  * サポートされている回転角度
@@ -33,7 +46,7 @@ export interface ProjectMetadata {
 }
 
 /**
- * プロジェクトデータ（JSON エクスポート形式） v1.0
+ * プロジェクトデータ（JSON エクスポート形式） v1.1
  */
 export interface ProjectData {
   /** データフォーマットバージョン */
@@ -44,6 +57,8 @@ export interface ProjectData {
   gridSettings: ExportGridSettings;
   /** 配置されたオブジェクト */
   objects: GridObject[];
+  /** グループ情報（v1.1以降、オプション） */
+  groups?: ObjectGroup[];
   /** メタデータ */
   metadata: ProjectMetadata;
 }

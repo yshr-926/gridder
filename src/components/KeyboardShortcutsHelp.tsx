@@ -25,6 +25,10 @@ const SHORTCUTS: KeyboardShortcut[] = [
   { key: 'Ctrl/Cmd + D', description: '複製', category: 'action' },
   { key: 'Ctrl/Cmd + Z', description: '元に戻す', category: 'action' },
   { key: 'Ctrl/Cmd + Shift + Z', description: 'やり直し', category: 'action' },
+  { key: 'Ctrl/Cmd + A', description: '全選択', category: 'action' },
+  { key: 'Ctrl/Cmd + G', description: 'グループ化', category: 'action' },
+  { key: 'Ctrl/Cmd + Shift + G', description: 'グループ解除', category: 'action' },
+  { key: 'Shift + クリック', description: '追加選択', category: 'action' },
 
   // Navigation shortcuts
   { key: 'Arrow Keys', description: '選択オブジェクトを移動', category: 'navigation' },

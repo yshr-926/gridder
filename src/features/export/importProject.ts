@@ -1,8 +1,9 @@
 import type { ProjectData } from './types';
-import { validateProjectData, ProjectValidationError } from './validation';
+import { validateProjectData, ProjectValidationError, checkVersion } from './validation';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useHistoryStore } from '@/stores/historyStore';
+import { useGroupStore } from '@/stores/groupStore';
 
 /**
  * インポート結果
@@ -12,6 +13,8 @@ export interface ImportResult {
   success: boolean;
   /** エラーメッセージ（失敗時） */
   error?: string;
+  /** 警告メッセージ（後方互換モード時など） */
+  warning?: string;
   /** インポートされたデータ（成功時） */
   data?: ProjectData;
 }
@@ -34,9 +37,13 @@ export const importProjectFromJSON = (jsonString: string): ImportResult => {
     // バリデーション
     const validatedData = validateProjectData(data);
 
+    // バージョンチェック（警告を取得）
+    const versionCheck = checkVersion(validatedData.version);
+
     return {
       success: true,
       data: validatedData,
+      warning: versionCheck.warning,
     };
   } catch (error) {
     if (error instanceof SyntaxError) {
@@ -129,6 +136,19 @@ export const applyProjectData = (data: ProjectData): void => {
     toolMode: 'draw',
   });
 
+  // グループを復元（存在する場合）
+  if (data.groups && data.groups.length > 0) {
+    useGroupStore.getState().setGroups(
+      data.groups.map((group) => ({
+        ...group,
+        objectIds: [...group.objectIds], // 配列をディープコピー
+      }))
+    );
+  } else {
+    // グループ情報がない場合はクリア
+    useGroupStore.getState().clearGroups();
+  }
+
   // 履歴をクリア
   useHistoryStore.getState().clearHistory();
 };
@@ -167,6 +187,9 @@ export const createNewProject = (): void => {
     unit: 'cm',
     zoom: 1,
   });
+
+  // グループをクリア
+  useGroupStore.getState().clearGroups();
 
   // 履歴をクリア
   useHistoryStore.getState().clearHistory();

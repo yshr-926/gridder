@@ -1,6 +1,50 @@
 import type { ProjectData, Rotation } from './types';
-import { PROJECT_DATA_VERSION } from './types';
-import type { GridObject, Unit, CellCoordinate, Position } from '@/types';
+import { PROJECT_DATA_VERSION, LEGACY_VERSION } from './types';
+import type { GridObject, Unit, CellCoordinate, Position, ObjectDecoration } from '@/types';
+import { DEFAULT_DECORATION } from '@/types';
+import { colorPaletteManager } from '@/utils/colorPalette';
+
+/**
+ * バージョンチェック結果
+ */
+export interface VersionCheckResult {
+  /** 互換性があるか */
+  compatible: boolean;
+  /** 警告メッセージ（後方互換モード時など） */
+  warning?: string;
+  /** エラーメッセージ（互換性がない場合） */
+  error?: string;
+}
+
+/**
+ * バージョンをチェック
+ */
+export const checkVersion = (version: string): VersionCheckResult => {
+  if (version === PROJECT_DATA_VERSION) {
+    return { compatible: true };
+  }
+
+  if (version === LEGACY_VERSION) {
+    return {
+      compatible: true,
+      warning: '古いバージョン（v1.0）のファイルです。グループ情報は含まれていません。',
+    };
+  }
+
+  // 未来のバージョン
+  if (version > PROJECT_DATA_VERSION) {
+    return {
+      compatible: false,
+      error: 'このファイルは新しいバージョンで作成されています。アプリを更新してください。',
+    };
+  }
+
+  // 不明なバージョン
+  return {
+    compatible: false,
+    error: `サポートされていないバージョン（${version}）です。`,
+  };
+};
 
 /**
  * バリデーションエラーのパス情報
@@ -214,6 +258,65 @@ const isValidISODateString = (value: string): boolean => {
 };
 
 /**
+ * ObjectGroup のバリデーション
+ */
+export const validateObjectGroup = (
+  value: unknown,
+  path: string
+): { valid: boolean; errors: ValidationErrorPath[] } => {
+  const errors: ValidationErrorPath[] = [];
+
+  if (typeof value !== 'object' || value === null) {
+    errors.push({ path, message: 'オブジェクトである必要があります' });
+    return { valid: false, errors };
+  }
+
+  const group = value as Record<string, unknown>;
+
+  // id
+  if (typeof group.id !== 'string' || group.id.trim() === '') {
+    errors.push({ path: `${path}.id`, message: '空でない文字列である必要があります' });
+  }
+
+  // objectIds
+  if (!Array.isArray(group.objectIds)) {
+    errors.push({ path: `${path}.objectIds`, message: '配列である必要があります' });
+  } else {
+    group.objectIds.forEach((objId, index) => {
+      if (typeof objId !== 'string' || objId.trim() === '') {
+        errors.push({
+          path: `${path}.objectIds[${index}]`,
+          message: '空でない文字列である必要があります',
+        });
+      }
+    });
+  }
+
+  // anchorObjectId
+  if (typeof group.anchorObjectId !== 'string' || group.anchorObjectId.trim() === '') {
+    errors.push({
+      path: `${path}.anchorObjectId`,
+      message: '空でない文字列である必要があります',
+    });
+  }
+
+  // name (optional)
+  if (group.name !== undefined && typeof group.name !== 'string') {
+    errors.push({ path: `${path}.name`, message: '文字列である必要があります' });
+  }
+
+  // createdAt
+  if (typeof group.createdAt !== 'string') {
+    errors.push({
+      path: `${path}.createdAt`,
+      message: '文字列である必要があります',
+    });
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
+/**
  * Metadata のバリデーション
  */
 export const validateMetadata = (
@@ -258,6 +361,8 @@ export const validateMetadata = (
 
 /**
  * プロジェクトデータのバリデーション
+ * @param data 検証対象データ
+ * @returns 検証済みのProjectData
  * @throws {ProjectValidationError} バリデーションエラー
  */
 export const validateProjectData = (data: unknown): ProjectData => {
@@ -269,12 +374,19 @@ export const validateProjectData = (data: unknown): ProjectData => {
 
   const obj = data as Record<string, unknown>;
 
-  // version
-  if (obj.version !== PROJECT_DATA_VERSION) {
+  // version - まずバージョンチェック
+  if (typeof obj.version !== 'string') {
     errors.push({
       path: 'version',
-      message: `バージョン "${PROJECT_DATA_VERSION}" である必要があります`,
+      message: '文字列である必要があります',
     });
+  } else {
+    const versionCheck = checkVersion(obj.version);
+    if (!versionCheck.compatible) {
+      throw new ProjectValidationError(
+        versionCheck.error || 'バージョンが互換性がありません'
+      );
+    }
   }
 
   // name
@@ -300,6 +412,21 @@ export const validateProjectData = (data: unknown): ProjectData => {
       const objectResult = validateGridObject(object, `objects[${index}]`);
       errors.push(...objectResult.errors);
     });
+  }
+
+  // groups (optional, v1.1+)
+  if (obj.groups !== undefined) {
+    if (!Array.isArray(obj.groups)) {
+      errors.push({
+        path: 'groups',
+        message: '配列である必要があります',
+      });
+    } else {
+      obj.groups.forEach((group, index) => {
+        const groupResult = validateObjectGroup(group, `groups[${index}]`);
+        errors.push(...groupResult.errors);
+      });
+    }
   }
 
   // metadata
@@ -358,4 +485,41 @@ export const isCellCoordinate = (value: unknown): value is CellCoordinate => {
     typeof y === 'number' &&
     Number.isInteger(y)
   );
+};
+
+/**
+ * オブジェクトにデフォルト装飾を適用（互換性維持用）
+ * 既存データにデフォルト値をマージして完全な ObjectDecoration を保証する
+ */
+export const applyDefaultDecoration = (obj: GridObject): GridObject => {
+  // decoration が未定義または部分的な場合、DEFAULT_DECORATION とマージ
+  const mergedDecoration: ObjectDecoration = {
+    ...DEFAULT_DECORATION,
+    ...(obj.decoration ?? {}),
+  };
+
+  return {
+    ...obj,
+    decoration: mergedDecoration,
+  };
+};
+
+/**
+ * プロジェクトデータを最新フォーマットに変換
+ */
+export const migrateProjectData = (data: ProjectData): ProjectData => {
+  return {
+    ...data,
+    objects: data.objects.map(applyDefaultDecoration),
+  };
+};
+
+/**
+ * インポート時のパレット初期化を含む完全なマイグレーション
+ */
+export const importAndMigrateProject = (data: ProjectData): ProjectData => {
+  const migratedData = migrateProjectData(data);
+  // パレット使用状況を再構築
+  colorPaletteManager.initializeFromObjects(migratedData.objects);
+  return migratedData;
 };

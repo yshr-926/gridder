@@ -7,7 +7,7 @@ export type {
   ImageExportOptions,
   ImageFormat,
 } from './types';
-export { PROJECT_DATA_VERSION } from './types';
+export { PROJECT_DATA_VERSION, LEGACY_VERSION, SUPPORTED_VERSIONS } from './types';
 
 // Validation
 export {
@@ -15,8 +15,9 @@ export {
   ProjectValidationError,
   isProjectData,
   isGridObject,
+  checkVersion,
 } from './validation';
-export type { ValidationErrorPath } from './validation';
+export type { ValidationErrorPath, VersionCheckResult } from './validation';
 
 // Export Project (JSON)
 export {

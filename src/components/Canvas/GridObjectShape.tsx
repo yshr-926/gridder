@@ -1,6 +1,12 @@
 import { memo, useMemo } from 'react';
 import { Group, Rect, Line } from 'react-konva';
-import type { GridObject } from '@/types';
+import type { KonvaEventObject } from 'konva/lib/Node';
+import type { GridObject, ObjectDecoration } from '@/types';
+import { DEFAULT_DECORATION } from '@/types';
+import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useUIStore } from '@/stores/uiStore';
+import { ObjectTextLabel } from './ObjectTextLabel';
+import { DimensionLabel } from './DimensionLabel';
 
 /**
  * GridObjectShape Props
@@ -12,13 +18,32 @@ interface GridObjectShapeProps {
   gridSize: number;
   /** 選択状態 */
   isSelected: boolean;
+  /** ドラッグ中かどうか */
+  isDragging?: boolean;
   /** ドラッグ可能かどうか */
   draggable: boolean;
-  /** クリック時のコールバック */
-  onClick?: () => void;
-  /** ドラッグ終了時のコールバック */
-  onDragEnd?: (newPosition: { x: number; y: number }) => void;
+  /** クリック時のコールバック（Konvaイベントを受け取る） */
+  onClick?: (e: KonvaEventObject<MouseEvent>) => void;
+  /** ドラッグ開始時のコールバック */
+  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
+  /** ドラッグ移動時のコールバック */
+  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
+  /** ドラッグ終了時のコールバック（Konvaイベント版） */
+  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
+  /** ドラッグ終了時のコールバック（単一オブジェクト用、グリッド座標） */
+  onSingleDragEnd?: (newPosition: { x: number; y: number }) => void;
 }
+
+/**
+ * オブジェクトから完全な装飾設定を取得
+ * DEFAULT_DECORATION と object.decoration をマージ
+ */
+const getDecoration = (object: GridObject): ObjectDecoration => {
+  return {
+    ...DEFAULT_DECORATION,
+    ...object.decoration,
+  };
+};
 
 /**
  * 選択時の色
@@ -45,6 +70,7 @@ const arePropsEqual = (
   // Check scalar props
   if (prevProps.gridSize !== nextProps.gridSize) return false;
   if (prevProps.isSelected !== nextProps.isSelected) return false;
+  if (prevProps.isDragging !== nextProps.isDragging) return false;
   if (prevProps.draggable !== nextProps.draggable) return false;
 
   // Callback references don't need deep comparison for memo
@@ -57,11 +83,22 @@ export const GridObjectShape = memo(
     object,
     gridSize,
     isSelected,
+    isDragging = false,
     draggable,
     onClick,
+    onDragStart,
+    onDragMove,
     onDragEnd,
+    onSingleDragEnd,
   }: GridObjectShapeProps) => {
     const { id, cells, position, rotation, color } = object;
+
+    // グリッド設定を取得
+    const { cellSize, unit } = useGridSettingsStore();
+
+    // UI設定を取得
+    const { showObjectNames, showDimensions, textSettings, dimensionSettings } =
+      useUIStore();
 
     /**
      * バウンディングボックスの計算
@@ -95,6 +132,9 @@ export const GridObjectShape = memo(
      * セルの描画
      */
     const cellRects = useMemo(() => {
+      const decoration = getDecoration(object);
+      const { showBorder, borderColor, borderWidth, opacity } = decoration;
+
       return cells.map(([x, y], index) => (
         <Rect
           key={`${id}-cell-${index}`}
@@ -103,11 +143,12 @@ export const GridObjectShape = memo(
           width={gridSize}
           height={gridSize}
           fill={color}
-          stroke={isSelected ? SELECTION_BORDER_COLOR : undefined}
-          strokeWidth={isSelected ? SELECTION_BORDER_WIDTH / 2 : 0}
+          opacity={opacity}
+          stroke={showBorder ? (borderColor ?? color) : undefined}
+          strokeWidth={showBorder ? borderWidth : 0}
         />
       ));
-    }, [cells, id, gridSize, color, isSelected]);
+    }, [object, cells, id, gridSize, color]);
 
     /**
      * 選択時のバウンディングボックス
@@ -151,23 +192,31 @@ export const GridObjectShape = memo(
 
     /**
      * ドラッグ終了ハンドラ
+     * 複数選択時はonDragEnd、単一選択時はonSingleDragEndを呼び出す
      */
-    const handleDragEnd = (e: { target: { x: () => number; y: () => number } }) => {
-      if (!onDragEnd) return;
+    const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+      // onDragEnd（Konvaイベント版）が提供されている場合はそちらを使用
+      if (onDragEnd) {
+        onDragEnd(e);
+        return;
+      }
 
-      const node = e.target;
-      const newX = node.x();
-      const newY = node.y();
+      // 単一選択用のハンドラを使用
+      if (onSingleDragEnd) {
+        const node = e.target;
+        const newX = node.x();
+        const newY = node.y();
 
-      // グリッドにスナップ
-      const snappedX = Math.round(newX / gridSize) * gridSize;
-      const snappedY = Math.round(newY / gridSize) * gridSize;
+        // グリッドにスナップ
+        const snappedX = Math.round(newX / gridSize) * gridSize;
+        const snappedY = Math.round(newY / gridSize) * gridSize;
 
-      // グリッド座標に変換
-      const gridX = snappedX / gridSize;
-      const gridY = snappedY / gridSize;
+        // グリッド座標に変換
+        const gridX = snappedX / gridSize;
+        const gridY = snappedY / gridSize;
 
-      onDragEnd({ x: gridX, y: gridY });
+        onSingleDragEnd({ x: gridX, y: gridY });
+      }
     };
 
     /**
@@ -180,6 +229,9 @@ export const GridObjectShape = memo(
       return { x: centerX, y: centerY };
     }, [boundingBox]);
 
+    // ドラッグ中の視覚フィードバック用opacity
+    const groupOpacity = isDragging ? 0.7 : 1;
+
     return (
       <Group
         x={position.x * gridSize}
@@ -188,14 +240,44 @@ export const GridObjectShape = memo(
         offsetX={rotationOffset.x}
         offsetY={rotationOffset.y}
         draggable={draggable}
-        onClick={onClick}
-        onTap={onClick}
+        opacity={groupOpacity}
+        onClick={(e) => onClick?.(e as KonvaEventObject<MouseEvent>)}
+        onTap={(e) => {
+          // Touch events don't have shiftKey, so treat as normal click
+          const mockEvent = {
+            ...e,
+            evt: { ...e.evt, shiftKey: false } as unknown as MouseEvent,
+          } as KonvaEventObject<MouseEvent>;
+          onClick?.(mockEvent);
+        }}
+        onDragStart={(e) => onDragStart?.(e as KonvaEventObject<DragEvent>)}
+        onDragMove={(e) => onDragMove?.(e as KonvaEventObject<DragEvent>)}
         onDragEnd={handleDragEnd}
       >
         {/* 回転オフセットを補正するための内部グループ */}
         <Group x={rotationOffset.x} y={rotationOffset.y}>
           {cellRects}
           {selectionHighlight}
+
+          {/* オブジェクト名表示 */}
+          {showObjectNames && (
+            <ObjectTextLabel
+              object={object}
+              gridSize={gridSize}
+              settings={textSettings}
+            />
+          )}
+
+          {/* 寸法表示 */}
+          {(showDimensions || isSelected) && (
+            <DimensionLabel
+              object={object}
+              gridSize={gridSize}
+              cellSize={cellSize}
+              unit={unit}
+              settings={dimensionSettings}
+            />
+          )}
         </Group>
       </Group>
     );

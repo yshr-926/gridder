@@ -10,6 +10,11 @@ import {
 import { useCanvasStore, useGridSettingsStore, useUIStore } from '../../stores';
 import type { Unit } from '../../types';
 import { cn } from '../../utils/cn';
+import { DecorationSettings } from './DecorationSettings';
+import { ObjectNameEditor } from './ObjectNameEditor';
+import { TextDisplaySettings } from './TextDisplaySettings';
+import { DimensionDisplaySettings } from './DimensionDisplaySettings';
+import { GroupPanel } from './GroupPanel';
 
 const UNIT_OPTIONS = [
   { value: 'mm', label: 'mm' },
@@ -129,6 +134,12 @@ export const PropertyPanel = ({
           </div>
         </div>
 
+        {/* Object Name Editor */}
+        <ObjectNameEditor selectedObjectId={selectedObjectId} />
+
+        {/* Decoration Settings */}
+        <DecorationSettings selectedObjectId={selectedObjectId} />
+
         {/* Selected Object Properties */}
         {selectedObject && (
           <div className="p-4 border-b border-gray-200">
@@ -167,6 +178,15 @@ export const PropertyPanel = ({
             </div>
           </div>
         )}
+
+        {/* Text Display Settings */}
+        <TextDisplaySettings />
+
+        {/* Dimension Display Settings */}
+        <DimensionDisplaySettings />
+
+        {/* Group Panel */}
+        <GroupPanel />
 
         {/* Export Section */}
         <div className="p-4">

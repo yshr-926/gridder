@@ -2,6 +2,7 @@ import type { ProjectData, ExportOptions } from './types';
 import { PROJECT_DATA_VERSION } from './types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useGroupStore } from '@/stores/groupStore';
 import type { GridObject } from '@/types';
 
 /**
@@ -51,10 +52,11 @@ const deepCopyObjects = (objects: GridObject[]): GridObject[] => {
 export const createProjectData = (projectName: string = ''): ProjectData => {
   const { objects } = useCanvasStore.getState();
   const { cellSize, unit } = useGridSettingsStore.getState();
+  const { groups } = useGroupStore.getState();
 
   const now = new Date().toISOString();
 
-  return {
+  const projectData: ProjectData = {
     version: PROJECT_DATA_VERSION,
     name: projectName,
     gridSettings: {
@@ -68,6 +70,16 @@ export const createProjectData = (projectName: string = ''): ProjectData => {
       exportedFrom: `${APP_NAME} v${APP_VERSION}`,
     },
   };
+
+  // グループが存在する場合のみ含める（ファイルサイズ削減）
+  if (groups.length > 0) {
+    projectData.groups = groups.map((group) => ({
+      ...group,
+      objectIds: [...group.objectIds], // 配列をディープコピー
+    }));
+  }
+
+  return projectData;
 };
 
 /**
@@ -78,9 +90,11 @@ export const createProjectData = (projectName: string = ''): ProjectData => {
 export const updateProjectData = (existingData: ProjectData): ProjectData => {
   const { objects } = useCanvasStore.getState();
   const { cellSize, unit } = useGridSettingsStore.getState();
+  const { groups } = useGroupStore.getState();
 
-  return {
+  const updatedData: ProjectData = {
     ...existingData,
+    version: PROJECT_DATA_VERSION, // 最新バージョンに更新
     gridSettings: {
       cellSize,
       unit,
@@ -91,6 +105,19 @@ export const updateProjectData = (existingData: ProjectData): ProjectData => {
       updatedAt: new Date().toISOString(),
     },
   };
+
+  // グループが存在する場合のみ含める
+  if (groups.length > 0) {
+    updatedData.groups = groups.map((group) => ({
+      ...group,
+      objectIds: [...group.objectIds], // 配列をディープコピー
+    }));
+  } else {
+    // グループがなくなった場合は削除
+    delete updatedData.groups;
+  }
+
+  return updatedData;
 };
 
 /**

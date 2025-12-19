@@ -39,10 +39,14 @@ export function securityHeadersPlugin(): Plugin {
     },
 
     /**
-     * Transform index.html to inject CSP meta tag for production builds
+     * Transform index.html to inject CSP meta tag for production builds only
      */
-    transformIndexHtml(html) {
-      // Only inject meta tag during build (production)
+    transformIndexHtml(html, ctx) {
+      // Only inject meta tag during build (production), not in dev server
+      if (!ctx.bundle) {
+        return html; // Skip in dev mode
+      }
+
       const csp = generateCSPHeader(getCSPDirectives('production'));
 
       // Insert CSP meta tag after the opening <head> tag

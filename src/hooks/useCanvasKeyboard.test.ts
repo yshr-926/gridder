@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useCanvasKeyboard } from './useCanvasKeyboard';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useGroupStore } from '@/stores/groupStore';
 import type { GridObject } from '@/types';
 
 describe('useCanvasKeyboard', () => {
@@ -26,9 +27,16 @@ describe('useCanvasKeyboard', () => {
       toolMode: 'draw',
       objects: [mockObject],
       selectedObjectId: null,
+      selection: {
+        selectedIds: [],
+        primaryId: null,
+        mode: 'single',
+      },
       drawingCells: [],
       panPosition: { x: 0, y: 0 },
     });
+    // Clear any groups from previous tests
+    useGroupStore.setState({ groups: [] });
   });
 
   it('switches to draw mode with D key', () => {
@@ -193,5 +201,111 @@ describe('useCanvasKeyboard', () => {
     expect(useCanvasStore.getState().toolMode).toBe('select');
 
     document.body.removeChild(input);
+  });
+
+  it('creates group with Ctrl+G when multiple objects selected', () => {
+    const mockObject2: GridObject = {
+      id: 'test-obj-2',
+      cells: [[1, 0]],
+      position: { x: 1, y: 0 },
+      rotation: 0,
+      color: '#444444',
+    };
+
+    useCanvasStore.setState({
+      objects: [mockObject, mockObject2],
+      selection: {
+        selectedIds: ['test-obj-1', 'test-obj-2'],
+        primaryId: 'test-obj-1',
+        mode: 'multiple',
+      },
+    });
+
+    // Clear any existing groups
+    useGroupStore.setState({ groups: [] });
+
+    renderHook(() => useCanvasKeyboard());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', {
+        code: 'KeyG',
+        ctrlKey: true,
+      });
+      window.dispatchEvent(event);
+    });
+
+    expect(useGroupStore.getState().groups.length).toBe(1);
+    expect(useGroupStore.getState().groups[0].objectIds).toContain('test-obj-1');
+    expect(useGroupStore.getState().groups[0].objectIds).toContain('test-obj-2');
+  });
+
+  it('ungroups with Ctrl+Shift+G when grouped objects selected', () => {
+    const mockObject2: GridObject = {
+      id: 'test-obj-2',
+      cells: [[1, 0]],
+      position: { x: 1, y: 0 },
+      rotation: 0,
+      color: '#444444',
+    };
+
+    useCanvasStore.setState({
+      objects: [mockObject, mockObject2],
+      selection: {
+        selectedIds: ['test-obj-1', 'test-obj-2'],
+        primaryId: 'test-obj-1',
+        mode: 'multiple',
+      },
+    });
+
+    // Create a group first
+    const group = useGroupStore.getState().createGroup(['test-obj-1', 'test-obj-2']);
+    expect(group).not.toBeNull();
+    expect(useGroupStore.getState().groups.length).toBe(1);
+
+    renderHook(() => useCanvasKeyboard());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', {
+        code: 'KeyG',
+        ctrlKey: true,
+        shiftKey: true,
+      });
+      window.dispatchEvent(event);
+    });
+
+    expect(useGroupStore.getState().groups.length).toBe(0);
+  });
+
+  it('selects all objects with Ctrl+A', () => {
+    const mockObject2: GridObject = {
+      id: 'test-obj-2',
+      cells: [[1, 0]],
+      position: { x: 1, y: 0 },
+      rotation: 0,
+      color: '#444444',
+    };
+
+    useCanvasStore.setState({
+      objects: [mockObject, mockObject2],
+      selection: {
+        selectedIds: [],
+        primaryId: null,
+        mode: 'single',
+      },
+    });
+
+    renderHook(() => useCanvasKeyboard());
+
+    act(() => {
+      const event = new KeyboardEvent('keydown', {
+        code: 'KeyA',
+        ctrlKey: true,
+      });
+      window.dispatchEvent(event);
+    });
+
+    const selection = useCanvasStore.getState().selection;
+    expect(selection.selectedIds).toContain('test-obj-1');
+    expect(selection.selectedIds).toContain('test-obj-2');
   });
 });
