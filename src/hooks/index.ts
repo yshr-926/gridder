@@ -3,3 +3,11 @@ export { useCanvasKeyboard } from './useCanvasKeyboard';
 export { useUndoRedo } from './useUndoRedo';
 export { useKeyboardShortcutsHelp } from './useKeyboardShortcutsHelp';
 export { useToast, useToastStore } from './useToast';
+export { useSentryContext } from './useSentryContext';
+export {
+  usePerformanceMetrics,
+  useCanvasPerformance,
+  getMemoryUsage,
+  PERF_MARKERS,
+} from './usePerformanceMetrics';
+export type { PerfMarker } from './usePerformanceMetrics';

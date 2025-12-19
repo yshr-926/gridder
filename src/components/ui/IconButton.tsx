@@ -22,8 +22,12 @@ export const IconButton = ({
   size = 'md',
   className,
   disabled,
+  role,
   ...props
 }: IconButtonProps) => {
+  // Don't add aria-pressed when using role="radio" (uses aria-checked instead)
+  const ariaPressed = role === 'radio' ? undefined : active;
+
   return (
     <button
       className={cn(
@@ -38,8 +42,9 @@ export const IconButton = ({
       )}
       title={label}
       aria-label={label}
-      aria-pressed={active}
+      aria-pressed={ariaPressed}
       disabled={disabled}
+      role={role}
       {...props}
     >
       {icon}

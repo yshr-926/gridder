@@ -8,7 +8,13 @@ import type { GridCanvasRef } from './components/Canvas';
 import { ImportDialog } from './components/FileOperations';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ToastContainer } from './components/Toast';
-import { useCanvasKeyboard, useKeyboardShortcutsHelp, useToastStore } from './hooks';
+import { PerformanceOverlay } from './components/PerformanceOverlay';
+import {
+  useCanvasKeyboard,
+  useKeyboardShortcutsHelp,
+  useToastStore,
+  useSentryContext,
+} from './hooks';
 import {
   exportProjectAsJSON,
   exportAsPNG,
@@ -42,6 +48,9 @@ export const App = () => {
 
   // 自動保存を有効化
   useAutoSave(true);
+
+  // Sentry コンテキスト同期（エラー追跡用）
+  useSentryContext();
 
   // 起動時の復元確認
   useEffect(() => {
@@ -166,6 +175,9 @@ export const App = () => {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Performance Overlay (Development only, toggle with Ctrl+Shift+P) */}
+      <PerformanceOverlay />
     </div>
   );
 };

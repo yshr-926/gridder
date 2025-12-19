@@ -1,0 +1,47 @@
+# Node modules
+node_modules
+
+# ビルド成果物
+dist
+
+# Git
+.git
+.gitignore
+
+# 環境変数
+.env
+.env.local
+.env.*.local
+
+# ログ
+logs
+*.log
+npm-debug.log*
+
+# テスト
+coverage
+.nyc_output
+test-results
+playwright-report
+e2e
+
+# エディタ設定
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ドキュメント（必要に応じて除外）
+docs
+
+# CI/CD
+.github
+
+# Claude Code
+.claude
+CLAUDE.md
+AGENTS.md

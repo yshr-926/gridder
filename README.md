@@ -1,5 +1,8 @@
 # Gridder
 
+[![CI](https://github.com/yshr-926/gridder/actions/workflows/ci.yml/badge.svg)](https://github.com/yshr-926/gridder/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/yshr-926/gridder/branch/main/graph/badge.svg)](https://codecov.io/gh/yshr-926/gridder)
+
 グリッドベース簡易作図Webアプリケーション
 
 ## 概要
@@ -52,9 +55,27 @@ Gridder は、グリッド（方眼）を塗りつぶして直感的に図形を
 ### セットアップ
 
 ```bash
+# 依存関係のインストール
 npm install
+
+# 環境変数の設定
+cp .env.example .env
+
+# 開発サーバーの起動
 npm run dev
 ```
+
+### 環境変数
+
+環境変数は `.env.example` をコピーして `.env` ファイルを作成し、必要に応じて値を設定してください。
+
+| 変数名 | 説明 | デフォルト値 | 必須 |
+|--------|------|-------------|------|
+| `VITE_APP_ENV` | 環境（development/staging/production） | `development` | No |
+| `VITE_DEBUG` | デバッグモード（true/false） | `false` | No |
+| `VITE_APP_VERSION` | アプリケーションバージョン | `0.0.0` | No |
+| `VITE_GA_MEASUREMENT_ID` | Google Analytics Measurement ID | - | No |
+| `VITE_SENTRY_DSN` | Sentry DSN（エラートラッキング） | - | No |
 
 ### コマンド
 

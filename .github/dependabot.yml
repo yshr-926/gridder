@@ -1,0 +1,74 @@
+# Dependabot 設定
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # npm パッケージの更新
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # 本番依存関係をグループ化
+      production-dependencies:
+        patterns:
+          - "react*"
+          - "konva*"
+          - "zustand"
+          - "clsx"
+          - "tailwind-merge"
+          - "lodash-es"
+        update-types:
+          - "minor"
+          - "patch"
+      # 開発依存関係をグループ化
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "@testing-library/*"
+          - "vitest"
+          - "eslint*"
+          - "prettier"
+          - "typescript*"
+        update-types:
+          - "minor"
+          - "patch"
+      # ビルドツールをグループ化
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # メジャーアップデートは手動確認
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions の更新
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"

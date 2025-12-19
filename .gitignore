@@ -11,6 +11,18 @@ node_modules
 dist
 dist-ssr
 *.local
+coverage
+*.lcov
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
+# .env.example は含める（テンプレートとして必要）
+!.env.example
 
 # Editor directories and files
 .vscode/*
@@ -23,7 +35,16 @@ dist-ssr
 *.sln
 *.sw?
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Claude Code
 .claude/
 CLAUDE.md
 docs/plan/
+
+# Codex
+AGENTS.md
