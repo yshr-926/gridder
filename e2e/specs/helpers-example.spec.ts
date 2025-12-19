@@ -96,7 +96,10 @@ test.describe('Custom Helper Example Tests', () => {
 });
 
 test.describe('Canvas Helper Coordinate Tests', () => {
-  test('grid coordinates round-trip correctly', async ({ canvasHelper }) => {
+  test('grid coordinates round-trip correctly', async ({ app, canvasHelper }) => {
+    // Ensure app is loaded
+    await app.page.waitForSelector('canvas', { timeout: 5000 });
+
     // Test multiple grid coordinates
     const testCoords = [
       { x: 0, y: 0 },
@@ -115,7 +118,10 @@ test.describe('Canvas Helper Coordinate Tests', () => {
     }
   });
 
-  test('getGridSize returns valid size', async ({ canvasHelper }) => {
+  test('getGridSize returns valid size', async ({ app, canvasHelper }) => {
+    // Ensure app is loaded
+    await app.page.waitForSelector('canvas', { timeout: 5000 });
+
     const gridSize = await canvasHelper.getGridSize();
 
     // Grid size should be a positive number (default is 20)
@@ -123,7 +129,10 @@ test.describe('Canvas Helper Coordinate Tests', () => {
     expect(gridSize).toBeLessThanOrEqual(100); // Reasonable upper bound
   });
 
-  test('canvas locator is accessible', async ({ canvasHelper }) => {
+  test('canvas locator is accessible', async ({ app, canvasHelper }) => {
+    // Ensure app is loaded
+    await app.page.waitForSelector('canvas', { timeout: 5000 });
+
     const locator = canvasHelper.getLocator();
     await expect(locator).toBeVisible();
   });

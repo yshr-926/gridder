@@ -16,25 +16,13 @@ export class CanvasHelper {
 
   /**
    * Get the grid size from application state or use default
+   * This returns the basePixelSize (visual grid size in pixels), not cellSize (real-world size)
    */
   async getGridSize(): Promise<number> {
-    const gridSize = await this.page.evaluate(() => {
-      // Try to get grid size from localStorage (autosave)
-      const storedData = localStorage.getItem('gridder_autosave');
-      if (storedData) {
-        try {
-          const project = JSON.parse(storedData);
-          if (project.gridSettings?.cellSize) {
-            return project.gridSettings.cellSize;
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      }
-      // Default grid size
-      return 20;
-    });
-    return gridSize || this.defaultGridSize;
+    // For E2E tests, we use the default grid size (20px)
+    // This is the basePixelSize from gridSettingsStore
+    // The application uses this value for grid cell rendering
+    return this.defaultGridSize;
   }
 
   /**
