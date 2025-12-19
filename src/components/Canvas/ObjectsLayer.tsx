@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCanvasStore } from '@/stores/canvasStore';
@@ -6,6 +6,13 @@ import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useMultiSelection } from '@/features/selection/useMultiSelection';
 import { GridObjectShape } from './GridObjectShape';
 import type { Position } from '@/types';
+
+// パフォーマンス最適化: 個別セレクタを定義
+const selectObjects = (state: ReturnType<typeof useCanvasStore.getState>) => state.objects;
+const selectSelection = (state: ReturnType<typeof useCanvasStore.getState>) => state.selection;
+const selectToolMode = (state: ReturnType<typeof useCanvasStore.getState>) => state.toolMode;
+const selectSelectObject = (state: ReturnType<typeof useCanvasStore.getState>) => state.selectObject;
+const selectUpdateObject = (state: ReturnType<typeof useCanvasStore.getState>) => state.updateObject;
 
 /**
  * ドラッグ開始時の状態を記録する型
@@ -23,14 +30,12 @@ interface DragStartState {
  * 複数選択時のドラッグ操作をサポート
  */
 export const ObjectsLayer = () => {
-  // ストアから状態取得
-  const {
-    objects,
-    selection,
-    toolMode,
-    selectObject,
-    updateObject,
-  } = useCanvasStore();
+  // ストアから状態取得（個別セレクタで必要な状態のみ購読）
+  const objects = useCanvasStore(selectObjects);
+  const selection = useCanvasStore(selectSelection);
+  const toolMode = useCanvasStore(selectToolMode);
+  const selectObject = useCanvasStore(selectSelectObject);
+  const updateObject = useCanvasStore(selectUpdateObject);
 
   const { basePixelSize } = useGridSettingsStore();
   const gridSize = basePixelSize;
@@ -39,7 +44,8 @@ export const ObjectsLayer = () => {
     selectedObjects,
     hasMultipleSelection,
     moveSelectedObjectsTo,
-    calculateRelativePositions,
+    cacheRelativePositions,
+    getRelativePositions,
   } = useMultiSelection();
 
   // 複数選択時のドラッグ状態を管理
@@ -62,6 +68,7 @@ export const ObjectsLayer = () => {
 
   /**
    * ドラッグ開始ハンドラ
+   * 最適化: 相対位置をキャッシュし、ドラッグ中の再計算を防止
    */
   const handleDragStart = useCallback(
     (objectId: string, e: KonvaEventObject<DragEvent>) => {
@@ -70,31 +77,36 @@ export const ObjectsLayer = () => {
         return;
       }
 
+      const isAlreadySelected = selection.selectedIds.includes(objectId);
+
       // 選択されていないオブジェクトをドラッグした場合は選択
-      if (!selection.selectedIds.includes(objectId)) {
+      if (!isAlreadySelected) {
         selectObject(objectId);
       }
 
-      // 複数選択時: 相対位置を記録
-      if (hasMultipleSelection && selection.selectedIds.includes(objectId)) {
+      // 相対位置をキャッシュ（ドラッグ開始時のみ）
+      cacheRelativePositions();
+
+      // 複数選択時: キャッシュした相対位置を使用
+      if (hasMultipleSelection && isAlreadySelected) {
         const anchor = selectedObjects.find((o) => o.id === objectId);
         if (anchor) {
           dragStartRef.current = {
             anchorPosition: { ...anchor.position },
-            relativePositions: calculateRelativePositions(),
+            relativePositions: getRelativePositions(),
           };
-          setDraggingObjectId(objectId);
         }
-      } else {
-        setDraggingObjectId(objectId);
       }
+
+      setDraggingObjectId(objectId);
     },
     [
       toolMode,
       hasMultipleSelection,
       selection.selectedIds,
       selectedObjects,
-      calculateRelativePositions,
+      cacheRelativePositions,
+      getRelativePositions,
       selectObject,
     ]
   );
@@ -168,32 +180,46 @@ export const ObjectsLayer = () => {
   );
 
   /**
-   * 選択インジケータのバウンディングボックスを計算
+   * 選択インジケータ用のバウンディングボックスをメモ化
+   * selectedObjects/gridSize/primaryId 変更時のみ再計算
    */
-  const calculateBoundingBox = (obj: typeof objects[number]) => {
-    if (obj.cells.length === 0) return null;
+  const selectionIndicators = useMemo(() => {
+    if (selectedObjects.length === 0) return null;
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    return selectedObjects.map((obj) => {
+      if (obj.cells.length === 0) return null;
 
-    for (const [cx, cy] of obj.cells) {
-      const globalX = cx + obj.position.x;
-      const globalY = cy + obj.position.y;
-      minX = Math.min(minX, globalX);
-      minY = Math.min(minY, globalY);
-      maxX = Math.max(maxX, globalX + 1);
-      maxY = Math.max(maxY, globalY + 1);
-    }
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
 
-    return {
-      x: minX * gridSize,
-      y: minY * gridSize,
-      width: (maxX - minX) * gridSize,
-      height: (maxY - minY) * gridSize,
-    };
-  };
+      for (const [cx, cy] of obj.cells) {
+        const globalX = cx + obj.position.x;
+        const globalY = cy + obj.position.y;
+        minX = Math.min(minX, globalX);
+        minY = Math.min(minY, globalY);
+        maxX = Math.max(maxX, globalX + 1);
+        maxY = Math.max(maxY, globalY + 1);
+      }
+
+      const isPrimary = obj.id === selection.primaryId;
+
+      return (
+        <Rect
+          key={`selection-${obj.id}`}
+          x={minX * gridSize}
+          y={minY * gridSize}
+          width={(maxX - minX) * gridSize}
+          height={(maxY - minY) * gridSize}
+          stroke={isPrimary ? '#0066cc' : '#66aaff'}
+          strokeWidth={2}
+          dash={[4, 4]}
+          listening={false}
+        />
+      );
+    });
+  }, [selectedObjects, selection.primaryId, gridSize]);
 
   return (
     <Group>
@@ -218,28 +244,8 @@ export const ObjectsLayer = () => {
         );
       })}
 
-      {/* 複数選択時のインジケータ */}
-      {selectedObjects.length > 0 &&
-        selectedObjects.map((obj) => {
-          const box = calculateBoundingBox(obj);
-          if (!box) return null;
-
-          const isPrimary = obj.id === selection.primaryId;
-
-          return (
-            <Rect
-              key={`selection-${obj.id}`}
-              x={box.x}
-              y={box.y}
-              width={box.width}
-              height={box.height}
-              stroke={isPrimary ? '#0066cc' : '#66aaff'}
-              strokeWidth={2}
-              dash={[4, 4]}
-              listening={false}
-            />
-          );
-        })}
+      {/* 複数選択時のインジケータ（メモ化済み） */}
+      {selectionIndicators}
     </Group>
   );
 };
