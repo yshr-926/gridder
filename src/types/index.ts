@@ -13,8 +13,15 @@ export type CellCoordinate = [number, number];
 
 /**
  * ツールモード
+ *
+ * - draw: グリッド塗りつぶし
+ * - select: 選択・移動
+ * - eraser: 消しゴム
+ * - polygon: 頂点描画（多角形作成）
+ * - line: 線描画
+ * - subtract: 減算モード（選択中のオブジェクトから領域を削除）
  */
-export type ToolMode = 'draw' | 'select' | 'eraser';
+export type ToolMode = 'draw' | 'select' | 'eraser' | 'polygon' | 'line' | 'subtract';
 
 /**
  * テキスト表示位置

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type Konva from 'konva';
@@ -7,8 +7,13 @@ import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useDrawing } from '@/features/drawing';
 import { useEraser } from '@/features/eraser';
 import { useSelection } from '@/features/selection';
+import { usePolygonDrawing } from '@/features/polygon';
+import { useSubtractionDrawing } from '@/features/drawing/useSubtractionDrawing';
 import { pixelToCell } from '@/utils/grid';
 import type { CellCoordinate, Position } from '@/types';
+import { PolygonPreview } from './PolygonPreview';
+import { CursorOverlay } from './CursorOverlay';
+import type { Vertex } from '@/features/polygon/types';
 
 /**
  * InteractionLayer Props
@@ -24,6 +29,12 @@ interface InteractionLayerProps {
  * 描画中セルの色
  */
 const DRAWING_PREVIEW_COLOR = 'rgba(51, 51, 51, 0.7)';
+
+/**
+ * 減算モードのプレビュー色
+ */
+const SUBTRACTION_PREVIEW_COLOR = 'rgba(239, 68, 68, 0.3)';
+const SUBTRACTION_PREVIEW_STROKE = '#ef4444';
 
 /**
  * InteractionLayer コンポーネント
@@ -45,12 +56,23 @@ export const InteractionLayer = ({
     useDrawing();
   const { startErasing, continueErasing, endErasing } = useEraser();
   const { select, deselect, findObjectAtCell } = useSelection();
+  const polygonDrawing = usePolygonDrawing();
+  const subtractionDrawing = useSubtractionDrawing();
 
   // ドラッグ状態の追跡
   const isDraggingRef = useRef(false);
   // 選択モードでのドラッグ移動用
   const dragStartCellRef = useRef<CellCoordinate | null>(null);
   const dragObjectIdRef = useRef<string | null>(null);
+
+  // ポリゴンモードのカーソル位置
+  const [polygonCursorPosition, setPolygonCursorPosition] = useState<Vertex | null>(null);
+
+  // 全ツールモードのカーソル位置
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // 減算モードのドラッグ中セル
+  const [subtractionDragCells, setSubtractionDragCells] = useState<{ x: number; y: number }[]>([]);
 
   /**
    * ポインタ位置からグリッドセル座標を取得
@@ -122,6 +144,75 @@ export const InteractionLayer = ({
   );
 
   /**
+   * 最初の頂点付近かチェック（1.5グリッド以内）
+   */
+  const isNearFirstVertex = useCallback(
+    (x: number, y: number): boolean => {
+      if (polygonDrawing.vertices.length === 0) return false;
+      const first = polygonDrawing.vertices[0];
+      const distance = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
+      return distance < 1.5;
+    },
+    [polygonDrawing.vertices]
+  );
+
+  /**
+   * ポリゴンモードのクリック処理
+   */
+  const handlePolygonClick = useCallback(
+    (stage: Konva.Stage) => {
+      const cell = getGridCellFromPointer(stage);
+      if (!cell) return;
+
+      const [gridX, gridY] = cell;
+
+      // 最初の頂点付近をクリックした場合は閉じる（3頂点以上の場合）
+      if (polygonDrawing.canClose && isNearFirstVertex(gridX, gridY)) {
+        polygonDrawing.completePolygon(true);
+      } else {
+        polygonDrawing.addVertex(gridX, gridY);
+      }
+    },
+    [getGridCellFromPointer, polygonDrawing, isNearFirstVertex]
+  );
+
+  /**
+   * 減算モードのマウスダウン処理
+   */
+  const handleSubtractMouseDown = useCallback(
+    (stage: Konva.Stage) => {
+      const cell = getGridCellFromPointer(stage);
+      if (!cell) return;
+
+      const [gridX, gridY] = cell;
+      setSubtractionDragCells([{ x: gridX, y: gridY }]);
+    },
+    [getGridCellFromPointer]
+  );
+
+  /**
+   * 減算モードのマウス移動処理（ドラッグ中）
+   */
+  const handleSubtractMouseMove = useCallback(
+    (stage: Konva.Stage) => {
+      const cell = getGridCellFromPointer(stage);
+      if (!cell) return;
+
+      const [gridX, gridY] = cell;
+
+      // 既に追加されていなければ追加
+      setSubtractionDragCells((prev) => {
+        const lastCell = prev[prev.length - 1];
+        if (!lastCell || lastCell.x !== gridX || lastCell.y !== gridY) {
+          return [...prev, { x: gridX, y: gridY }];
+        }
+        return prev;
+      });
+    },
+    [getGridCellFromPointer]
+  );
+
+  /**
    * マウスダウンハンドラ
    */
   const handleMouseDown = useCallback(
@@ -141,9 +232,18 @@ export const InteractionLayer = ({
         case 'select':
           handleSelectMouseDown(stage);
           break;
+        case 'polygon':
+          handlePolygonClick(stage);
+          break;
+        case 'subtract':
+          handleSubtractMouseDown(stage);
+          break;
+        case 'line':
+          // 線モードは将来実装予定
+          break;
       }
     },
-    [toolMode, handleDrawMouseDown, handleEraserMouseDown, handleSelectMouseDown]
+    [toolMode, handleDrawMouseDown, handleEraserMouseDown, handleSelectMouseDown, handlePolygonClick, handleSubtractMouseDown]
   );
 
   /**
@@ -209,15 +309,40 @@ export const InteractionLayer = ({
   );
 
   /**
-   * マウス移動ハンドラ（ドラッグ中）
+   * ポリゴンモードのマウス移動処理（カーソル追跡）
+   */
+  const handlePolygonMouseMove = useCallback(
+    (stage: Konva.Stage) => {
+      const cell = getGridCellFromPointer(stage);
+      if (cell) {
+        setPolygonCursorPosition({ x: cell[0], y: cell[1] });
+      }
+    },
+    [getGridCellFromPointer]
+  );
+
+  /**
+   * マウス移動ハンドラ（ドラッグ中およびポリゴンモード）
    */
   const handleMouseMove = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
-      // マウスボタンが押されている場合のみ
-      if (e.evt.buttons !== 1 || !isDraggingRef.current) return;
-
       const stage = e.target.getStage();
       if (!stage) return;
+
+      // 全モードでカーソル位置を追跡
+      const cell = getGridCellFromPointer(stage);
+      if (cell) {
+        setCursorPosition({ x: cell[0], y: cell[1] });
+      }
+
+      // ポリゴンモードはドラッグ中でなくてもカーソル位置を追跡
+      if (toolMode === 'polygon') {
+        handlePolygonMouseMove(stage);
+        return;
+      }
+
+      // マウスボタンが押されている場合のみ
+      if (e.evt.buttons !== 1 || !isDraggingRef.current) return;
 
       switch (toolMode) {
         case 'draw':
@@ -229,13 +354,19 @@ export const InteractionLayer = ({
         case 'select':
           handleSelectMouseMove(stage);
           break;
+        case 'subtract':
+          handleSubtractMouseMove(stage);
+          break;
       }
     },
     [
       toolMode,
+      getGridCellFromPointer,
       handleDrawMouseMove,
       handleEraserMouseMove,
       handleSelectMouseMove,
+      handlePolygonMouseMove,
+      handleSubtractMouseMove,
     ]
   );
 
@@ -256,14 +387,21 @@ export const InteractionLayer = ({
         dragStartCellRef.current = null;
         dragObjectIdRef.current = null;
         break;
+      case 'subtract':
+        if (subtractionDragCells.length > 0) {
+          subtractionDrawing.subtractDrag(subtractionDragCells);
+          setSubtractionDragCells([]);
+        }
+        break;
     }
-  }, [toolMode, endDrawing, endErasing]);
+  }, [toolMode, endDrawing, endErasing, subtractionDragCells, subtractionDrawing]);
 
   /**
    * マウスがレイヤーから離れた
    */
   const handleMouseLeave = useCallback(() => {
     isDraggingRef.current = false;
+    setCursorPosition(null);
 
     switch (toolMode) {
       case 'draw':
@@ -276,8 +414,64 @@ export const InteractionLayer = ({
         dragStartCellRef.current = null;
         dragObjectIdRef.current = null;
         break;
+      case 'subtract':
+        // ドラッグ中にマウスが離れた場合は減算をキャンセル
+        setSubtractionDragCells([]);
+        break;
     }
   }, [toolMode, cancelDrawing, endErasing]);
+
+  /**
+   * ポリゴンモードのキーボードハンドラ
+   */
+  useEffect(() => {
+    if (toolMode !== 'polygon') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Enter キーでポリゴンを完成
+      if (e.key === 'Enter' && polygonDrawing.canClose) {
+        e.preventDefault();
+        polygonDrawing.completePolygon(true);
+      }
+      // Backspace で最後の頂点を削除
+      else if (e.key === 'Backspace') {
+        e.preventDefault();
+        polygonDrawing.removeLastVertex();
+      }
+      // Escape でキャンセル
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        polygonDrawing.cancel();
+        setPolygonCursorPosition(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toolMode, polygonDrawing]);
+
+  /**
+   * ツールモード変更時にポリゴン描画をリセット
+   */
+  const prevToolModeRef = useRef(toolMode);
+  useEffect(() => {
+    const prevToolMode = prevToolModeRef.current;
+    prevToolModeRef.current = toolMode;
+
+    // ポリゴンモードから別のモードに切り替えた場合にリセット
+    if (prevToolMode === 'polygon' && toolMode !== 'polygon') {
+      if (polygonDrawing.isDrawing) {
+        polygonDrawing.cancel();
+      }
+    }
+  }, [toolMode, polygonDrawing]);
+
+  /**
+   * ポリゴンモードでない場合のカーソル位置（常にnull）
+   * ポリゴンモードでのみ実際のカーソル位置を使用する
+   */
+  const effectivePolygonCursorPosition =
+    toolMode === 'polygon' ? polygonCursorPosition : null;
 
   /**
    * 描画中セルのプレビュー
@@ -324,10 +518,55 @@ export const InteractionLayer = ({
     );
   }, [handleMouseDown, handleMouseMove, handleMouseUp, handleMouseLeave]);
 
+  /**
+   * 最初の頂点クリックハンドラ（ポリゴンを閉じる）
+   */
+  const handleFirstVertexClick = useCallback(() => {
+    if (polygonDrawing.canClose) {
+      polygonDrawing.completePolygon(true);
+    }
+  }, [polygonDrawing]);
+
   return (
     <Group>
       {interactionArea}
       {drawingPreview}
+
+      {/* ポリゴンプレビュー */}
+      {toolMode === 'polygon' && (polygonDrawing.isDrawing || polygonDrawing.vertices.length > 0) && (
+        <PolygonPreview
+          vertices={polygonDrawing.vertices}
+          cursorPosition={effectivePolygonCursorPosition}
+          gridSize={gridSize}
+          onFirstVertexClick={handleFirstVertexClick}
+        />
+      )}
+
+      {/* 減算モードのプレビュー */}
+      {toolMode === 'subtract' && subtractionDragCells.length > 0 && (
+        <Group>
+          {subtractionDragCells.map((cell, index) => (
+            <Rect
+              key={`subtract-${index}`}
+              x={cell.x * gridSize}
+              y={cell.y * gridSize}
+              width={gridSize}
+              height={gridSize}
+              fill={SUBTRACTION_PREVIEW_COLOR}
+              stroke={SUBTRACTION_PREVIEW_STROKE}
+              strokeWidth={1}
+              listening={false}
+            />
+          ))}
+        </Group>
+      )}
+
+      {/* カーソルオーバーレイ */}
+      <CursorOverlay
+        position={cursorPosition}
+        toolMode={toolMode}
+        gridSize={gridSize}
+      />
     </Group>
   );
 };

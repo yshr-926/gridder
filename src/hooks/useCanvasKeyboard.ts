@@ -11,6 +11,9 @@ const SHORTCUTS = {
   DRAW_MODE: 'KeyD',
   SELECT_MODE: 'KeyV',
   ERASER_MODE: 'KeyE',
+  POLYGON_MODE: 'KeyP',
+  LINE_MODE: 'KeyL',
+  SUBTRACT_MODE: 'KeyM',
   ROTATE: 'KeyR',
   DELETE: ['Delete', 'Backspace'] as const,
   ESCAPE: 'Escape',
@@ -54,8 +57,11 @@ const isInputElement = (target: EventTarget | null): boolean => {
  *
  * キーボードショートカット一覧:
  * - D: 描画モード
- * - V: 選択モード
+ * - V / S: 選択モード
  * - E: 消しゴムモード
+ * - P: ポリゴン描画モード
+ * - L: 線描画モード
+ * - M: 減算モード
  * - R: 選択オブジェクトを90度回転
  * - Ctrl/Cmd + D: 選択オブジェクトを複製
  * - Delete / Backspace: 選択オブジェクトを削除
@@ -188,8 +194,25 @@ export const useCanvasKeyboard = () => {
           setToolMode('select');
           break;
 
+        case 'KeyS':
+          // S キーも選択モードに（V と同様）
+          setToolMode('select');
+          break;
+
         case SHORTCUTS.ERASER_MODE:
           setToolMode('eraser');
+          break;
+
+        case SHORTCUTS.POLYGON_MODE:
+          setToolMode('polygon');
+          break;
+
+        case SHORTCUTS.LINE_MODE:
+          setToolMode('line');
+          break;
+
+        case SHORTCUTS.SUBTRACT_MODE:
+          setToolMode('subtract');
           break;
 
         case SHORTCUTS.ROTATE:

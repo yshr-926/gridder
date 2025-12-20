@@ -58,7 +58,7 @@ const formatVitalValue = (name: string, value: number | null): string => {
 
 /**
  * Development-only performance overlay component
- * Toggle visibility with Ctrl+Shift+P
+ * Toggle visibility with Ctrl+Shift+D (Debug)
  */
 export const PerformanceOverlay = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -95,10 +95,10 @@ export const PerformanceOverlay = () => {
     return () => clearInterval(interval);
   }, [isVisible, updatePerformanceData]);
 
-  // Handle keyboard shortcut (Ctrl+Shift+P)
+  // Handle keyboard shortcut (Ctrl+Shift+D for Debug)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         setIsVisible((v) => !v);
       }
@@ -173,7 +173,7 @@ export const PerformanceOverlay = () => {
 
       {/* Thresholds Legend */}
       <div className="mt-3 pt-2 border-t border-gray-700 text-[10px]">
-        <div className="text-gray-500">Ctrl+Shift+P to toggle</div>
+        <div className="text-gray-500">Ctrl+Shift+D to toggle</div>
         <div className="flex gap-3 mt-1">
           <span className="text-green-400">Good</span>
           <span className="text-yellow-400">Needs Work</span>

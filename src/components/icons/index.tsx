@@ -334,3 +334,37 @@ export const SpinnerIcon = ({ className }: IconProps) => (
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
   </svg>
 );
+
+/**
+ * ポリゴン（多角形）アイコン
+ */
+export const PolygonIcon = ({ className }: IconProps) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
+  </svg>
+);
+
+/**
+ * マイナス（減算）アイコン
+ */
+export const MinusIcon = ({ className }: IconProps) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
