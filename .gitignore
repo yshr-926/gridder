@@ -45,6 +45,7 @@ coverage
 .claude/
 CLAUDE.md
 docs/plan/
+docs/design/
 
 # Codex
 AGENTS.md
