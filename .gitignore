@@ -48,3 +48,12 @@ docs/plan/
 
 # Codex
 AGENTS.md
+
+# Server
+server/node_modules
+server/dist
+server/.env
+!server/.env.example
+server/nginx/ssl/*.pem
+server/nginx/ssl/*.key
+server/nginx/ssl/*.crt
