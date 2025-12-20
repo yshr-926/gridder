@@ -9,6 +9,7 @@ import { ImportDialog } from './components/FileOperations';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ToastContainer } from './components/Toast';
 import { PerformanceOverlay } from './components/PerformanceOverlay';
+import { CommandPalette } from './components/CommandPalette';
 import {
   useCanvasKeyboard,
   useKeyboardShortcutsHelp,
@@ -36,6 +37,9 @@ export const App = () => {
   // インポートダイアログの表示状態
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
+  // コマンドパレットの表示状態
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
   // キーボードショートカットヘルプダイアログ
   const { isOpen: isHelpOpen, close: closeHelp } = useKeyboardShortcutsHelp();
 
@@ -51,6 +55,19 @@ export const App = () => {
 
   // Sentry コンテキスト同期（エラー追跡用）
   useSentryContext();
+
+  // Ctrl+Shift+P でコマンドパレットを開閉
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 起動時の復元確認
   useEffect(() => {
@@ -176,7 +193,13 @@ export const App = () => {
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Performance Overlay (Development only, toggle with Ctrl+Shift+P) */}
+      {/* Command Palette (Ctrl+Shift+P) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
+
+      {/* Performance Overlay (Development only, toggle with Ctrl+Shift+D) */}
       <PerformanceOverlay />
     </div>
   );

@@ -308,4 +308,50 @@ describe('useCanvasKeyboard', () => {
     expect(selection.selectedIds).toContain('test-obj-1');
     expect(selection.selectedIds).toContain('test-obj-2');
   });
+
+  describe('new tool mode shortcuts', () => {
+    it('switches to select mode with S key', () => {
+      renderHook(() => useCanvasKeyboard());
+
+      act(() => {
+        const event = new KeyboardEvent('keydown', { code: 'KeyS' });
+        window.dispatchEvent(event);
+      });
+
+      expect(useCanvasStore.getState().toolMode).toBe('select');
+    });
+
+    it('switches to polygon mode with P key', () => {
+      renderHook(() => useCanvasKeyboard());
+
+      act(() => {
+        const event = new KeyboardEvent('keydown', { code: 'KeyP' });
+        window.dispatchEvent(event);
+      });
+
+      expect(useCanvasStore.getState().toolMode).toBe('polygon');
+    });
+
+    it('switches to line mode with L key', () => {
+      renderHook(() => useCanvasKeyboard());
+
+      act(() => {
+        const event = new KeyboardEvent('keydown', { code: 'KeyL' });
+        window.dispatchEvent(event);
+      });
+
+      expect(useCanvasStore.getState().toolMode).toBe('line');
+    });
+
+    it('switches to subtract mode with M key', () => {
+      renderHook(() => useCanvasKeyboard());
+
+      act(() => {
+        const event = new KeyboardEvent('keydown', { code: 'KeyM' });
+        window.dispatchEvent(event);
+      });
+
+      expect(useCanvasStore.getState().toolMode).toBe('subtract');
+    });
+  });
 });

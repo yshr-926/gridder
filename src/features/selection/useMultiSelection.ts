@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { generateId } from '@/utils/id';
 import { getNextObjectColor } from '@/utils/colorPalette';
@@ -36,15 +36,64 @@ export const useMultiSelection = () => {
   } = useCanvasStore();
 
   /**
+   * 選択オブジェクトIDセットをメモ化（Set は includes より高速）
+   */
+  const selectedIdSet = useMemo(
+    () => new Set(selection.selectedIds),
+    [selection.selectedIds]
+  );
+
+  /**
    * 選択中のオブジェクトを取得
+   * Set を使用して O(1) ルックアップを実現
    */
   const selectedObjects = useMemo(() => {
-    return objects.filter((obj) => selection.selectedIds.includes(obj.id));
-  }, [objects, selection.selectedIds]);
+    // selectedIds が空の場合は早期リターン
+    if (selectedIdSet.size === 0) return [];
+
+    return objects.filter((obj) => selectedIdSet.has(obj.id));
+  }, [objects, selectedIdSet]);
+
+  /**
+   * 相対位置はドラッグ開始時に一度だけ計算し、ref で保持
+   */
+  const relativePositionsRef = useRef<Map<string, Position>>(new Map());
+
+  /**
+   * 相対位置を計算してキャッシュ
+   * ドラッグ開始時に呼び出す
+   */
+  const cacheRelativePositions = useCallback(() => {
+    const relativePositions = new Map<string, Position>();
+
+    if (selectedObjects.length === 0) {
+      relativePositionsRef.current = relativePositions;
+      return;
+    }
+
+    const anchor = selectedObjects[0];
+
+    for (const obj of selectedObjects) {
+      relativePositions.set(obj.id, {
+        x: obj.position.x - anchor.position.x,
+        y: obj.position.y - anchor.position.y,
+      });
+    }
+
+    relativePositionsRef.current = relativePositions;
+  }, [selectedObjects]);
+
+  /**
+   * キャッシュされた相対位置を取得
+   */
+  const getRelativePositions = useCallback(() => {
+    return relativePositionsRef.current;
+  }, []);
 
   /**
    * 選択オブジェクトの相対位置を計算
    * アンカーオブジェクト（最初に選択されたオブジェクト）からの相対位置を返す
+   * @deprecated cacheRelativePositions と getRelativePositions を使用してください
    */
   const calculateRelativePositions = useCallback((): Map<string, Position> => {
     const relativePositions = new Map<string, Position>();
@@ -214,7 +263,10 @@ export const useMultiSelection = () => {
     duplicateSelectedObjects,
     getSelectionBoundingBox,
     getSelectionCenter,
+    /** @deprecated cacheRelativePositions と getRelativePositions を使用してください */
     calculateRelativePositions,
+    cacheRelativePositions,
+    getRelativePositions,
     clearSelection,
   };
 };

@@ -221,4 +221,70 @@ describe('InteractionLayer', () => {
     const store = useCanvasStore.getState();
     expect(store.objects.length).toBe(0);
   });
+
+  describe('subtract mode', () => {
+    it('renders without errors in subtract mode', () => {
+      useCanvasStore.setState({
+        toolMode: 'subtract',
+        selectedObjectId: 'test-obj',
+        objects: [
+          {
+            id: 'test-obj',
+            cells: [[0, 0], [1, 0], [0, 1]],
+            position: { x: 5, y: 5 },
+            rotation: 0,
+            color: '#333333',
+          },
+        ],
+      });
+
+      render(<InteractionLayer {...defaultProps} />);
+
+      expect(screen.getByTestId('konva-group')).toBeInTheDocument();
+    });
+
+    it('does not affect drawing cells in subtract mode', () => {
+      useCanvasStore.setState({
+        toolMode: 'subtract',
+        drawingCells: [],
+      });
+
+      render(<InteractionLayer {...defaultProps} />);
+
+      const rects = screen.getAllByTestId('konva-rect');
+      const interactionArea = rects.find((r) => r.getAttribute('data-fill') === 'transparent');
+
+      if (interactionArea) {
+        fireEvent.mouseDown(interactionArea);
+      }
+
+      // Drawing cells should remain empty in subtract mode
+      const store = useCanvasStore.getState();
+      expect(store.drawingCells.length).toBe(0);
+    });
+  });
+
+  describe('polygon mode', () => {
+    it('renders without errors in polygon mode', () => {
+      useCanvasStore.setState({
+        toolMode: 'polygon',
+      });
+
+      render(<InteractionLayer {...defaultProps} />);
+
+      expect(screen.getByTestId('konva-group')).toBeInTheDocument();
+    });
+  });
+
+  describe('line mode', () => {
+    it('renders without errors in line mode', () => {
+      useCanvasStore.setState({
+        toolMode: 'line',
+      });
+
+      render(<InteractionLayer {...defaultProps} />);
+
+      expect(screen.getByTestId('konva-group')).toBeInTheDocument();
+    });
+  });
 });

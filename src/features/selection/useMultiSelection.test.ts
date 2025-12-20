@@ -457,4 +457,167 @@ describe('useMultiSelection', () => {
       expect(result.current.selectedCount).toBe(0);
     });
   });
+
+  /**
+   * Phase 17: パフォーマンス最適化のテスト
+   */
+  describe('Performance Optimizations (Phase 17)', () => {
+    describe('cacheRelativePositions and getRelativePositions', () => {
+      it('should cache relative positions on cacheRelativePositions call', () => {
+        const store = useCanvasStore.getState();
+        const obj1 = createTestObject('obj-1', { x: 0, y: 0 });
+        const obj2 = createTestObject('obj-2', { x: 5, y: 3 });
+
+        act(() => {
+          store.addObject(obj1);
+          store.addObject(obj2);
+          store.selectObjects(['obj-1', 'obj-2']);
+        });
+
+        const { result } = renderHook(() => useMultiSelection());
+
+        act(() => {
+          result.current.cacheRelativePositions();
+        });
+
+        const positions = result.current.getRelativePositions();
+        expect(positions.size).toBe(2);
+        expect(positions.get('obj-1')).toEqual({ x: 0, y: 0 });
+        expect(positions.get('obj-2')).toEqual({ x: 5, y: 3 });
+      });
+
+      it('should return empty map before caching', () => {
+        const store = useCanvasStore.getState();
+        const obj1 = createTestObject('obj-1', { x: 0, y: 0 });
+
+        act(() => {
+          store.addObject(obj1);
+          store.selectObject('obj-1');
+        });
+
+        const { result } = renderHook(() => useMultiSelection());
+
+        // Before calling cacheRelativePositions
+        const positions = result.current.getRelativePositions();
+        expect(positions.size).toBe(0);
+      });
+
+      it('should retain cached positions after object position change', () => {
+        const store = useCanvasStore.getState();
+        const obj1 = createTestObject('obj-1', { x: 0, y: 0 });
+        const obj2 = createTestObject('obj-2', { x: 5, y: 3 });
+
+        act(() => {
+          store.addObject(obj1);
+          store.addObject(obj2);
+          store.selectObjects(['obj-1', 'obj-2']);
+        });
+
+        const { result } = renderHook(() => useMultiSelection());
+
+        // Cache positions before move
+        act(() => {
+          result.current.cacheRelativePositions();
+        });
+
+        // Move object (simulating drag)
+        act(() => {
+          store.updateObject('obj-1', { position: { x: 10, y: 10 } });
+        });
+
+        // Cached positions should remain unchanged (this is the optimization)
+        const positions = result.current.getRelativePositions();
+        expect(positions.get('obj-1')).toEqual({ x: 0, y: 0 });
+        expect(positions.get('obj-2')).toEqual({ x: 5, y: 3 });
+      });
+
+      it('should handle empty selection when caching', () => {
+        const { result } = renderHook(() => useMultiSelection());
+
+        // Should not throw
+        act(() => {
+          result.current.cacheRelativePositions();
+        });
+
+        const positions = result.current.getRelativePositions();
+        expect(positions.size).toBe(0);
+      });
+    });
+
+    describe('Set-based ID lookup (performance)', () => {
+      it('should use Set for efficient ID lookup with many objects', () => {
+        const store = useCanvasStore.getState();
+
+        // 100個のオブジェクトを作成
+        const manyObjects = Array.from({ length: 100 }, (_, i) =>
+          createTestObject(`obj-${i}`, { x: i, y: 0 })
+        );
+
+        act(() => {
+          manyObjects.forEach((obj) => store.addObject(obj));
+          store.selectObjects(['obj-50', 'obj-51', 'obj-52']);
+        });
+
+        const startTime = performance.now();
+        const { result } = renderHook(() => useMultiSelection());
+        const duration = performance.now() - startTime;
+
+        expect(result.current.selectedObjects).toHaveLength(3);
+        // フックの初期化は10ms以内に完了すべき
+        expect(duration).toBeLessThan(100);
+      });
+
+      it('should correctly filter selected objects regardless of order', () => {
+        const store = useCanvasStore.getState();
+        const obj1 = createTestObject('obj-1');
+        const obj2 = createTestObject('obj-2');
+        const obj3 = createTestObject('obj-3');
+
+        act(() => {
+          store.addObject(obj1);
+          store.addObject(obj2);
+          store.addObject(obj3);
+          // Select in reverse order
+          store.selectObjects(['obj-3', 'obj-1']);
+        });
+
+        const { result } = renderHook(() => useMultiSelection());
+
+        expect(result.current.selectedObjects).toHaveLength(2);
+        expect(result.current.selectedObjects.map((o) => o.id)).toContain('obj-1');
+        expect(result.current.selectedObjects.map((o) => o.id)).toContain('obj-3');
+        expect(result.current.selectedObjects.map((o) => o.id)).not.toContain('obj-2');
+      });
+    });
+
+    describe('selectedObjects memoization', () => {
+      it('should not recalculate selectedObjects on unrelated object update', () => {
+        const store = useCanvasStore.getState();
+        const obj1 = createTestObject('obj-1', { x: 0, y: 0 });
+        const obj2 = createTestObject('obj-2', { x: 1, y: 0 });
+
+        act(() => {
+          store.addObject(obj1);
+          store.addObject(obj2);
+          store.selectObject('obj-1');
+        });
+
+        const { result, rerender } = renderHook(() => useMultiSelection());
+
+        expect(result.current.selectedObjects).toHaveLength(1);
+        expect(result.current.selectedObjects[0].id).toBe('obj-1');
+
+        // 選択されていないオブジェクトを更新
+        act(() => {
+          store.updateObject('obj-2', { position: { x: 2, y: 0 } });
+        });
+
+        rerender();
+
+        // selectedObjects は変更されていないはず
+        expect(result.current.selectedObjects).toHaveLength(1);
+        expect(result.current.selectedObjects[0].id).toBe('obj-1');
+      });
+    });
+  });
 });
