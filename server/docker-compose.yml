@@ -1,0 +1,120 @@
+# Gridder Collaboration Server - Docker Compose Configuration
+# Version: 1.0.0
+#
+# Services:
+# - nginx: Reverse proxy and static file server
+# - ws-server: Hocuspocus WebSocket server
+# - postgres: PostgreSQL database
+# - redis: Redis for PubSub and session management
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Nginx - Reverse Proxy
+  # ==========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: gridder-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ../dist:/usr/share/nginx/html:ro
+    depends_on:
+      ws-server:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gridder-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ==========================================================================
+  # WebSocket Server - Hocuspocus
+  # ==========================================================================
+  ws-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gridder-ws-server
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/gridder
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - WS_PORT=3001
+      - API_PORT=3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gridder-network
+    # No need to expose ports directly; nginx handles routing
+
+  # ==========================================================================
+  # PostgreSQL - Database
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: gridder-postgres
+    environment:
+      - POSTGRES_DB=gridder
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    networks:
+      - gridder-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gridder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ==========================================================================
+  # Redis - PubSub and Session Management
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: gridder-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - gridder-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  gridder-network:
+    driver: bridge
