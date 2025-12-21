@@ -47,7 +47,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm run build && pnpm run preview',
+    // CI環境ではビルド済みのため preview のみ、ローカルではビルドも実行
+    command: process.env.CI ? 'pnpm run preview' : 'pnpm run build && pnpm run preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
