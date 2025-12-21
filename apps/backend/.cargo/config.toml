@@ -1,0 +1,23 @@
+[build]
+# SQLx オフラインモード（CI用）
+# 有効にする場合: SQLX_OFFLINE=true cargo build
+# rustflags = []
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = []
+
+[env]
+# 開発時のデフォルト設定
+RUST_BACKTRACE = "1"
+
+[alias]
+# 便利なエイリアス
+b = "build"
+t = "test"
+r = "run"
+c = "check"
+cl = "clippy"
