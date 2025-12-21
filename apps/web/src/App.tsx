@@ -244,7 +244,7 @@ export const App = () => {
 
         {/* Canvas (Center) */}
         <main
-          className="flex-1 overflow-hidden bg-gray-100"
+          className="flex-1 overflow-hidden bg-gray-100 relative"
           role="application"
           aria-label="作図キャンバス"
         >
@@ -252,6 +252,8 @@ export const App = () => {
             ref={canvasRef}
             onCursorPositionChange={handleCursorPositionChange}
           />
+          {/* 共同編集パネル（キャンバス領域内に配置） */}
+          {isConnected && <CollaborationPanel />}
         </main>
 
         {/* PropertyPanel (Right) */}
@@ -303,9 +305,6 @@ export const App = () => {
         isOpen={isShareDialogOpen}
         onClose={handleCloseShareDialog}
       />
-
-      {/* 共同編集パネル（接続中のみ表示） */}
-      {isConnected && <CollaborationPanel />}
 
       {/* オフライン通知（共同編集中のみ表示） */}
       <OfflineNotice />
