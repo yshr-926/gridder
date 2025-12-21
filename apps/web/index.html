@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gridder - グリッドベース簡易作図ツール</title>
+
+    <!-- Plausible Analytics (Privacy-first, no cookies, GDPR compliant) -->
+    <!-- Configure VITE_PLAUSIBLE_DOMAIN in .env for production -->
+    <script
+      defer
+      data-domain=""
+      src="https://plausible.io/js/script.js"
+    ></script>
+    <script>
+      // Initialize Plausible with environment-specific domain
+      (function() {
+        // Plausible domain is injected at build time via environment variable
+        // In development, analytics is disabled
+        window.plausible = window.plausible || function() {
+          (window.plausible.q = window.plausible.q || []).push(arguments);
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,291 @@
+# Dependabot 設定
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # ===========================================
+  # npm/pnpm パッケージの更新 (Frontend)
+  # Note: Dependabot uses "npm" ecosystem for pnpm projects.
+  # It automatically detects and updates pnpm-lock.yaml.
+  # ===========================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # React 関連をグループ化
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      # Konva 関連をグループ化
+      konva:
+        patterns:
+          - "konva"
+          - "react-konva"
+          - "@types/konva"
+        update-types:
+          - "minor"
+          - "patch"
+      # 状態管理・ユーティリティ
+      state-utils:
+        patterns:
+          - "zustand"
+          - "clsx"
+          - "tailwind-merge"
+          - "lodash-es"
+          - "@types/lodash-es"
+          - "uuid"
+          - "@types/uuid"
+        update-types:
+          - "minor"
+          - "patch"
+      # Yjs (リアルタイムコラボレーション)
+      yjs:
+        patterns:
+          - "yjs"
+          - "y-websocket"
+          - "y-indexeddb"
+        update-types:
+          - "minor"
+          - "patch"
+      # テスティング
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+          - "playwright"
+          - "@playwright/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # 型定義
+      types:
+        patterns:
+          - "@types/*"
+        exclude-patterns:
+          - "@types/react"
+          - "@types/react-dom"
+          - "@types/konva"
+          - "@types/lodash-es"
+          - "@types/uuid"
+        update-types:
+          - "minor"
+          - "patch"
+      # Linting & Formatting
+      linting:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "prettier"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # ビルドツール
+      build-tools:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "autoprefixer"
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
+      # Turborepo
+      turborepo:
+        patterns:
+          - "turbo"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # メジャーアップデートは手動確認
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ===========================================
+  # Cargo パッケージの更新 (Backend)
+  # ===========================================
+  - package-ecosystem: "cargo"
+    directory: "/apps/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # Web フレームワーク
+      web-framework:
+        patterns:
+          - "axum"
+          - "axum-*"
+          - "tower"
+          - "tower-*"
+          - "hyper"
+          - "hyper-*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Tokio エコシステム
+      tokio:
+        patterns:
+          - "tokio"
+          - "tokio-*"
+        update-types:
+          - "minor"
+          - "patch"
+      # データベース
+      database:
+        patterns:
+          - "sqlx"
+          - "sqlx-*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Redis
+      redis:
+        patterns:
+          - "fred"
+        update-types:
+          - "minor"
+          - "patch"
+      # CRDT (Yrs)
+      crdt:
+        patterns:
+          - "yrs"
+          - "y-*"
+        update-types:
+          - "minor"
+          - "patch"
+      # シリアライゼーション
+      serialization:
+        patterns:
+          - "serde"
+          - "serde_*"
+        update-types:
+          - "minor"
+          - "patch"
+      # ロギング
+      logging:
+        patterns:
+          - "tracing"
+          - "tracing-*"
+        update-types:
+          - "minor"
+          - "patch"
+      # ユーティリティ
+      utils:
+        patterns:
+          - "thiserror"
+          - "anyhow"
+          - "chrono"
+          - "uuid"
+          - "bytes"
+          - "parking_lot"
+          - "dashmap"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # メジャーアップデートは手動確認
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ===========================================
+  # GitHub Actions の更新
+  # ===========================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      # GitHub 公式アクション
+      github-actions:
+        patterns:
+          - "actions/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # セキュリティ関連
+      security:
+        patterns:
+          - "github/codeql-action"
+          - "aquasecurity/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Docker 関連
+      docker:
+        patterns:
+          - "docker/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ===========================================
+  # Docker イメージの更新
+  # ===========================================
+  - package-ecosystem: "docker"
+    directory: "/apps/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"

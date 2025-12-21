@@ -1,0 +1,132 @@
+[package]
+name = "gridder-backend"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+authors = ["Gridder Team"]
+description = "Gridder collaboration backend - Yjs compatible WebSocket server"
+license = "MIT"
+
+[lib]
+name = "gridder_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gridder-backend"
+path = "src/main.rs"
+
+# ============================================================
+# Dependencies
+# ============================================================
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full", "tracing"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws", "tracing", "macros"] }
+tower = { version = "0.4", features = ["timeout", "limit", "util"] }
+tower-http = { version = "0.5", features = [
+    "cors",
+    "trace",
+    "request-id",
+    "propagate-header"
+] }
+
+# WebSocket
+tokio-tungstenite = "0.21"
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+
+# CRDT (Yjs compatible)
+yrs = "0.18"
+
+# Database
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "chrono",
+    "uuid"
+] }
+sqlx-core = { version = "0.8", features = ["migrate"] }
+sqlx-postgres = { version = "0.8", features = ["migrate"] }
+
+# Redis
+fred = { version = "9", features = ["subscriber-client", "i-scripts"] }
+
+# Authentication
+bcrypt = "0.15"
+jsonwebtoken = "9"
+nanoid = "0.4"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_bytes = "0.11"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging/Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "json",
+    "fmt"
+] }
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+# Utilities
+bytes = "1"
+parking_lot = "0.12"
+dashmap = "6"
+
+# HTTP client (for health checks)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# ============================================================
+# Dev Dependencies
+# ============================================================
+
+[dev-dependencies]
+tokio-test = "0.4"
+axum-test = "16"
+pretty_assertions = "1"
+test-log = { version = "0.2", features = ["trace"] }
+tracing-test = "0.2"
+
+# ============================================================
+# Build Profile
+# ============================================================
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
+# ============================================================
+# Features
+# ============================================================
+
+[features]
+default = []
+# Redis PubSub 無効化（単一インスタンス運用時）
+no-redis = []

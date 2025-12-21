@@ -1,0 +1,201 @@
+# ============================================================
+# Gridder - Production Docker Compose Configuration
+# ============================================================
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#   docker-compose -f docker-compose.prod.yml logs -f
+#   docker-compose -f docker-compose.prod.yml down
+#
+# Required environment variables (in .env.prod):
+#   - DOMAIN: Your domain name (e.g., gridder.example.com)
+#   - DB_NAME, DB_USER, DB_PASSWORD: PostgreSQL credentials
+#   - REDIS_PASSWORD: Redis password
+#   - JWT_SECRET: JWT signing secret
+#   - ACME_EMAIL: Email for Let's Encrypt certificates
+# ============================================================
+
+services:
+  # ============================================================
+  # Traefik Reverse Proxy
+  # ============================================================
+  traefik:
+    image: traefik:v2.10
+    container_name: gridder-traefik
+    command:
+      # API settings
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+      # Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=gridder_prod_network"
+      # File provider for additional configuration
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # Let's Encrypt ACME
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # Logging
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt_data:/letsencrypt
+      - ./docker/traefik:/etc/traefik/dynamic:ro
+    networks:
+      - gridder_prod_network
+    labels:
+      # Dashboard (optional, can be disabled in production)
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-admin:$$apr1$$xxx$$yyy}"
+    restart: unless-stopped
+
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: gridder-postgres-prod
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gridder}
+      POSTGRES_USER: ${DB_USER:-gridder}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gridder} -d ${DB_NAME:-gridder}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - gridder_prod_network
+    restart: unless-stopped
+
+  # ============================================================
+  # Redis Cache
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: gridder-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gridder_prod_network
+    restart: unless-stopped
+
+  # ============================================================
+  # Rust Backend
+  # ============================================================
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: gridder-backend-prod
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-gridder}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-gridder}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      RUST_LOG: gridder_backend=info,tower_http=info
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gridder_prod_network
+    labels:
+      - "traefik.enable=true"
+      # API routes
+      - "traefik.http.routers.backend-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-api.entrypoints=websecure"
+      - "traefik.http.routers.backend-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend-api.service=backend"
+      # WebSocket routes
+      - "traefik.http.routers.backend-ws.rule=Host(`${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.backend-ws.entrypoints=websecure"
+      - "traefik.http.routers.backend-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend-ws.service=backend"
+      # Service definition
+      - "traefik.http.services.backend.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # ============================================================
+  # Frontend (Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      args:
+        VITE_API_URL: https://${DOMAIN}
+        VITE_WS_URL: wss://${DOMAIN}/ws
+    container_name: gridder-frontend-prod
+    depends_on:
+      - backend
+    networks:
+      - gridder_prod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.service=frontend"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Priority (lower than backend routes)
+      - "traefik.http.routers.frontend.priority=1"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_prod_data:
+    name: gridder_postgres_prod_data
+  redis_prod_data:
+    name: gridder_redis_prod_data
+  letsencrypt_data:
+    name: gridder_letsencrypt_data
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  gridder_prod_network:
+    name: gridder_prod_network
+    driver: bridge

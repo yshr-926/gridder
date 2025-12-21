@@ -1,0 +1,87 @@
+# ============================================================
+# Gridder - Docker Ignore File
+# ============================================================
+
+# Node modules (will be installed in container)
+node_modules
+**/node_modules
+
+# Build outputs (will be built in container)
+dist
+**/dist
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files (use Docker env instead)
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test files and results
+coverage
+.nyc_output
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+e2e
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Editor settings
+.vscode
+.idea
+*.swp
+*.swo
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+
+# Claude Code / AI
+.claude
+CLAUDE.md
+AGENTS.md
+
+# Turborepo
+.turbo
+
+# Rust build artifacts (for backend)
+apps/backend/target
+**/target
+
+# Lock files (for faster builds, uncomment if you want to use cached deps)
+# pnpm-lock.yaml
+# Cargo.lock
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+**/.cache
+
+# Docker files (not needed inside container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
