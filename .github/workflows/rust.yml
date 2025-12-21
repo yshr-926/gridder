@@ -21,9 +21,12 @@ on:
     paths:
       - "apps/backend/**"
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: "1.75"
+  RUST_VERSION: "1.92"
 
 jobs:
   # ============================================
@@ -52,7 +55,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.75"
+          toolchain: "1.92"
 
       - name: Cache cargo registry
         uses: actions/cache@v4

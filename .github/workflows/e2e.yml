@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   e2e:
     name: E2E Tests (${{ matrix.browser }})
@@ -18,20 +21,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend for E2E tests
+        run: pnpm turbo run build --filter=@gridder/web
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }} chromium
+        run: pnpm --filter @gridder/web exec playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run E2E tests
-        run: npm run test:e2e -- --project=${{ matrix.browser }} --grep-invert "Visual Regression"
+        run: pnpm --filter @gridder/web exec playwright test --project=${{ matrix.browser }} --grep-invert "Visual Regression"
 
       - name: Upload test results
         if: failure()
@@ -56,20 +67,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend for E2E tests
+        run: pnpm turbo run build --filter=@gridder/web
 
       - name: Install Playwright
-        run: npx playwright install --with-deps
+        run: pnpm --filter @gridder/web exec playwright install --with-deps
 
       - name: Run E2E tests on Edge
-        run: npm run test:e2e -- --project=edge --grep-invert "Visual Regression"
+        run: pnpm --filter @gridder/web exec playwright test --project=edge --grep-invert "Visual Regression"
 
       - name: Upload test results
         if: failure()
