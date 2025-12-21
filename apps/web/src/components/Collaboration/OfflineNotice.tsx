@@ -173,7 +173,7 @@ export const OfflineNotice = memo(() => {
           <p className="text-sm font-medium">
             {isOffline ? 'オフラインモード' : 'オンラインに復帰しました'}
           </p>
-          <p className="text-xs mt-1 opacity-80">
+          <p className="text-xs mt-1">
             {isOffline
               ? '編集内容はローカルに保存され、再接続時に自動で同期されます'
               : '変更が正常に同期されました'}

@@ -71,11 +71,15 @@ export const DecorationSettings = ({ selectedObjectId }: DecorationSettingsProps
 
         {/* 透明度設定 */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+          <label
+            htmlFor="decoration-opacity"
+            className="text-xs font-medium text-gray-600 uppercase tracking-wide"
+          >
             透明度: {Math.round(currentDecoration.opacity * 100)}%
           </label>
           <input
             type="range"
+            id="decoration-opacity"
             data-testid="decoration-opacity-slider"
             min="0.1"
             max="1"
@@ -83,6 +87,7 @@ export const DecorationSettings = ({ selectedObjectId }: DecorationSettingsProps
             value={currentDecoration.opacity}
             onChange={(e) => handleDecorationChange({ opacity: parseFloat(e.target.value) })}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            aria-label="透明度"
           />
         </div>
 
