@@ -53,8 +53,11 @@ coverage
 # Claude Code
 .claude/
 CLAUDE.md
+
+# Documentation
 docs/plan/
 docs/design/
+docs/review/
 
 # Codex
 AGENTS.md
