@@ -319,7 +319,7 @@ jobs:
         run: pnpm --filter @gridder/web exec playwright install-deps chromium
 
       - name: Build frontend for E2E tests
-        run: pnpm --filter @gridder/web build
+        run: pnpm turbo run build --filter=@gridder/web
 
       - name: Run E2E tests (Chromium only)
         run: pnpm --filter @gridder/web test:e2e -- --project=chromium --grep-invert "Visual Regression" --shard=${{ matrix.shard }}/4
