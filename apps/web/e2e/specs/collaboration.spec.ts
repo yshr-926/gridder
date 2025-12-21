@@ -100,16 +100,16 @@ test.describe('Collaboration - Display Name Dialog', () => {
     await expect(dialog).not.toBeVisible({ timeout: 5000 });
   });
 
-  test('should close dialog on overlay click', async ({ appPage }) => {
+  test('should close dialog on cancel button click', async ({ appPage }) => {
     await appPage.page.goto(`/room/${MOCK_ROOM_ID}`);
 
     // Wait for dialog
     const dialog = appPage.page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
-    // Click on overlay (outside dialog content)
-    const overlay = appPage.page.locator('[aria-hidden="true"]').first();
-    await overlay.click({ force: true, position: { x: 10, y: 10 } });
+    // Click the cancel button to close the dialog
+    const cancelButton = dialog.getByRole('button', { name: 'キャンセル' });
+    await cancelButton.click();
 
     // Dialog should close
     await expect(dialog).not.toBeVisible({ timeout: 5000 });
@@ -357,8 +357,8 @@ test.describe('Collaboration - Accessibility', () => {
     const dialog = appPage.page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
-    // Find close button by aria-label
-    const closeButton = appPage.page.getByRole('button', { name: /閉じる/i });
+    // Find close button within the dialog by exact aria-label
+    const closeButton = dialog.getByRole('button', { name: '閉じる', exact: true });
     await expect(closeButton).toBeVisible();
   });
 

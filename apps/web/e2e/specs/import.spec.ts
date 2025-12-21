@@ -67,7 +67,8 @@ test.describe('Import JSON', () => {
 
     // Error message should be displayed
     // The dialog should still be visible with an error
-    const errorText = appPage.page.getByText(/エラー|失敗|不正/i);
+    // Error messages could be: "このファイルは新しいバージョンで作成されています", "プロジェクトデータの形式が不正です", etc.
+    const errorText = appPage.page.getByText(/新しいバージョン|エラー|失敗|不正|サポートされていない/i);
     await expect(errorText).toBeVisible({ timeout: 3000 });
 
     // Close the dialog

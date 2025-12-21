@@ -48,8 +48,8 @@ test.describe('Command Palette', () => {
     await appPage.page.keyboard.press('Control+Shift+p');
     await appPage.page.waitForTimeout(300);
 
-    // Type 'L' to filter commands
-    const input = appPage.page.getByRole('textbox');
+    // Type 'L' to filter commands (use placeholder to identify the correct textbox)
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('L');
     await appPage.page.waitForTimeout(200);
 
@@ -64,13 +64,13 @@ test.describe('Command Palette', () => {
     await appPage.page.waitForTimeout(300);
 
     // Type and execute HELP command
-    const input = appPage.page.getByRole('textbox');
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('HELP');
     await appPage.page.keyboard.press('Enter');
     await appPage.page.waitForTimeout(300);
 
-    // Should show help information
-    const helpText = appPage.page.getByText(/使い方|コマンド一覧|HELP/);
+    // Should show help information (use first() to avoid strict mode violation)
+    const helpText = appPage.page.getByText(/利用可能なコマンド|使い方|コマンド一覧/).first();
     await expect(helpText).toBeVisible();
   });
 });
@@ -228,7 +228,7 @@ test.describe('Command Execution', () => {
     await appPage.page.waitForTimeout(300);
 
     // Execute LINE command with coordinates
-    const input = appPage.page.getByRole('textbox');
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('LINE 0,0 5,5');
     await appPage.page.keyboard.press('Enter');
     await appPage.page.waitForTimeout(AUTOSAVE_DELAY);
@@ -245,7 +245,7 @@ test.describe('Command Execution', () => {
     await appPage.page.waitForTimeout(300);
 
     // Execute RECT command with coordinates
-    const input = appPage.page.getByRole('textbox');
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('RECT 0,0 5,5');
     await appPage.page.keyboard.press('Enter');
     await appPage.page.waitForTimeout(AUTOSAVE_DELAY);
@@ -262,7 +262,7 @@ test.describe('Command Execution', () => {
     await appPage.page.waitForTimeout(300);
 
     // Execute invalid command
-    const input = appPage.page.getByRole('textbox');
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('INVALID_COMMAND');
     await appPage.page.keyboard.press('Enter');
     await appPage.page.waitForTimeout(300);
@@ -293,7 +293,7 @@ test.describe('Integration Tests', () => {
     await appPage.page.keyboard.press('Control+Shift+p');
     await appPage.page.waitForTimeout(300);
 
-    const input = appPage.page.getByRole('textbox');
+    const input = appPage.page.getByPlaceholder('コマンドを入力');
     await input.fill('RECT 10,10 15,15');
     await appPage.page.keyboard.press('Enter');
     await appPage.page.waitForTimeout(AUTOSAVE_DELAY);
