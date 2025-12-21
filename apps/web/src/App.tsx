@@ -67,7 +67,7 @@ export const App = () => {
   // Ctrl+Shift+P でコマンドパレットを開閉
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toUpperCase() === 'P') {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
       }
