@@ -71,11 +71,7 @@ impl DocumentRepository {
     }
 
     /// 複数の更新をバッチで保存
-    pub async fn append_updates_batch(
-        &self,
-        room_id: &str,
-        updates: &[Vec<u8>],
-    ) -> AppResult<()> {
+    pub async fn append_updates_batch(&self, room_id: &str, updates: &[Vec<u8>]) -> AppResult<()> {
         if updates.is_empty() {
             return Ok(());
         }
@@ -382,17 +378,15 @@ impl DocumentRepository {
             .fetch_one(&self.pool)
             .await?;
 
-        let total_update_size: Option<i64> = sqlx::query_scalar(
-            "SELECT SUM(LENGTH(update_data)) FROM room_updates",
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let total_update_size: Option<i64> =
+            sqlx::query_scalar("SELECT SUM(LENGTH(update_data)) FROM room_updates")
+                .fetch_one(&self.pool)
+                .await?;
 
-        let total_snapshot_size: Option<i64> = sqlx::query_scalar(
-            "SELECT SUM(LENGTH(snapshot_data)) FROM room_snapshots",
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let total_snapshot_size: Option<i64> =
+            sqlx::query_scalar("SELECT SUM(LENGTH(snapshot_data)) FROM room_snapshots")
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(DocumentStats {
             update_count,

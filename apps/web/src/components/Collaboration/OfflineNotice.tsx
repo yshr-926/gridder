@@ -10,7 +10,7 @@
  * - Yjsが自動的にオフライン中の変更をマージすることを説明
  */
 
-import { memo, useEffect, useState, useCallback } from 'react';
+import { memo, useEffect, useState, useCallback, useRef } from 'react';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 
 /**
@@ -26,21 +26,31 @@ type NoticeState = 'hidden' | 'offline' | 'reconnected';
 export const OfflineNotice = memo(() => {
   const connectionState = useCollaborationStore((state) => state.connectionState);
   const [noticeState, setNoticeState] = useState<NoticeState>('hidden');
-  const [wasOffline, setWasOffline] = useState(false);
+  const wasOfflineRef = useRef(false);
+  const prevConnectionStateRef = useRef(connectionState);
 
   // 接続状態の変化を監視
+  // NOTE: これは意図的なuseEffect内でのsetStateです。
+  // 外部状態（WebSocket接続）の変化に応じてUIを更新するために必要です。
   useEffect(() => {
+    // 前回と同じ状態なら何もしない
+    if (prevConnectionStateRef.current === connectionState) {
+      return;
+    }
+    prevConnectionStateRef.current = connectionState;
+
     if (connectionState === 'disconnected' || connectionState === 'reconnecting') {
+      wasOfflineRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 接続状態変化の同期に必要
       setNoticeState('offline');
-      setWasOffline(true);
-    } else if (connectionState === 'connected' && wasOffline) {
+    } else if (connectionState === 'connected' && wasOfflineRef.current) {
       // オフラインから復帰した場合のみ「復帰」通知を表示
       setNoticeState('reconnected');
 
       // 3秒後に通知を非表示
       const timer = setTimeout(() => {
         setNoticeState('hidden');
-        setWasOffline(false);
+        wasOfflineRef.current = false;
       }, 3000);
 
       return () => clearTimeout(timer);
@@ -48,13 +58,13 @@ export const OfflineNotice = memo(() => {
       // 初回接続時は何も表示しない
       setNoticeState('hidden');
     }
-  }, [connectionState, wasOffline]);
+  }, [connectionState]);
 
   // 通知を閉じるハンドラ
   const handleClose = useCallback(() => {
     setNoticeState('hidden');
     if (connectionState === 'connected') {
-      setWasOffline(false);
+      wasOfflineRef.current = false;
     }
   }, [connectionState]);
 

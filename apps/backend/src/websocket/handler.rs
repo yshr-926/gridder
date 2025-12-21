@@ -136,9 +136,11 @@ pub async fn ws_handler(
     let user_name = query.name.unwrap_or_else(|| "Anonymous".to_string());
     let redis_pubsub = state.redis_pubsub.clone();
 
-    Ok(ws.on_upgrade(move |socket| {
-        handle_socket(socket, room, user_name, client_id, redis_pubsub)
-    }))
+    Ok(
+        ws.on_upgrade(move |socket| {
+            handle_socket(socket, room, user_name, client_id, redis_pubsub)
+        }),
+    )
 }
 
 /// WebSocket 接続を処理する
@@ -395,7 +397,8 @@ async fn handle_awareness_message(
     // 他のローカルクライアントにブロードキャスト（受信したメッセージをそのまま転送）
     let entries: Vec<AwarenessEntry> = awareness_update.entries.clone();
     let broadcast_msg = encode_awareness(&entries);
-    room.broadcast_except(client_id, broadcast_msg.clone()).await;
+    room.broadcast_except(client_id, broadcast_msg.clone())
+        .await;
 
     // Redis を通じて他インスタンスに配信
     // Awareness エントリをバイト配列としてシリアライズ

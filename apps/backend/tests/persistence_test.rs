@@ -5,12 +5,11 @@
 
 use chrono::Utc;
 use sqlx::postgres::PgPoolOptions;
-use yrs::{Doc, Text, Transact, GetString, ReadTxn, updates::decoder::Decode, Update};
+use yrs::{updates::decoder::Decode, Doc, GetString, ReadTxn, Text, Transact, Update};
 
 use gridder_backend::persistence::{
-    create_pool, run_migrations,
-    DocumentRepository, RoomRepository, SnapshotManager,
-    DocumentStats, RoomRow, UpdateRow, SnapshotRow,
+    create_pool, run_migrations, DocumentRepository, DocumentStats, RoomRepository, RoomRow,
+    SnapshotManager, SnapshotRow, UpdateRow,
 };
 
 /// テスト用データベースプールを作成
@@ -161,11 +160,18 @@ async fn test_document_snapshot() {
     room_repo.create_room_if_not_exists(&room_id).await.unwrap();
 
     // スナップショットなし
-    assert!(doc_repo.load_latest_snapshot(&room_id).await.unwrap().is_none());
+    assert!(doc_repo
+        .load_latest_snapshot(&room_id)
+        .await
+        .unwrap()
+        .is_none());
 
     // スナップショットを保存
     let snapshot_data = vec![100, 101, 102, 103];
-    doc_repo.save_snapshot(&room_id, &snapshot_data).await.unwrap();
+    doc_repo
+        .save_snapshot(&room_id, &snapshot_data)
+        .await
+        .unwrap();
 
     // スナップショットを取得
     let snapshot = doc_repo.load_latest_snapshot(&room_id).await.unwrap();
@@ -194,7 +200,10 @@ async fn test_document_compaction() {
 
     // コンパクション
     let snapshot_data = vec![1, 2, 3, 4, 5];
-    let deleted = doc_repo.compact_with_snapshot(&room_id, &snapshot_data).await.unwrap();
+    let deleted = doc_repo
+        .compact_with_snapshot(&room_id, &snapshot_data)
+        .await
+        .unwrap();
     assert_eq!(deleted, 5);
 
     // 更新ログはクリアされ、スナップショットのみ
@@ -218,11 +227,18 @@ async fn test_document_load_state() {
     room_repo.create_room_if_not_exists(&room_id).await.unwrap();
 
     // データなし
-    assert!(doc_repo.load_document_state(&room_id).await.unwrap().is_none());
+    assert!(doc_repo
+        .load_document_state(&room_id)
+        .await
+        .unwrap()
+        .is_none());
 
     // スナップショットと更新を保存
     let snapshot_data = vec![10, 20, 30];
-    doc_repo.save_snapshot(&room_id, &snapshot_data).await.unwrap();
+    doc_repo
+        .save_snapshot(&room_id, &snapshot_data)
+        .await
+        .unwrap();
     doc_repo.append_update(&room_id, &vec![1]).await.unwrap();
     doc_repo.append_update(&room_id, &vec![2]).await.unwrap();
 
@@ -287,7 +303,10 @@ async fn test_snapshot_manager_restore_with_data() {
         let txn = original_doc.transact();
         txn.encode_state_as_update_v1(&yrs::StateVector::default())
     };
-    doc_repo.save_snapshot(&room_id, &snapshot_data).await.unwrap();
+    doc_repo
+        .save_snapshot(&room_id, &snapshot_data)
+        .await
+        .unwrap();
 
     // 追加の更新を作成して保存
     let update_data = {
@@ -296,7 +315,10 @@ async fn test_snapshot_manager_restore_with_data() {
         text.insert(&mut txn, 13, " More text.");
         txn.encode_update_v1()
     };
-    doc_repo.append_update(&room_id, &update_data).await.unwrap();
+    doc_repo
+        .append_update(&room_id, &update_data)
+        .await
+        .unwrap();
 
     // ドキュメントを復元
     let restored_doc = snapshot_manager.restore_document(&room_id).await.unwrap();
@@ -338,21 +360,31 @@ async fn test_snapshot_manager_maybe_create_snapshot() {
     }
 
     // スナップショット不要
-    let created = snapshot_manager.maybe_create_snapshot(&room_id, &doc).await.unwrap();
+    let created = snapshot_manager
+        .maybe_create_snapshot(&room_id, &doc)
+        .await
+        .unwrap();
     assert!(!created);
 
     // もう1つ追加（閾値到達）
     doc_repo.append_update(&room_id, &vec![4]).await.unwrap();
 
     // スナップショット作成
-    let created = snapshot_manager.maybe_create_snapshot(&room_id, &doc).await.unwrap();
+    let created = snapshot_manager
+        .maybe_create_snapshot(&room_id, &doc)
+        .await
+        .unwrap();
     assert!(created);
 
     // 更新ログがクリアされていることを確認
     assert_eq!(doc_repo.get_update_count(&room_id).await.unwrap(), 0);
 
     // スナップショットが存在することを確認
-    assert!(doc_repo.load_latest_snapshot(&room_id).await.unwrap().is_some());
+    assert!(doc_repo
+        .load_latest_snapshot(&room_id)
+        .await
+        .unwrap()
+        .is_some());
 
     // クリーンアップ
     room_repo.delete_room(&room_id).await.unwrap();
@@ -396,19 +428,30 @@ async fn test_full_document_lifecycle() {
     }
 
     // 3. ドキュメントを復元
-    let restored = snapshot_manager.restore_document(&room_id).await.unwrap().unwrap();
+    let restored = snapshot_manager
+        .restore_document(&room_id)
+        .await
+        .unwrap()
+        .unwrap();
     let restored_text = restored.get_or_insert_text("content");
     let txn = restored.transact();
     assert_eq!(restored_text.get_string(&txn), "Hello, World!");
 
     // 4. スナップショットを作成
-    snapshot_manager.force_create_snapshot(&room_id, &doc).await.unwrap();
+    snapshot_manager
+        .force_create_snapshot(&room_id, &doc)
+        .await
+        .unwrap();
 
     // 5. 更新ログがクリアされていることを確認
     assert_eq!(doc_repo.get_update_count(&room_id).await.unwrap(), 0);
 
     // 6. スナップショットから復元
-    let restored2 = snapshot_manager.restore_document(&room_id).await.unwrap().unwrap();
+    let restored2 = snapshot_manager
+        .restore_document(&room_id)
+        .await
+        .unwrap()
+        .unwrap();
     let restored_text2 = restored2.get_or_insert_text("content");
     let txn2 = restored2.transact();
     assert_eq!(restored_text2.get_string(&txn2), "Hello, World!");

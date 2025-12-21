@@ -68,13 +68,10 @@ pub async fn run_migrations(pool: &PgPool) -> AppResult<()> {
 ///
 /// シンプルなクエリを実行して接続状態を確認する。
 pub async fn health_check(pool: &PgPool) -> AppResult<()> {
-    sqlx::query("SELECT 1")
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            warn!(error = %e, "Database health check failed");
-            AppError::Database(e)
-        })?;
+    sqlx::query("SELECT 1").execute(pool).await.map_err(|e| {
+        warn!(error = %e, "Database health check failed");
+        AppError::Database(e)
+    })?;
 
     debug!("Database health check passed");
     Ok(())

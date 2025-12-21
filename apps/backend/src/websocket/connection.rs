@@ -24,11 +24,7 @@ pub struct ClientConnection {
 
 impl ClientConnection {
     /// 新しいクライアント接続を作成
-    pub fn new(
-        client_id: String,
-        user_name: String,
-        sender: UnboundedSender<Vec<u8>>,
-    ) -> Self {
+    pub fn new(client_id: String, user_name: String, sender: UnboundedSender<Vec<u8>>) -> Self {
         Self {
             client_id,
             yjs_client_id: None,
@@ -140,7 +136,11 @@ pub enum ConnectionHealth {
 
 impl ConnectionHealth {
     /// ConnectionInfo からヘルス状態を判定
-    pub fn from_info(info: &ConnectionInfo, idle_timeout: Duration, stale_timeout: Duration) -> Self {
+    pub fn from_info(
+        info: &ConnectionInfo,
+        idle_timeout: Duration,
+        stale_timeout: Duration,
+    ) -> Self {
         let idle_time = info.idle_duration();
 
         if idle_time > stale_timeout {
@@ -204,11 +204,8 @@ mod tests {
     fn test_connection_health() {
         let info = ConnectionInfo::new();
 
-        let health = ConnectionHealth::from_info(
-            &info,
-            Duration::from_secs(30),
-            Duration::from_secs(60),
-        );
+        let health =
+            ConnectionHealth::from_info(&info, Duration::from_secs(30), Duration::from_secs(60));
 
         assert_eq!(health, ConnectionHealth::Healthy);
     }
@@ -216,11 +213,7 @@ mod tests {
     #[test]
     fn test_client_connection() {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-        let conn = ClientConnection::new(
-            "client-1".to_string(),
-            "Test User".to_string(),
-            tx,
-        );
+        let conn = ClientConnection::new("client-1".to_string(), "Test User".to_string(), tx);
 
         assert_eq!(conn.client_id, "client-1");
         assert_eq!(conn.user_name, "Test User");
@@ -229,11 +222,7 @@ mod tests {
     #[test]
     fn test_client_connection_send() {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        let conn = ClientConnection::new(
-            "client-1".to_string(),
-            "Test User".to_string(),
-            tx,
-        );
+        let conn = ClientConnection::new("client-1".to_string(), "Test User".to_string(), tx);
 
         // 送信成功
         let result = conn.send(vec![1, 2, 3]);
@@ -247,11 +236,7 @@ mod tests {
     #[test]
     fn test_client_connection_send_closed_channel() {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
-        let conn = ClientConnection::new(
-            "client-1".to_string(),
-            "Test User".to_string(),
-            tx,
-        );
+        let conn = ClientConnection::new("client-1".to_string(), "Test User".to_string(), tx);
 
         // レシーバーをドロップ
         drop(rx);

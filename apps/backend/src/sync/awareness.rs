@@ -132,7 +132,10 @@ impl AwarenessManager {
 
     /// クライアントの数値IDを取得
     pub fn get_numeric_client_id(&self, client_id: &str) -> Option<u64> {
-        self.states.read().get(client_id).map(|e| e.numeric_client_id)
+        self.states
+            .read()
+            .get(client_id)
+            .map(|e| e.numeric_client_id)
     }
 
     /// 全クライアントの Awareness エントリを取得
@@ -182,9 +185,9 @@ impl AwarenessState {
     /// クライアントIDからユーザーカラーを生成
     fn generate_color(client_id: &str) -> String {
         // クライアントIDのハッシュから色を生成
-        let hash: u32 = client_id.bytes().fold(0u32, |acc, b| {
-            acc.wrapping_mul(31).wrapping_add(b as u32)
-        });
+        let hash: u32 = client_id
+            .bytes()
+            .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
 
         // HSL の H 値として使用（彩度と明度は固定）
         let hue = hash % 360;

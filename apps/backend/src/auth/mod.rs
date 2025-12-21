@@ -40,7 +40,7 @@ pub mod token;
 pub use handlers::{auth_router, AuthHandlerState, AuthRequest, AuthResponse};
 pub use middleware::{auth_middleware, optional_auth_middleware, AuthLayer, RequestExt};
 pub use passphrase::{
-    hash_passphrase, hash_passphrase_default, verify_passphrase, verify_passphrase_safe,
-    AuthError, PassphraseRules,
+    hash_passphrase, hash_passphrase_default, verify_passphrase, verify_passphrase_safe, AuthError,
+    PassphraseRules,
 };
 pub use token::{Claims, TokenError, TokenManager};

@@ -5,7 +5,7 @@
  * 編集競合の可能性をユーザーに通知する。
  */
 
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useMemo } from 'react';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { cn } from '@/utils/cn';
@@ -68,14 +68,14 @@ export const ConflictWarning = memo(({ className, autoHideMs = 0 }: ConflictWarn
   const localSelectedIds = useCanvasStore((state) => state.selection.selectedIds);
   const room = useCollaborationStore((state) => state.room);
 
-  const [conflictUsers, setConflictUsers] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState(false);
+  const [prevConflictKey, setPrevConflictKey] = useState('');
 
-  useEffect(() => {
-    // ルームに接続していない場合は何もしない
+  // 競合ユーザーをuseMemoで計算（useEffectの代わり）
+  const conflictUsers = useMemo(() => {
+    // ルームに接続していない場合は空配列
     if (!room) {
-      setConflictUsers([]);
-      return;
+      return [];
     }
 
     // 他のユーザーが選択中のオブジェクトIDを収集
@@ -102,19 +102,23 @@ export const ConflictWarning = memo(({ className, autoHideMs = 0 }: ConflictWarn
       }
     });
 
-    // 重複を除去
-    const uniqueConflicts = [...new Set(conflicts)];
+    // 重複を除去してソート（安定した比較のため）
+    return [...new Set(conflicts)].sort();
+  }, [presences, collaborators, localSelectedIds, room]);
 
-    // 競合が変化した場合、dismissedをリセット
-    if (
-      uniqueConflicts.length !== conflictUsers.length ||
-      !uniqueConflicts.every((u) => conflictUsers.includes(u))
-    ) {
-      setDismissed(false);
+  // 競合が変化した場合、dismissedをリセット
+  // NOTE: これは意図的なuseEffect内でのsetStateです。
+  // 競合状態の変化を追跡し、ユーザーに再度警告を表示するために必要です。
+  useEffect(() => {
+    const conflictKey = conflictUsers.join(',');
+    if (conflictKey !== prevConflictKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 競合変化の追跡に必要
+      setPrevConflictKey(conflictKey);
+      if (conflictUsers.length > 0) {
+        setDismissed(false);
+      }
     }
-
-    setConflictUsers(uniqueConflicts);
-  }, [presences, collaborators, localSelectedIds, room, conflictUsers]);
+  }, [conflictUsers, prevConflictKey]);
 
   // 自動非表示
   useEffect(() => {

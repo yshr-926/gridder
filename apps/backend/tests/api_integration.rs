@@ -102,7 +102,10 @@ async fn test_auth_endpoint_empty_room_name() {
 #[tokio::test]
 async fn test_auth_verify_valid_token() {
     let state = create_test_auth_state();
-    let token = state.token_manager.generate_token("verify-test-room").unwrap();
+    let token = state
+        .token_manager
+        .generate_token("verify-test-room")
+        .unwrap();
 
     use axum::routing::post;
     use gridder_backend::auth::auth_router;
@@ -163,7 +166,10 @@ async fn test_auth_verify_invalid_token() {
 #[tokio::test]
 async fn test_auth_refresh_success() {
     let state = create_test_auth_state();
-    let token = state.token_manager.generate_token("refresh-test-room").unwrap();
+    let token = state
+        .token_manager
+        .generate_token("refresh-test-room")
+        .unwrap();
 
     use gridder_backend::auth::auth_router;
     let app = auth_router(state);

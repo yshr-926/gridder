@@ -9,10 +9,7 @@ use tracing::{debug, info, warn};
 use yrs::{updates::decoder::Decode, Transact, Update};
 
 use super::{MessageType, PubSubMessage, RedisPubSub};
-use crate::{
-    sync::RoomManager,
-    websocket::protocol::encode_update,
-};
+use crate::{sync::RoomManager, websocket::protocol::encode_update};
 
 /// リモートメッセージハンドラー
 ///
@@ -167,7 +164,8 @@ impl RemoteMessageHandler {
                 room.remove_awareness(&client_id_str).await;
             } else if let Some(state_json) = &entry.state {
                 // Awareness 状態を更新
-                room.update_awareness_with_clock(&client_id_str, entry.clock, state_json).await;
+                room.update_awareness_with_clock(&client_id_str, entry.clock, state_json)
+                    .await;
             }
         }
 

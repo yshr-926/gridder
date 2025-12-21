@@ -24,9 +24,7 @@ pub fn read_var_uint(data: &[u8]) -> AppResult<(u64, usize)> {
 
     loop {
         if pos >= data.len() {
-            return Err(AppError::WebSocket(
-                "Unexpected end of varUint".to_string(),
-            ));
+            return Err(AppError::WebSocket("Unexpected end of varUint".to_string()));
         }
         let byte = data[pos];
         result |= ((byte & 0x7F) as u64) << shift;
@@ -219,7 +217,8 @@ fn decode_sync_message(data: &[u8]) -> AppResult<MessageType> {
 
 /// Awareness メッセージをデコード (y-protocols/awareness 互換)
 fn decode_awareness_message(data: &[u8]) -> AppResult<MessageType> {
-    decode_awareness_payload(data).map(|entries| MessageType::Awareness(AwarenessUpdate { entries }))
+    decode_awareness_payload(data)
+        .map(|entries| MessageType::Awareness(AwarenessUpdate { entries }))
 }
 
 /// Awareness ペイロードをデコード (公開API)
@@ -252,13 +251,14 @@ pub fn decode_awareness_payload(data: &[u8]) -> AppResult<Vec<AwarenessEntry>> {
         let (state_bytes, size) = read_var_byte_array(&data[pos..])?;
         pos += size;
 
-        let state = if clock == 0 {
-            None // クライアント離脱
-        } else {
-            Some(String::from_utf8(state_bytes).map_err(|e| {
-                AppError::WebSocket(format!("Invalid UTF-8 in awareness: {}", e))
-            })?)
-        };
+        let state =
+            if clock == 0 {
+                None // クライアント離脱
+            } else {
+                Some(String::from_utf8(state_bytes).map_err(|e| {
+                    AppError::WebSocket(format!("Invalid UTF-8 in awareness: {}", e))
+                })?)
+            };
 
         entries.push(AwarenessEntry {
             client_id,

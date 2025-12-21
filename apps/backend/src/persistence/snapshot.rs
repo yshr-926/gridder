@@ -123,9 +123,8 @@ impl SnapshotManager {
                 // 1. スナップショットを適用
                 if let Some(ref snapshot_data) = snapshot {
                     if !snapshot_data.is_empty() {
-                        let update = Update::decode_v1(snapshot_data).map_err(|e| {
-                            AppError::WebSocket(format!("Invalid snapshot: {}", e))
-                        })?;
+                        let update = Update::decode_v1(snapshot_data)
+                            .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
 
                         let mut txn = doc.transact_mut();
                         txn.apply_update(update);

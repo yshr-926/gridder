@@ -19,10 +19,7 @@ pub use messenger::{MessageType, Messenger, PubSubMessage};
 pub use redis::{ConnectionState, RedisConnectionManager};
 pub use subscriber::RemoteMessageHandler;
 
-use crate::{
-    config::RedisConfig,
-    error::AppResult,
-};
+use crate::{config::RedisConfig, error::AppResult};
 
 /// Redis Pub/Sub マネージャー
 ///
@@ -109,7 +106,9 @@ impl RedisPubSub {
 
     /// 更新を発行（失敗時はログのみ）
     pub async fn try_publish_update(&self, room_id: &str, update_data: &[u8]) {
-        self.messenger.try_publish_update(room_id, update_data).await
+        self.messenger
+            .try_publish_update(room_id, update_data)
+            .await
     }
 
     /// Awareness を発行（失敗時はログのみ）

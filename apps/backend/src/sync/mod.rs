@@ -12,6 +12,8 @@ pub mod awareness;
 pub mod document;
 pub mod room;
 
-pub use awareness::{AwarenessManager, AwarenessState, AwarenessStateEntry, CursorPosition, UserInfo};
+pub use awareness::{
+    AwarenessManager, AwarenessState, AwarenessStateEntry, CursorPosition, UserInfo,
+};
 pub use document::DocumentManager;
 pub use room::{Room, RoomManager};

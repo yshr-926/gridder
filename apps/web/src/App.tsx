@@ -154,26 +154,25 @@ export const App = () => {
   // ========================================
   // 共同編集関連
   // ========================================
-  const [isDisplayNameDialogOpen, setIsDisplayNameDialogOpen] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  // 初期化時にURLからルームIDを取得
+  const initialRoomId = useMemo(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
+    return match ? match[1] : null;
+  }, []);
+
   // pendingRoomId を ref で管理して、useCallback の中で常に最新の値を参照
-  const pendingRoomIdRef = useRef<string | null>(null);
+  const pendingRoomIdRef = useRef<string | null>(initialRoomId);
+
+  // URLからルームIDが見つかった場合は初期状態でダイアログを開く
+  const [isDisplayNameDialogOpen, setIsDisplayNameDialogOpen] = useState(
+    () => initialRoomId !== null
+  );
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   const { createRoom } = useRoomCreation();
   const { connectionState, connect } = useCollaborationStore();
   const isConnected = connectionState === 'connected';
-
-  // URLからルームIDを取得して参加ダイアログを自動表示（初回マウント時のみ）
-  useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
-    if (match) {
-      const roomIdFromUrl = match[1];
-      pendingRoomIdRef.current = roomIdFromUrl;
-      setIsDisplayNameDialogOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回マウント時のみ実行
 
   // 共有ボタンクリック時のハンドラ
   const handleShare = useCallback(() => {

@@ -224,7 +224,8 @@ impl Room {
 
     /// Awareness 状態を clock 付きで更新
     pub async fn update_awareness_with_clock(&self, client_id: &str, clock: u64, state_json: &str) {
-        self.awareness.update_with_clock(client_id, clock, state_json);
+        self.awareness
+            .update_with_clock(client_id, clock, state_json);
     }
 
     /// Awareness 状態を削除
@@ -242,7 +243,10 @@ impl Room {
 
     /// クライアントの Yjs クライアント ID を取得
     pub fn get_yjs_client_id(&self, client_id: &str) -> Option<u64> {
-        self.clients.read().get(client_id).and_then(|c| c.yjs_client_id)
+        self.clients
+            .read()
+            .get(client_id)
+            .and_then(|c| c.yjs_client_id)
     }
 
     /// 全 Awareness エントリを取得

@@ -63,13 +63,7 @@ vi.mock('@/config/environment', () => ({
 
 // y-websocket のモック
 vi.mock('y-websocket', () => ({
-  WebsocketProvider: vi.fn().mockImplementation(function (
-    this: typeof mockProvider,
-    _wsUrl: string,
-    _roomName: string,
-    _doc: unknown,
-    _options: unknown
-  ) {
+  WebsocketProvider: vi.fn().mockImplementation(function (this: typeof mockProvider) {
     // statusイベントを遅延して呼び出す
     setTimeout(() => {
       const handlers = (this as unknown as { _handlers: Map<string, ((data: unknown) => void)[]> })

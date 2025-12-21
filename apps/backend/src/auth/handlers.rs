@@ -176,15 +176,16 @@ pub async fn authenticate(
         let passphrase_hash = room_repo.get_passphrase_hash(&req.room_name).await?;
 
         // パスフレーズを検証
-        verify_passphrase_safe(req.passphrase.as_deref(), passphrase_hash.as_deref())
-            .map_err(|e| {
+        verify_passphrase_safe(req.passphrase.as_deref(), passphrase_hash.as_deref()).map_err(
+            |e| {
                 warn!(
                     room_name = %req.room_name,
                     error = %e,
                     "Authentication failed"
                 );
                 AppError::InvalidPassphrase
-            })?;
+            },
+        )?;
     }
 
     // トークン生成
@@ -398,11 +399,7 @@ pub async fn set_passphrase(
 
         info!(
             "Passphrase {} for room: {}",
-            if new_hash.is_some() {
-                "set"
-            } else {
-                "removed"
-            },
+            if new_hash.is_some() { "set" } else { "removed" },
             room_id
         );
 

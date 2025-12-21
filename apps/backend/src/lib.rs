@@ -58,9 +58,7 @@ pub async fn run_server(config: Config) -> Result<()> {
     run_migrations(&db_pool).await?;
 
     // Redis Pub/Sub を初期化（オプショナル）
-    let redis_pubsub = Arc::new(
-        OptionalRedisPubSub::from_config(config.redis.as_ref()).await,
-    );
+    let redis_pubsub = Arc::new(OptionalRedisPubSub::from_config(config.redis.as_ref()).await);
 
     // リポジトリを作成
     let room_repo = RoomRepository::new(db_pool.clone());
@@ -92,11 +90,7 @@ pub async fn run_server(config: Config) -> Result<()> {
     };
 
     // API 状態を作成
-    let api_state = ApiState::new(
-        Arc::new(config.clone()),
-        room_repo,
-        room_manager.clone(),
-    );
+    let api_state = ApiState::new(Arc::new(config.clone()), room_repo, room_manager.clone());
 
     // API ルーター（REST API）と TokenManager を取得
     let (api_router, token_manager) = create_api_router(api_state);

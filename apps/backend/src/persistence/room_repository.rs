@@ -229,7 +229,11 @@ impl RoomRepository {
 
         let count = result.rows_affected();
         if count > 0 {
-            info!(count = count, expiry_days = expiry_days, "Expired rooms deleted");
+            info!(
+                count = count,
+                expiry_days = expiry_days,
+                "Expired rooms deleted"
+            );
         }
 
         Ok(count)

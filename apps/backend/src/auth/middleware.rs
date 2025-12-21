@@ -160,14 +160,8 @@ mod tests {
 
     #[test]
     fn test_extract_bearer_token() {
-        assert_eq!(
-            extract_bearer_token("Bearer my-token"),
-            Some("my-token")
-        );
-        assert_eq!(
-            extract_bearer_token("Bearer "),
-            Some("")
-        );
+        assert_eq!(extract_bearer_token("Bearer my-token"), Some("my-token"));
+        assert_eq!(extract_bearer_token("Bearer "), Some(""));
         assert_eq!(extract_bearer_token("Basic credentials"), None);
         assert_eq!(extract_bearer_token("token"), None);
     }
