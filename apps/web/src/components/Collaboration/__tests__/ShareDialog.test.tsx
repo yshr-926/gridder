@@ -137,7 +137,9 @@ describe('ShareDialog', () => {
         );
       });
 
-      expect(screen.getByText('コピー完了')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('コピー完了')).toBeInTheDocument();
+      });
     });
 
     it('should handle clipboard error gracefully', async () => {

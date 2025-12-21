@@ -419,19 +419,17 @@ pub struct DocumentStats {
 // zstd 圧縮サポート
 // ============================================================
 
-/// スナップショットを zstd 圧縮
-///
-/// 注意: zstd クレートが必要。Cargo.toml に追加する場合に有効化。
-#[cfg(feature = "zstd")]
-pub fn compress_snapshot(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-    zstd::encode_all(std::io::Cursor::new(data), 3)
-}
-
-/// zstd 圧縮されたスナップショットを展開
-#[cfg(feature = "zstd")]
-pub fn decompress_snapshot(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-    zstd::decode_all(std::io::Cursor::new(data))
-}
+// zstd 圧縮サポートは将来の拡張用に予約
+// 注意: zstd クレートが必要。Cargo.toml に追加する場合に有効化。
+// #[cfg(feature = "zstd")]
+// pub fn compress_snapshot(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+//     zstd::encode_all(std::io::Cursor::new(data), 3)
+// }
+//
+// #[cfg(feature = "zstd")]
+// pub fn decompress_snapshot(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+//     zstd::decode_all(std::io::Cursor::new(data))
+// }
 
 #[cfg(test)]
 mod tests {

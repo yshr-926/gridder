@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use gridder_backend::{
     config::RedisConfig,
-    pubsub::{MessageType, OptionalRedisPubSub, PubSubMessage, RedisPubSub},
+    pubsub::{MessageType, OptionalRedisPubSub, RedisPubSub},
     sync::RoomManager,
 };
 use tokio::time::timeout;
@@ -136,8 +136,8 @@ async fn test_multi_instance_sync() {
     let room_manager2 = Arc::new(RoomManager::new());
 
     // 両方でルームを作成
-    let room1 = room_manager1.get_or_create_room(room_id).await;
-    let room2 = room_manager2.get_or_create_room(room_id).await;
+    let _room1 = room_manager1.get_or_create_room(room_id).await;
+    let _room2 = room_manager2.get_or_create_room(room_id).await;
 
     // 両方がルームを購読
     pubsub1.subscribe_room(room_id).await.unwrap();

@@ -176,20 +176,18 @@ impl OptionalRedisPubSub {
 
     /// ルームのチャネルを購読
     pub async fn subscribe_room(&self, room_id: &str) {
-        if let Some(pubsub) = &self.inner {
-            if let Err(e) = pubsub.subscribe_room(room_id).await {
+        if let Some(pubsub) = &self.inner
+            && let Err(e) = pubsub.subscribe_room(room_id).await {
                 error!(room_id = %room_id, error = %e, "Failed to subscribe to room");
             }
-        }
     }
 
     /// ルームのチャネル購読を解除
     pub async fn unsubscribe_room(&self, room_id: &str) {
-        if let Some(pubsub) = &self.inner {
-            if let Err(e) = pubsub.unsubscribe_room(room_id).await {
+        if let Some(pubsub) = &self.inner
+            && let Err(e) = pubsub.unsubscribe_room(room_id).await {
                 error!(room_id = %room_id, error = %e, "Failed to unsubscribe from room");
             }
-        }
     }
 
     /// 更新を発行

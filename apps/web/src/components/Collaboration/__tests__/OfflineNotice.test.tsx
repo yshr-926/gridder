@@ -16,13 +16,15 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 
 // Store をリセットするヘルパー
 const resetStore = () => {
-  useCollaborationStore.setState({
-    connectionState: 'connected',
-    room: null,
-    self: null,
-    collaborators: [],
-    presences: new Map(),
-    error: null,
+  act(() => {
+    useCollaborationStore.setState({
+      connectionState: 'connected',
+      room: null,
+      self: null,
+      collaborators: [],
+      presences: new Map(),
+      error: null,
+    });
   });
 };
 

@@ -359,14 +359,13 @@ pub async fn set_passphrase(
     debug!("Set passphrase request for room: {}", room_id);
 
     // 新しいパスフレーズのバリデーション
-    if let Some(ref passphrase) = req.passphrase {
-        if !passphrase.is_empty() {
+    if let Some(ref passphrase) = req.passphrase
+        && !passphrase.is_empty() {
             state
                 .passphrase_rules
                 .validate(passphrase)
                 .map_err(AppError::Validation)?;
         }
-    }
 
     // ルームリポジトリが設定されている場合はデータベースで処理
     if let Some(ref room_repo) = state.room_repo {

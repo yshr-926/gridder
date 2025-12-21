@@ -10,13 +10,102 @@
  * - Yjsが自動的にオフライン中の変更をマージすることを説明
  */
 
-import { memo, useEffect, useState, useCallback, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 
 /**
- * オフライン通知の状態
+ * 通知状態を表す型
  */
 type NoticeState = 'hidden' | 'offline' | 'reconnected';
+
+/**
+ * 接続状態をトラッキングしてオフライン復帰を検出するためのカスタムフック
+ */
+const useOfflineNoticeState = () => {
+  const initialConnectionState = useCollaborationStore.getState().connectionState;
+  const connectionStateRef = useRef<string>(initialConnectionState);
+  const offlineDismissedRef = useRef(false);
+  const reconnectedTimerRef = useRef<number | null>(null);
+  const [noticeState, setNoticeState] = useState<NoticeState>(() => {
+    return initialConnectionState === 'disconnected' ||
+      initialConnectionState === 'reconnecting'
+      ? 'offline'
+      : 'hidden';
+  });
+
+  const clearReconnectedTimer = useCallback(() => {
+    if (reconnectedTimerRef.current === null) {
+      return;
+    }
+    window.clearTimeout(reconnectedTimerRef.current);
+    reconnectedTimerRef.current = null;
+  }, []);
+
+  const handleConnectionChange = useCallback(
+    (state: { connectionState: string }, prevState: { connectionState: string }) => {
+      const nextConnectionState = state.connectionState;
+      const prevConnectionState = prevState.connectionState;
+
+      connectionStateRef.current = nextConnectionState;
+
+      const wasOffline =
+        prevConnectionState === 'disconnected' ||
+        prevConnectionState === 'reconnecting';
+      const isOffline =
+        nextConnectionState === 'disconnected' ||
+        nextConnectionState === 'reconnecting';
+      const isConnected = nextConnectionState === 'connected';
+
+      clearReconnectedTimer();
+
+      if (isOffline) {
+        if (!wasOffline) {
+          offlineDismissedRef.current = false;
+        }
+
+        setNoticeState(offlineDismissedRef.current ? 'hidden' : 'offline');
+        return;
+      }
+
+      if (isConnected && wasOffline) {
+        setNoticeState('reconnected');
+        reconnectedTimerRef.current = window.setTimeout(() => {
+          setNoticeState('hidden');
+          reconnectedTimerRef.current = null;
+        }, 3000);
+        return;
+      }
+
+      setNoticeState('hidden');
+    },
+    [clearReconnectedTimer]
+  );
+
+  useEffect(() => {
+    const unsubscribe = useCollaborationStore.subscribe(handleConnectionChange);
+    return () => {
+      clearReconnectedTimer();
+      unsubscribe();
+    };
+  }, [clearReconnectedTimer, handleConnectionChange]);
+
+  // 通知状態を計算
+  const dismiss = useCallback(() => {
+    clearReconnectedTimer();
+
+    if (
+      connectionStateRef.current === 'disconnected' ||
+      connectionStateRef.current === 'reconnecting'
+    ) {
+      offlineDismissedRef.current = true;
+      setNoticeState('hidden');
+      return;
+    }
+    setNoticeState('hidden');
+  }, [clearReconnectedTimer]);
+
+  return { noticeState, dismiss };
+};
 
 /**
  * オフライン通知コンポーネント
@@ -24,49 +113,7 @@ type NoticeState = 'hidden' | 'offline' | 'reconnected';
  * 接続状態を監視し、適切な通知を表示する。
  */
 export const OfflineNotice = memo(() => {
-  const connectionState = useCollaborationStore((state) => state.connectionState);
-  const [noticeState, setNoticeState] = useState<NoticeState>('hidden');
-  const wasOfflineRef = useRef(false);
-  const prevConnectionStateRef = useRef(connectionState);
-
-  // 接続状態の変化を監視
-  // NOTE: これは意図的なuseEffect内でのsetStateです。
-  // 外部状態（WebSocket接続）の変化に応じてUIを更新するために必要です。
-  useEffect(() => {
-    // 前回と同じ状態なら何もしない
-    if (prevConnectionStateRef.current === connectionState) {
-      return;
-    }
-    prevConnectionStateRef.current = connectionState;
-
-    if (connectionState === 'disconnected' || connectionState === 'reconnecting') {
-      wasOfflineRef.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 接続状態変化の同期に必要
-      setNoticeState('offline');
-    } else if (connectionState === 'connected' && wasOfflineRef.current) {
-      // オフラインから復帰した場合のみ「復帰」通知を表示
-      setNoticeState('reconnected');
-
-      // 3秒後に通知を非表示
-      const timer = setTimeout(() => {
-        setNoticeState('hidden');
-        wasOfflineRef.current = false;
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    } else if (connectionState === 'connected') {
-      // 初回接続時は何も表示しない
-      setNoticeState('hidden');
-    }
-  }, [connectionState]);
-
-  // 通知を閉じるハンドラ
-  const handleClose = useCallback(() => {
-    setNoticeState('hidden');
-    if (connectionState === 'connected') {
-      wasOfflineRef.current = false;
-    }
-  }, [connectionState]);
+  const { noticeState, dismiss } = useOfflineNoticeState();
 
   // 非表示の場合は何も表示しない
   if (noticeState === 'hidden') {
@@ -135,7 +182,7 @@ export const OfflineNotice = memo(() => {
 
         {/* 閉じるボタン */}
         <button
-          onClick={handleClose}
+          onClick={dismiss}
           className="flex-shrink-0 p-1 rounded hover:bg-black/5 transition-colors"
           aria-label="通知を閉じる"
         >

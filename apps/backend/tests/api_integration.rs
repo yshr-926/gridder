@@ -11,14 +11,7 @@ use axum::{
 use serde_json::{json, Value};
 use tower::ServiceExt;
 
-use gridder_backend::{
-    api::{create_api_router, ApiState},
-    auth::{AuthHandlerState, TokenManager},
-    config::Config,
-    persistence::RoomRepository,
-    sync::RoomManager,
-};
-use std::sync::Arc;
+use gridder_backend::auth::{AuthHandlerState, TokenManager};
 
 // =============================================================================
 // テストヘルパー
@@ -32,7 +25,6 @@ fn create_test_auth_state() -> AuthHandlerState {
 
 /// テスト用のルーターを作成（データベースなし）
 fn create_test_router_without_db() -> Router {
-    use axum::routing::post;
     use gridder_backend::auth::auth_router;
 
     auth_router(create_test_auth_state())
@@ -107,7 +99,6 @@ async fn test_auth_verify_valid_token() {
         .generate_token("verify-test-room")
         .unwrap();
 
-    use axum::routing::post;
     use gridder_backend::auth::auth_router;
     let app = auth_router(state);
 

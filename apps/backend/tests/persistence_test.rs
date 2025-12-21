@@ -3,14 +3,10 @@
 //! 実際のデータベース接続を使用するテスト。
 //! 実行には TEST_DATABASE_URL 環境変数が必要。
 
-use chrono::Utc;
 use sqlx::postgres::PgPoolOptions;
-use yrs::{updates::decoder::Decode, Doc, GetString, ReadTxn, Text, Transact, Update};
+use yrs::{Doc, GetString, ReadTxn, Text, Transact};
 
-use gridder_backend::persistence::{
-    create_pool, run_migrations, DocumentRepository, DocumentStats, RoomRepository, RoomRow,
-    SnapshotManager, SnapshotRow, UpdateRow,
-};
+use gridder_backend::persistence::{DocumentRepository, RoomRepository, SnapshotManager};
 
 /// テスト用データベースプールを作成
 async fn create_test_pool() -> sqlx::PgPool {
@@ -194,7 +190,7 @@ async fn test_document_compaction() {
 
     // 更新を保存
     for i in 0..5 {
-        doc_repo.append_update(&room_id, &vec![i]).await.unwrap();
+        doc_repo.append_update(&room_id, &[i]).await.unwrap();
     }
     assert_eq!(doc_repo.get_update_count(&room_id).await.unwrap(), 5);
 
@@ -239,8 +235,8 @@ async fn test_document_load_state() {
         .save_snapshot(&room_id, &snapshot_data)
         .await
         .unwrap();
-    doc_repo.append_update(&room_id, &vec![1]).await.unwrap();
-    doc_repo.append_update(&room_id, &vec![2]).await.unwrap();
+    doc_repo.append_update(&room_id, &[1]).await.unwrap();
+    doc_repo.append_update(&room_id, &[2]).await.unwrap();
 
     // 状態を読み込み
     let state = doc_repo.load_document_state(&room_id).await.unwrap();
@@ -356,7 +352,7 @@ async fn test_snapshot_manager_maybe_create_snapshot() {
 
     // 更新を4つ追加（閾値未満）
     for i in 0..4 {
-        doc_repo.append_update(&room_id, &vec![i]).await.unwrap();
+        doc_repo.append_update(&room_id, &[i]).await.unwrap();
     }
 
     // スナップショット不要
@@ -367,7 +363,7 @@ async fn test_snapshot_manager_maybe_create_snapshot() {
     assert!(!created);
 
     // もう1つ追加（閾値到達）
-    doc_repo.append_update(&room_id, &vec![4]).await.unwrap();
+    doc_repo.append_update(&room_id, &[4]).await.unwrap();
 
     // スナップショット作成
     let created = snapshot_manager

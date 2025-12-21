@@ -91,7 +91,7 @@ gridder/
 
 - Node.js >= 20.0.0
 - pnpm >= 8.0.0
-- Rust 1.85+ (バックエンド開発時)
+- Rust 1.92+ (バックエンド開発時)
 - Docker & Docker Compose (フルスタック開発時)
 
 ### フロントエンドのみ (開発)

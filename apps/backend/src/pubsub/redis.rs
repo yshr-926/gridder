@@ -179,7 +179,7 @@ impl RedisConnectionManager {
         tokio::spawn(async move {
             let mut reconnect_rx = client.reconnect_rx();
 
-            while let Ok(_) = reconnect_rx.recv().await {
+            while (reconnect_rx.recv().await).is_ok() {
                 info!("Redis reconnected");
 
                 // 状態を更新

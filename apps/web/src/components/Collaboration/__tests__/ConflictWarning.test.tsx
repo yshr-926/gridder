@@ -182,7 +182,7 @@ describe('ConflictWarning', () => {
       render(<ConflictWarning />);
 
       // Assert
-      expect(screen.getByText(/OtherUser, AnotherUser/)).toBeInTheDocument();
+      expect(screen.getByText(/AnotherUser, OtherUser/)).toBeInTheDocument();
     });
 
     it('should detect conflict for multiple selected objects', () => {

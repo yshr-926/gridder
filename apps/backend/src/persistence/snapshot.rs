@@ -121,8 +121,8 @@ impl SnapshotManager {
                 let mut total_size = 0usize;
 
                 // 1. スナップショットを適用
-                if let Some(ref snapshot_data) = snapshot {
-                    if !snapshot_data.is_empty() {
+                if let Some(ref snapshot_data) = snapshot
+                    && !snapshot_data.is_empty() {
                         let update = Update::decode_v1(snapshot_data)
                             .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
 
@@ -130,7 +130,6 @@ impl SnapshotManager {
                         txn.apply_update(update);
                         total_size += snapshot_data.len();
                     }
-                }
 
                 // 2. 更新ログを逐次適用
                 for (i, update_data) in updates.iter().enumerate() {
@@ -179,8 +178,6 @@ impl Clone for SnapshotManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_snapshot_manager_threshold() {
         // 閾値のテスト

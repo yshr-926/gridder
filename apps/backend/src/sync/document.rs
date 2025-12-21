@@ -50,14 +50,13 @@ impl DocumentManager {
         let doc = Doc::new();
 
         // 1. スナップショットを適用
-        if let Some(snapshot_data) = snapshot {
-            if !snapshot_data.is_empty() {
+        if let Some(snapshot_data) = snapshot
+            && !snapshot_data.is_empty() {
                 let update = Update::decode_v1(snapshot_data)
                     .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
                 let mut txn = doc.transact_mut();
                 txn.apply_update(update);
             }
-        }
 
         // 2. 更新ログを逐次適用
         for (i, update_data) in updates.iter().enumerate() {
@@ -142,7 +141,7 @@ mod tests {
         let sv = manager.state_vector();
 
         // 新しいドキュメントの State Vector は空に近い
-        assert!(sv.is_empty() || sv.len() == 0);
+        assert!(sv.is_empty());
     }
 
     #[test]

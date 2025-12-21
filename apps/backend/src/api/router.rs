@@ -105,7 +105,6 @@ pub fn create_api_router(state: ApiState) -> (Router, TokenManager) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::PgPool;
 
     // コンパイル確認用（実際のテストは統合テストで行う）
     #[test]

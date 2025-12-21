@@ -57,14 +57,13 @@ impl Room {
         info!(room_id = %id, has_snapshot = snapshot.is_some(), "Creating room with state");
         let doc = Doc::new();
 
-        if let Some(snapshot_data) = snapshot {
-            if !snapshot_data.is_empty() {
+        if let Some(snapshot_data) = snapshot
+            && !snapshot_data.is_empty() {
                 let update = Update::decode_v1(snapshot_data)
                     .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
                 let mut txn = doc.transact_mut();
                 txn.apply_update(update);
             }
-        }
 
         Ok(Self {
             id,
@@ -93,14 +92,13 @@ impl Room {
         let doc = Doc::new();
 
         // 1. スナップショットを適用
-        if let Some(snapshot_data) = snapshot {
-            if !snapshot_data.is_empty() {
+        if let Some(snapshot_data) = snapshot
+            && !snapshot_data.is_empty() {
                 let update = Update::decode_v1(snapshot_data)
                     .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
                 let mut txn = doc.transact_mut();
                 txn.apply_update(update);
             }
-        }
 
         // 2. 更新ログを逐次適用
         for (i, update_data) in updates.iter().enumerate() {
@@ -384,11 +382,10 @@ impl RoomManager {
         // Note: awaitを含む処理はロックの外で実行する必要がある（parking_lotのロックはSendでない）
         let room = if let Some(ref snapshot_manager) = self.snapshot_manager {
             // DBにルームレコードを作成（存在しなければ）
-            if let Some(ref room_repo) = self.room_repo {
-                if let Err(e) = room_repo.create_room_if_not_exists(room_id).await {
+            if let Some(ref room_repo) = self.room_repo
+                && let Err(e) = room_repo.create_room_if_not_exists(room_id).await {
                     warn!(room_id = %room_id, error = %e, "Failed to create room record");
                 }
-            }
 
             // ドキュメント状態を復元
             match Room::from_database(room_id.to_string(), snapshot_manager).await {
@@ -479,12 +476,11 @@ impl RoomManager {
     pub async fn maybe_unload_room(&self, room_id: &str) {
         let mut rooms = self.rooms.write();
 
-        if let Some(room) = rooms.get(room_id) {
-            if room.is_empty() {
+        if let Some(room) = rooms.get(room_id)
+            && room.is_empty() {
                 info!(room_id = %room_id, "Unloading empty room");
                 rooms.remove(room_id);
             }
-        }
     }
 
     /// ルームを強制的にアンロード
@@ -604,7 +600,7 @@ mod tests {
     async fn test_room_manager_unload_empty() {
         let manager = RoomManager::new();
 
-        let room = manager.get_or_create_room("room-1").await;
+        let _room = manager.get_or_create_room("room-1").await;
         assert_eq!(manager.room_count(), 1);
 
         // クライアントがいない場合はアンロード可能

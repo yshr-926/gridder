@@ -27,9 +27,24 @@ const mockProvider = {
   }),
 };
 
+const mockYMap = {
+  observe: vi.fn(),
+  set: vi.fn(),
+  get: vi.fn(),
+  delete: vi.fn(),
+  toJSON: vi.fn(() => ({})),
+};
+
 const mockDoc = {
   clientID: 12345,
   destroy: vi.fn(),
+  getMap: vi.fn(() => mockYMap),
+  getArray: vi.fn(() => ({
+    observe: vi.fn(),
+    push: vi.fn(),
+    delete: vi.fn(),
+    toArray: vi.fn(() => []),
+  })),
 };
 
 const mockIndexeddbProvider = {
