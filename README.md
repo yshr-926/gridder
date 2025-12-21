@@ -1,8 +1,8 @@
 # Gridder
 
-[![CI](https://github.com/yshr-926/gridder/actions/workflows/ci.yml/badge.svg)](https://github.com/yshr-926/gridder/actions/workflows/ci.yml)
-[![Security](https://github.com/yshr-926/gridder/actions/workflows/security.yml/badge.svg)](https://github.com/yshr-926/gridder/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/yshr-926/gridder/branch/main/graph/badge.svg)](https://codecov.io/gh/yshr-926/gridder)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Rust](https://img.shields.io/badge/Rust-1.92-DEA584?logo=rust&logoColor=black)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 グリッドベース簡易作図 Web アプリケーション
@@ -79,8 +79,8 @@ gridder/
 
 | レイヤー | 技術 |
 |----------|------|
-| **フロントエンド** | React 19, TypeScript, Vite, Konva.js, Tailwind CSS, Zustand |
-| **バックエンド** | Rust, Axum, Yrs (Yjs Rust), tokio |
+| **フロントエンド** | React 19, TypeScript 5.9, Vite 7, Konva.js, Tailwind CSS 4, Zustand 5 |
+| **バックエンド** | Rust 1.92 (Edition 2024), Axum 0.7, Yrs (Yjs Rust), tokio |
 | **データベース** | PostgreSQL 16 |
 | **キャッシュ** | Redis 7 |
 | **インフラ** | Docker, Traefik, GitHub Actions |
@@ -174,13 +174,17 @@ cargo clippy       # リント
 
 #### バックエンド (.env)
 
-| 変数名 | 説明 | デフォルト |
-|--------|------|-----------|
-| `DATABASE_URL` | PostgreSQL 接続文字列 | 必須 |
-| `REDIS_URL` | Redis 接続文字列 | オプション |
-| `JWT_SECRET` | JWT 署名キー | 必須 |
+| 変数名 | 説明 | 本番環境 |
+|--------|------|---------|
+| `DATABASE_URL` | PostgreSQL 接続文字列 | **必須** |
+| `JWT_SECRET` | JWT 署名キー | **必須** |
+| `CORS_ALLOWED_ORIGINS` | 許可するオリジン (カンマ区切り) | **必須** |
+| `REDIS_HOST` | Redis ホスト | オプション |
+| `REDIS_PORT` | Redis ポート | `6379` |
 | `PORT` | サーバーポート | `3001` |
 | `RUST_LOG` | ログレベル | `info` |
+
+> **Note**: `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` は本番環境（`PRODUCTION=1` または `NODE_ENV=production`）で必須です。
 
 ### ディレクトリ構成
 
