@@ -322,7 +322,7 @@ jobs:
         run: pnpm turbo run build --filter=@gridder/web
 
       - name: Run E2E tests (Chromium only)
-        run: pnpm --filter @gridder/web test:e2e -- --project=chromium --grep-invert "Visual Regression" --shard=${{ matrix.shard }}/4
+        run: pnpm --filter @gridder/web exec playwright test --project=chromium --grep-invert "Visual Regression" --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
