@@ -8,7 +8,7 @@
 //! - `GET /health/live` - Kubernetes Liveness Probe
 //! - `GET /health/ready` - Kubernetes Readiness Probe
 
-use axum::{extract::State, http::StatusCode, response::Json, routing::get, Router};
+use axum::{Router, extract::State, http::StatusCode, response::Json, routing::get};
 use serde::Serialize;
 use tracing::error;
 

@@ -6,14 +6,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{
-    http::{header, Method},
     Router,
+    http::{Method, header},
 };
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api::{health, rooms},
-    auth::{auth_router, AuthHandlerState, TokenManager},
+    auth::{AuthHandlerState, TokenManager, auth_router},
     config::Config,
     persistence::RoomRepository,
     sync::RoomManager,

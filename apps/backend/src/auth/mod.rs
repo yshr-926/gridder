@@ -37,10 +37,10 @@ pub mod middleware;
 pub mod passphrase;
 pub mod token;
 
-pub use handlers::{auth_router, AuthHandlerState, AuthRequest, AuthResponse};
-pub use middleware::{auth_middleware, optional_auth_middleware, AuthLayer, RequestExt};
+pub use handlers::{AuthHandlerState, AuthRequest, AuthResponse, auth_router};
+pub use middleware::{AuthLayer, RequestExt, auth_middleware, optional_auth_middleware};
 pub use passphrase::{
-    hash_passphrase, hash_passphrase_default, verify_passphrase, verify_passphrase_safe, AuthError,
-    PassphraseRules,
+    AuthError, PassphraseRules, hash_passphrase, hash_passphrase_default, verify_passphrase,
+    verify_passphrase_safe,
 };
 pub use token::{Claims, TokenError, TokenManager};

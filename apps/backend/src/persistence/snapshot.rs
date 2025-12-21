@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use tokio::sync::Semaphore;
 use tracing::{debug, info};
-use yrs::{updates::decoder::Decode, Doc, ReadTxn, Transact, Update};
+use yrs::{Doc, ReadTxn, Transact, Update, updates::decoder::Decode};
 
 use super::document_repository::DocumentRepository;
 use crate::error::{AppError, AppResult};
@@ -122,14 +122,15 @@ impl SnapshotManager {
 
                 // 1. スナップショットを適用
                 if let Some(ref snapshot_data) = snapshot
-                    && !snapshot_data.is_empty() {
-                        let update = Update::decode_v1(snapshot_data)
-                            .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
+                    && !snapshot_data.is_empty()
+                {
+                    let update = Update::decode_v1(snapshot_data)
+                        .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
 
-                        let mut txn = doc.transact_mut();
-                        txn.apply_update(update);
-                        total_size += snapshot_data.len();
-                    }
+                    let mut txn = doc.transact_mut();
+                    txn.apply_update(update);
+                    total_size += snapshot_data.len();
+                }
 
                 // 2. 更新ログを逐次適用
                 for (i, update_data) in updates.iter().enumerate() {

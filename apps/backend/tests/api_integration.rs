@@ -4,11 +4,11 @@
 //! 注意: このテストはデータベース接続を必要とする。
 
 use axum::{
+    Router,
     body::Body,
     http::{Request, StatusCode},
-    Router,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tower::ServiceExt;
 
 use gridder_backend::auth::{AuthHandlerState, TokenManager};

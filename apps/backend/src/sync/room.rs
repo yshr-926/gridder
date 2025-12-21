@@ -8,14 +8,14 @@ use std::{collections::HashMap, sync::Arc};
 use parking_lot::RwLock;
 use tokio::sync::RwLock as TokioRwLock;
 use tracing::{debug, info, warn};
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::{Doc, Transact, Update, updates::decoder::Decode};
 
 use crate::{
     error::{AppError, AppResult},
     persistence::{DocumentRepository, RoomRepository, SnapshotManager},
     websocket::{
         connection::ClientConnection,
-        protocol::{encode_awareness, AwarenessEntry},
+        protocol::{AwarenessEntry, encode_awareness},
     },
 };
 
@@ -58,12 +58,13 @@ impl Room {
         let doc = Doc::new();
 
         if let Some(snapshot_data) = snapshot
-            && !snapshot_data.is_empty() {
-                let update = Update::decode_v1(snapshot_data)
-                    .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
-                let mut txn = doc.transact_mut();
-                txn.apply_update(update);
-            }
+            && !snapshot_data.is_empty()
+        {
+            let update = Update::decode_v1(snapshot_data)
+                .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
+            let mut txn = doc.transact_mut();
+            txn.apply_update(update);
+        }
 
         Ok(Self {
             id,
@@ -93,12 +94,13 @@ impl Room {
 
         // 1. スナップショットを適用
         if let Some(snapshot_data) = snapshot
-            && !snapshot_data.is_empty() {
-                let update = Update::decode_v1(snapshot_data)
-                    .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
-                let mut txn = doc.transact_mut();
-                txn.apply_update(update);
-            }
+            && !snapshot_data.is_empty()
+        {
+            let update = Update::decode_v1(snapshot_data)
+                .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
+            let mut txn = doc.transact_mut();
+            txn.apply_update(update);
+        }
 
         // 2. 更新ログを逐次適用
         for (i, update_data) in updates.iter().enumerate() {
@@ -383,9 +385,10 @@ impl RoomManager {
         let room = if let Some(ref snapshot_manager) = self.snapshot_manager {
             // DBにルームレコードを作成（存在しなければ）
             if let Some(ref room_repo) = self.room_repo
-                && let Err(e) = room_repo.create_room_if_not_exists(room_id).await {
-                    warn!(room_id = %room_id, error = %e, "Failed to create room record");
-                }
+                && let Err(e) = room_repo.create_room_if_not_exists(room_id).await
+            {
+                warn!(room_id = %room_id, error = %e, "Failed to create room record");
+            }
 
             // ドキュメント状態を復元
             match Room::from_database(room_id.to_string(), snapshot_manager).await {
@@ -477,10 +480,11 @@ impl RoomManager {
         let mut rooms = self.rooms.write();
 
         if let Some(room) = rooms.get(room_id)
-            && room.is_empty() {
-                info!(room_id = %room_id, "Unloading empty room");
-                rooms.remove(room_id);
-            }
+            && room.is_empty()
+        {
+            info!(room_id = %room_id, "Unloading empty room");
+            rooms.remove(room_id);
+        }
     }
 
     /// ルームを強制的にアンロード

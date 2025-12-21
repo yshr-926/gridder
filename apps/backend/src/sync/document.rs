@@ -2,7 +2,7 @@
 //!
 //! yrs ライブラリを使用した CRDT ドキュメントの管理を担当する。
 
-use yrs::{updates::decoder::Decode, Doc, ReadTxn, StateVector, Transact, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update, updates::decoder::Decode};
 
 use crate::error::{AppError, AppResult};
 
@@ -51,12 +51,13 @@ impl DocumentManager {
 
         // 1. スナップショットを適用
         if let Some(snapshot_data) = snapshot
-            && !snapshot_data.is_empty() {
-                let update = Update::decode_v1(snapshot_data)
-                    .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
-                let mut txn = doc.transact_mut();
-                txn.apply_update(update);
-            }
+            && !snapshot_data.is_empty()
+        {
+            let update = Update::decode_v1(snapshot_data)
+                .map_err(|e| AppError::WebSocket(format!("Invalid snapshot: {}", e)))?;
+            let mut txn = doc.transact_mut();
+            txn.apply_update(update);
+        }
 
         // 2. 更新ログを逐次適用
         for (i, update_data) in updates.iter().enumerate() {

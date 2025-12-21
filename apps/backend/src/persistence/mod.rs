@@ -38,7 +38,7 @@ pub mod snapshot;
 
 // 再エクスポート
 pub use database::{
-    create_pool, detailed_health_check, health_check, run_migrations, DatabaseHealth,
+    DatabaseHealth, create_pool, detailed_health_check, health_check, run_migrations,
 };
 pub use document_repository::{DocumentRepository, DocumentStats, SnapshotRow, UpdateRow};
 pub use room_repository::{RoomRepository, RoomRow};

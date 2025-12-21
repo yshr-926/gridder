@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         Path, Query, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::Response,
 };
@@ -15,7 +15,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
-use yrs::{updates::decoder::Decode, Transact, Update};
+use yrs::{Transact, Update, updates::decoder::Decode};
 
 use crate::{
     auth::TokenManager,
@@ -29,8 +29,8 @@ use crate::{
 };
 
 use super::protocol::{
-    decode_message, encode_awareness, encode_sync_step1, encode_sync_step2, encode_update,
-    AwarenessEntry, AwarenessUpdate, MessageType, SyncMessage,
+    AwarenessEntry, AwarenessUpdate, MessageType, SyncMessage, decode_message, encode_awareness,
+    encode_sync_step1, encode_sync_step2, encode_update,
 };
 
 /// WebSocket 接続クエリパラメータ

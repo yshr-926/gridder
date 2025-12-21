@@ -156,11 +156,13 @@ async fn test_document_snapshot() {
     room_repo.create_room_if_not_exists(&room_id).await.unwrap();
 
     // スナップショットなし
-    assert!(doc_repo
-        .load_latest_snapshot(&room_id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        doc_repo
+            .load_latest_snapshot(&room_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     // スナップショットを保存
     let snapshot_data = vec![100, 101, 102, 103];
@@ -223,11 +225,13 @@ async fn test_document_load_state() {
     room_repo.create_room_if_not_exists(&room_id).await.unwrap();
 
     // データなし
-    assert!(doc_repo
-        .load_document_state(&room_id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        doc_repo
+            .load_document_state(&room_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     // スナップショットと更新を保存
     let snapshot_data = vec![10, 20, 30];
@@ -376,11 +380,13 @@ async fn test_snapshot_manager_maybe_create_snapshot() {
     assert_eq!(doc_repo.get_update_count(&room_id).await.unwrap(), 0);
 
     // スナップショットが存在することを確認
-    assert!(doc_repo
-        .load_latest_snapshot(&room_id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(
+        doc_repo
+            .load_latest_snapshot(&room_id)
+            .await
+            .unwrap()
+            .is_some()
+    );
 
     // クリーンアップ
     room_repo.delete_room(&room_id).await.unwrap();

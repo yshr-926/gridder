@@ -15,9 +15,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use axum::{
-    http::{header, HeaderName, Method},
-    routing::get,
     Router,
+    http::{HeaderName, Method, header},
+    routing::get,
 };
 use sqlx::PgPool;
 use tokio::net::TcpListener;
@@ -32,12 +32,12 @@ use tracing::info;
 const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
 use crate::{
-    api::{create_api_router, ApiState},
+    api::{ApiState, create_api_router},
     config::Config,
-    persistence::{create_pool, run_migrations, DocumentRepository, RoomRepository},
+    persistence::{DocumentRepository, RoomRepository, create_pool, run_migrations},
     pubsub::{OptionalRedisPubSub, RemoteMessageHandler},
     sync::RoomManager,
-    websocket::{ws_handler, WsAppState},
+    websocket::{WsAppState, ws_handler},
 };
 
 /// アプリケーション共有状態

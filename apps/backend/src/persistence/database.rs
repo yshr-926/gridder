@@ -5,8 +5,8 @@
 use std::time::Duration;
 
 use sqlx::{
-    postgres::{PgPool, PgPoolOptions},
     Error as SqlxError,
+    postgres::{PgPool, PgPoolOptions},
 };
 use tracing::{debug, info, warn};
 

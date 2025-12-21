@@ -2,7 +2,7 @@
 //!
 //! bcrypt によるハッシュ化と検証、タイミング攻撃対策を提供する。
 
-use bcrypt::{hash, verify, BcryptError, DEFAULT_COST};
+use bcrypt::{BcryptError, DEFAULT_COST, hash, verify};
 use thiserror::Error;
 use tracing::{debug, warn};
 

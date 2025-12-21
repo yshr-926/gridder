@@ -115,17 +115,18 @@ pub async fn optional_auth_middleware(
         .headers()
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
-        && let Some(token) = extract_bearer_token(auth_header) {
-            if let Ok(claims) = auth_layer.token_manager.verify_token(token) {
-                debug!(
-                    "Optional auth: authenticated for room: {}, client: {}",
-                    claims.sub, claims.client_id
-                );
-                req.extensions_mut().insert(claims);
-            } else {
-                debug!("Optional auth: token verification failed, proceeding without auth");
-            }
+        && let Some(token) = extract_bearer_token(auth_header)
+    {
+        if let Ok(claims) = auth_layer.token_manager.verify_token(token) {
+            debug!(
+                "Optional auth: authenticated for room: {}, client: {}",
+                claims.sub, claims.client_id
+            );
+            req.extensions_mut().insert(claims);
+        } else {
+            debug!("Optional auth: token verification failed, proceeding without auth");
         }
+    }
 
     next.run(req).await
 }
@@ -145,7 +146,7 @@ impl RequestExt for Request {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request as HttpRequest, routing::get, Router};
+    use axum::{Router, body::Body, http::Request as HttpRequest, routing::get};
     use tower::ServiceExt;
 
     fn create_test_token_manager() -> TokenManager {

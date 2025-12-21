@@ -11,9 +11,9 @@
 //! Note: `POST /rooms/:room_id/passphrase` は auth_router で定義
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use tracing::debug;

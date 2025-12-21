@@ -6,7 +6,7 @@
 use anyhow::Result;
 use gridder_backend::{config::Config, run_server};
 use tracing::info;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {

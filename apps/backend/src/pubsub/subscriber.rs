@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use tokio::sync::broadcast;
 use tracing::{debug, info, warn};
-use yrs::{updates::decoder::Decode, Transact, Update};
+use yrs::{Transact, Update, updates::decoder::Decode};
 
 use super::{MessageType, PubSubMessage, RedisPubSub};
 use crate::{sync::RoomManager, websocket::protocol::encode_update};
@@ -185,7 +185,7 @@ impl RemoteMessageHandler {
 ///
 /// リモートから受信した Awareness データをそのまま y-protocols 形式でラップする。
 fn encode_awareness_raw(awareness_data: &[u8]) -> Vec<u8> {
-    use crate::websocket::protocol::{write_var_uint, MessageTypeId};
+    use crate::websocket::protocol::{MessageTypeId, write_var_uint};
 
     let mut encoder = Vec::new();
     write_var_uint(MessageTypeId::Awareness as u64, &mut encoder);

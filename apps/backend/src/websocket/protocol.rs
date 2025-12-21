@@ -4,8 +4,8 @@
 //! 全てのメッセージは y-protocols の varUint/varByteArray フレーミングに従う。
 
 use yrs::{
-    updates::{decoder::Decode, encoder::Encode},
     Doc, ReadTxn, StateVector, Transact,
+    updates::{decoder::Decode, encoder::Encode},
 };
 
 use crate::error::{AppError, AppResult};

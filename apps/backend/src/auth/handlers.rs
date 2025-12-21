@@ -5,13 +5,13 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-use crate::auth::{verify_passphrase_safe, PassphraseRules, TokenError, TokenManager};
+use crate::auth::{PassphraseRules, TokenError, TokenManager, verify_passphrase_safe};
 use crate::error::AppError;
 use crate::persistence::RoomRepository;
 
@@ -360,12 +360,13 @@ pub async fn set_passphrase(
 
     // 新しいパスフレーズのバリデーション
     if let Some(ref passphrase) = req.passphrase
-        && !passphrase.is_empty() {
-            state
-                .passphrase_rules
-                .validate(passphrase)
-                .map_err(AppError::Validation)?;
-        }
+        && !passphrase.is_empty()
+    {
+        state
+            .passphrase_rules
+            .validate(passphrase)
+            .map_err(AppError::Validation)?;
+    }
 
     // ルームリポジトリが設定されている場合はデータベースで処理
     if let Some(ref room_repo) = state.room_repo {
@@ -431,7 +432,7 @@ pub async fn set_passphrase(
 // Router 構築ヘルパー
 // =============================================================================
 
-use axum::{routing::post, Router};
+use axum::{Router, routing::post};
 
 /// 認証 API ルーターを構築
 ///

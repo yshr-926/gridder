@@ -27,4 +27,4 @@ pub mod health;
 pub mod rooms;
 pub mod router;
 
-pub use router::{create_api_router, ApiState};
+pub use router::{ApiState, create_api_router};
