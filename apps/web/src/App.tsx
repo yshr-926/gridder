@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Toolbar } from './components/Toolbar';
 import { PropertyPanel } from './components/PropertyPanel';

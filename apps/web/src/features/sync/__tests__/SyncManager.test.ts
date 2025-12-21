@@ -437,9 +437,10 @@ describe('SyncManager', () => {
       useCanvasStore.getState().addObject(createTestObject('obj-rapid'));
 
       // Act - 連続した更新
+      const rotations: (0 | 90 | 180 | 270)[] = [0, 90, 180, 270, 0, 90, 180, 270, 0, 90];
       for (let i = 0; i < 10; i++) {
         useCanvasStore.getState().updateObject('obj-rapid', {
-          rotation: i * 10,
+          rotation: rotations[i],
         });
       }
 
@@ -461,7 +462,7 @@ describe('SyncManager', () => {
         ],
         '#abcdef'
       );
-      originalObject.rotation = 45;
+      originalObject.rotation = 90;
       originalObject.decoration = {
         showBorder: true,
         borderWidth: 2,
