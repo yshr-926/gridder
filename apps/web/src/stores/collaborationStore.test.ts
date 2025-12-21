@@ -33,6 +33,10 @@ const mockYMap = {
   get: vi.fn(),
   delete: vi.fn(),
   toJSON: vi.fn(() => ({})),
+  forEach: vi.fn(),
+  entries: vi.fn(() => []),
+  keys: vi.fn(() => []),
+  values: vi.fn(() => []),
 };
 
 const mockDoc = {

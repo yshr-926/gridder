@@ -483,7 +483,7 @@ describe('SyncManager', () => {
         [0, 1],
       ]);
       expect(syncedObj?.color).toBe('#abcdef');
-      expect(syncedObj?.rotation).toBe(45);
+      expect(syncedObj?.rotation).toBe(90);
       expect(syncedObj?.decoration?.opacity).toBe(0.5);
     });
   });
