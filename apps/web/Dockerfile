@@ -48,7 +48,7 @@ RUN pnpm build
 # ============================================================
 # Runtime Stage
 # ============================================================
-FROM nginx:1.25-alpine
+FROM nginx:1.29-alpine
 
 # Copy nginx configuration
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
