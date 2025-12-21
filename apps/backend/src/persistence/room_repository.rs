@@ -3,13 +3,13 @@
 //! ルームのCRUD操作とパスフレーズ管理を提供する。
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, PgPool};
+use sqlx::{FromRow, PgPool, Row, postgres::PgRow};
 use tracing::{debug, info};
 
 use crate::error::{AppError, AppResult};
 
 /// ルーム情報
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct RoomRow {
     /// ルームID
     pub id: String,
@@ -23,6 +23,19 @@ pub struct RoomRow {
     pub last_accessed_at: DateTime<Utc>,
     /// 有効期限
     pub expires_at: Option<DateTime<Utc>>,
+}
+
+impl<'r> FromRow<'r, PgRow> for RoomRow {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            passphrase_hash: row.try_get("passphrase_hash")?,
+            created_at: row.try_get("created_at")?,
+            last_accessed_at: row.try_get("last_accessed_at")?,
+            expires_at: row.try_get("expires_at")?,
+        })
+    }
 }
 
 /// Room リポジトリ

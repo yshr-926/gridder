@@ -4,13 +4,13 @@
 //! zstd 圧縮によるスナップショットの効率的な保存をサポート。
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, PgPool, Postgres, Transaction};
+use sqlx::{FromRow, PgPool, Postgres, Row, Transaction, postgres::PgRow};
 use tracing::{debug, info};
 
 use crate::error::AppResult;
 
 /// 更新ログ行
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct UpdateRow {
     /// シーケンシャルID
     pub id: i32,
@@ -22,8 +22,19 @@ pub struct UpdateRow {
     pub created_at: DateTime<Utc>,
 }
 
+impl<'r> FromRow<'r, PgRow> for UpdateRow {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            room_id: row.try_get("room_id")?,
+            update_data: row.try_get("update_data")?,
+            created_at: row.try_get("created_at")?,
+        })
+    }
+}
+
 /// スナップショット行
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct SnapshotRow {
     /// ルームID
     pub room_id: String,
@@ -31,6 +42,16 @@ pub struct SnapshotRow {
     pub snapshot_data: Vec<u8>,
     /// 更新日時
     pub updated_at: DateTime<Utc>,
+}
+
+impl<'r> FromRow<'r, PgRow> for SnapshotRow {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            room_id: row.try_get("room_id")?,
+            snapshot_data: row.try_get("snapshot_data")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
 }
 
 /// Document リポジトリ

@@ -2,12 +2,13 @@
 //!
 //! SQLx による PostgreSQL 接続プールの初期化とヘルスチェックを提供する。
 
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use sqlx::{
     Error as SqlxError,
     postgres::{PgPool, PgPoolOptions},
 };
+use sqlx_core::migrate::Migrator;
 use tracing::{debug, info, warn};
 
 use crate::error::{AppError, AppResult};
@@ -51,13 +52,17 @@ pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<PgP
 pub async fn run_migrations(pool: &PgPool) -> AppResult<()> {
     info!("Running database migrations");
 
-    sqlx::migrate!("./migrations")
-        .run(pool)
+    let migrator = Migrator::new(Path::new("./migrations"))
         .await
         .map_err(|e| {
-            warn!(error = %e, "Failed to run migrations");
-            AppError::Internal(anyhow::anyhow!("Migration failed: {}", e))
+            warn!(error = %e, "Failed to load migrations");
+            AppError::Internal(anyhow::anyhow!("Migration load failed: {}", e))
         })?;
+
+    migrator.run(pool).await.map_err(|e| {
+        warn!(error = %e, "Failed to run migrations");
+        AppError::Internal(anyhow::anyhow!("Migration failed: {}", e))
+    })?;
 
     info!("Database migrations completed successfully");
 

@@ -41,13 +41,14 @@ futures-util = { version = "0.3", default-features = false, features = ["sink"] 
 yrs = "0.18"
 
 # Database
-sqlx = { version = "0.8", features = [
+sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio",
     "postgres",
     "chrono",
-    "uuid",
-    "migrate"
+    "uuid"
 ] }
+sqlx-core = { version = "0.8", features = ["migrate"] }
+sqlx-postgres = { version = "0.8", features = ["migrate"] }
 
 # Redis
 fred = { version = "9", features = ["subscriber-client", "i-scripts"] }
