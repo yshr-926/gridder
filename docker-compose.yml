@@ -1,19 +1,119 @@
-# Gridder Docker Compose Configuration
+# ============================================================
+# Gridder - Development Docker Compose Configuration
+# ============================================================
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop all services
+#   docker-compose down -v        # Stop and remove volumes
+# ============================================================
+
 services:
-  gridder:
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: gridder-postgres
+    environment:
+      POSTGRES_DB: gridder
+      POSTGRES_USER: gridder
+      POSTGRES_PASSWORD: gridder_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gridder -d gridder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ============================================================
+  # Redis Cache
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: gridder-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # ============================================================
+  # Rust Backend
+  # ============================================================
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: gridder-backend
+    environment:
+      DATABASE_URL: postgresql://gridder:gridder_dev_password@postgres:5432/gridder
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key-change-in-production
+      RUST_LOG: gridder_backend=debug,tower_http=debug
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/backend/migrations:/app/migrations:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # ============================================================
+  # Frontend (Nginx)
+  # ============================================================
+  frontend:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: gridder:latest
-    container_name: gridder
+      dockerfile: ./apps/web/Dockerfile
+      # API/WSはNginxプロキシ経由で接続（environment.tsのproductionデフォルト値を使用）
+      # VITE_API_URL、VITE_WS_URLは未設定のままにする
+    container_name: gridder-frontend
     ports:
       - "8080:80"
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
+    depends_on:
+      - backend
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
-      timeout: 3s
+      timeout: 10s
       retries: 3
-      start_period: 5s
+    restart: unless-stopped
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_data:
+    name: gridder_postgres_data
+  redis_data:
+    name: gridder_redis_data
+
+# ============================================================
+# Networks (optional - uses default bridge)
+# ============================================================
+networks:
+  default:
+    name: gridder_network

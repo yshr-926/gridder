@@ -1,3 +1,13 @@
+# ============================================================
+# Gridder - Main CI Pipeline (Monorepo)
+# ============================================================
+# This workflow handles:
+# - Change detection for frontend and backend
+# - Parallel linting, type checking, and testing
+# - Docker image building
+# - E2E tests
+# ============================================================
+
 name: CI
 
 on:
@@ -5,99 +15,293 @@ on:
     branches:
       - main
       - develop
+      - feature/**
   pull_request:
     branches:
       - main
       - develop
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: "20"
+  RUST_VERSION: "1.75"
+  CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
-    name: Lint
+  # ============================================
+  # Change Detection
+  # ============================================
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      packages: ${{ steps.filter.outputs.packages }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+            backend:
+              - 'apps/backend/**'
+            packages:
+              - 'packages/**'
+
+  # ============================================
+  # Frontend: Lint
+  # ============================================
+  lint-frontend:
+    name: Lint (Frontend)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
-        run: npm run lint
+        run: pnpm --filter @gridder/web lint
 
-  type-check:
-    name: Type Check
+  # ============================================
+  # Frontend: Type Check
+  # ============================================
+  type-check-frontend:
+    name: Type Check (Frontend)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run TypeScript type check
-        run: npm run type-check
+        run: pnpm --filter @gridder/web type-check
 
-  test:
-    name: Unit Tests
+  # ============================================
+  # Frontend: Unit Tests
+  # ============================================
+  test-frontend:
+    name: Unit Tests (Frontend)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests with coverage
-        run: npm run test:coverage
+        run: pnpm --filter @gridder/web test:coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          flags: frontend
+          files: ./apps/web/coverage/lcov.info
           fail_ci_if_error: false
           verbose: true
 
-  e2e:
-    name: E2E Tests (Chromium)
+  # ============================================
+  # Backend: Lint & Format
+  # ============================================
+  lint-backend:
+    name: Lint (Backend)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('apps/backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        working-directory: apps/backend
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        working-directory: apps/backend
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # ============================================
+  # Backend: Unit Tests
+  # ============================================
+  test-backend:
+    name: Unit Tests (Backend)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gridder
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: gridder_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/backend/target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('apps/backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-
+            ${{ runner.os }}-cargo-
+
+      - name: Run tests
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgres://gridder:test_password@localhost:5432/gridder_test
+          REDIS_URL: redis://localhost:6379
+          RUST_BACKTRACE: 1
+        run: cargo test --all-features
+
+      - name: Generate coverage report
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgres://gridder:test_password@localhost:5432/gridder_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          cargo install cargo-llvm-cov --locked || true
+          cargo llvm-cov --all-features --lcov --output-path lcov.info || echo "Coverage generation skipped"
+
+      - name: Upload coverage reports
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend
+          files: ./apps/backend/lcov.info
+          fail_ci_if_error: false
+
+  # ============================================
+  # E2E Tests (Chromium)
+  # ============================================
+  e2e:
+    name: E2E Tests (Chromium, shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    needs: [changes, test-frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    if: |
+      always() &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Get Playwright version
         id: playwright-version
-        run: echo "PLAYWRIGHT_VERSION=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
+        run: echo "PLAYWRIGHT_VERSION=$(pnpm --filter @gridder/web exec playwright --version | head -1)" >> $GITHUB_OUTPUT
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -108,68 +312,114 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: pnpm --filter @gridder/web exec playwright install --with-deps chromium
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: pnpm --filter @gridder/web exec playwright install-deps chromium
 
       - name: Run E2E tests (Chromium only)
-        run: npm run test:e2e:chromium -- --grep-invert "Visual Regression"
+        run: pnpm --filter @gridder/web test:e2e -- --project=chromium --grep-invert "Visual Regression" --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: apps/web/playwright-report/
           retention-days: 7
 
       - name: Upload Playwright test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-test-results
-          path: test-results/
+          name: playwright-test-results-shard-${{ matrix.shard }}
+          path: apps/web/test-results/
           retention-days: 7
 
-  build:
-    name: Build
+  # ============================================
+  # Build Frontend Docker Image
+  # ============================================
+  build-frontend:
+    name: Build (Frontend)
     runs-on: ubuntu-latest
-    needs: [lint, type-check, test, e2e]
+    needs: [lint-frontend, type-check-frontend, test-frontend]
+    if: |
+      always() &&
+      (needs.lint-frontend.result == 'success' || needs.lint-frontend.result == 'skipped') &&
+      (needs.type-check-frontend.result == 'success' || needs.type-check-frontend.result == 'skipped') &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          context: .
+          file: ./apps/web/Dockerfile
+          push: false
+          tags: gridder-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_WS_URL=wss://api.example.com/ws
+            VITE_API_URL=https://api.example.com
 
-      - name: Install dependencies
-        run: npm ci
+  # ============================================
+  # Build Backend Docker Image
+  # ============================================
+  build-backend:
+    name: Build (Backend)
+    runs-on: ubuntu-latest
+    needs: [lint-backend, test-backend]
+    if: |
+      always() &&
+      (needs.lint-backend.result == 'success' || needs.lint-backend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Build production bundle
-        run: npm run build
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Check bundle size
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/backend
+          file: ./apps/backend/Dockerfile
+          push: false
+          tags: gridder-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================
+  # CI Status Check
+  # ============================================
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [e2e, build-frontend, build-backend]
+    if: always()
+    steps:
+      - name: Check CI status
         run: |
-          echo "## Build Size Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Total Size" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          du -sh dist >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Asset Files" >> $GITHUB_STEP_SUMMARY
-          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          find dist -type f \( -name "*.js" -o -name "*.css" \) -exec sh -c 'echo "| {} | $(du -h {} | cut -f1) |"' \; >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.e2e.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-frontend.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-backend.result }}" == "failure" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "CI passed"
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 7
+      - name: Build Summary
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Build | ${{ needs.build-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Build | ${{ needs.build-backend.result }} |" >> $GITHUB_STEP_SUMMARY

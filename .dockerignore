@@ -1,47 +1,87 @@
-# Node modules
-node_modules
+# ============================================================
+# Gridder - Docker Ignore File
+# ============================================================
 
-# ビルド成果物
+# Node modules (will be installed in container)
+node_modules
+**/node_modules
+
+# Build outputs (will be built in container)
 dist
+**/dist
 
 # Git
 .git
 .gitignore
+.gitattributes
 
-# 環境変数
+# Environment files (use Docker env instead)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.prod.example
 
-# ログ
+# Logs
 logs
 *.log
 npm-debug.log*
+pnpm-debug.log*
 
-# テスト
+# Test files and results
 coverage
 .nyc_output
 test-results
+**/test-results
 playwright-report
+**/playwright-report
 e2e
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
-# エディタ設定
+# Editor settings
 .vscode
 .idea
 *.swp
 *.swo
+*.sw?
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# ドキュメント（必要に応じて除外）
+# Documentation
 docs
+*.md
+!README.md
 
 # CI/CD
 .github
 
-# Claude Code
+# Claude Code / AI
 .claude
 CLAUDE.md
 AGENTS.md
+
+# Turborepo
+.turbo
+
+# Rust build artifacts (for backend)
+apps/backend/target
+**/target
+
+# Lock files (for faster builds, uncomment if you want to use cached deps)
+# pnpm-lock.yaml
+# Cargo.lock
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+**/.cache
+
+# Docker files (not needed inside container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

@@ -1,0 +1,57 @@
+# ============================================================
+# Gridder - Rust Setup Composite Action
+# ============================================================
+# This action sets up Rust toolchain with caching for
+# faster CI builds.
+# ============================================================
+
+name: Setup Rust
+description: Setup Rust toolchain with caching
+
+inputs:
+  toolchain:
+    description: Rust toolchain version
+    required: false
+    default: "1.75"
+  components:
+    description: Additional components (comma-separated)
+    required: false
+    default: ""
+  working-directory:
+    description: Working directory for cargo operations
+    required: false
+    default: "apps/backend"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.working-directory }}/target
+        key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-
+
+    - name: Display Rust version
+      shell: bash
+      run: |
+        echo "Rust version:"
+        rustc --version
+        cargo --version

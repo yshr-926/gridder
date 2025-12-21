@@ -7,12 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
 *.local
 coverage
 *.lcov
+
+# Turborepo
+.turbo
 
 # Environment variables
 .env
@@ -23,6 +29,8 @@ coverage
 .env.*.local
 # .env.example は含める（テンプレートとして必要）
 !.env.example
+!.env.prod.example
+.env.prod
 
 # Editor directories and files
 .vscode/*
@@ -36,10 +44,10 @@ coverage
 *.sw?
 
 # Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/playwright/.cache/
 
 # Claude Code
 .claude/
@@ -58,3 +66,6 @@ server/.env
 server/nginx/ssl/*.pem
 server/nginx/ssl/*.key
 server/nginx/ssl/*.crt
+
+# Packages build outputs
+packages/*/dist/
