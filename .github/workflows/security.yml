@@ -51,17 +51,17 @@ jobs:
 
       - name: Initialize CodeQL
         if: steps.check-scanning.outcome == 'success'
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
 
       - name: Autobuild
         if: steps.check-scanning.outcome == 'success'
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         if: steps.check-scanning.outcome == 'success'
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
         continue-on-error: true
@@ -186,7 +186,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       - name: Upload Trivy scan results (Backend)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-backend-results.sarif"
           category: "trivy-backend"
@@ -216,7 +216,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       - name: Upload Trivy scan results (Frontend)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-frontend-results.sarif"
           category: "trivy-frontend"
@@ -242,7 +242,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       - name: Upload Trivy filesystem results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-fs-results.sarif"
           category: "trivy-filesystem"
