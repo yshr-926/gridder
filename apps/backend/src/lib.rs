@@ -22,7 +22,7 @@ use axum::{
 use sqlx::PgPool;
 use tokio::net::TcpListener;
 use tower_http::{
-    cors::{Any, CorsLayer},
+    cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
@@ -103,10 +103,18 @@ pub async fn run_server(config: Config) -> Result<()> {
     };
 
     // CORS 設定（WebSocket 用）
+    let allowed_origins: Vec<_> = config
+        .cors
+        .allowed_origins
+        .iter()
+        .filter_map(|o| o.parse().ok())
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .allow_credentials(true);
 
     // WebSocket ルーター
     let ws_router = Router::new()

@@ -433,11 +433,9 @@ impl RoomManager {
 
     /// スナップショットが必要か確認し、必要なら作成
     pub async fn maybe_create_snapshot(&self, room_id: &str) -> AppResult<bool> {
-        let room = self.get_room(room_id).await;
-        if room.is_none() {
+        let Some(room) = self.get_room(room_id).await else {
             return Ok(false);
-        }
-        let room = room.unwrap();
+        };
 
         if let Some(ref snapshot_manager) = self.snapshot_manager {
             let doc = room.document().read().await;

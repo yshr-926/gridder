@@ -13,6 +13,14 @@ pub struct Config {
     pub redis: Option<RedisConfig>,
     pub auth: AuthConfig,
     pub cleanup: CleanupConfig,
+    pub cors: CorsConfig,
+}
+
+/// CORS 設定
+#[derive(Debug, Clone, Deserialize)]
+pub struct CorsConfig {
+    /// 許可するオリジンのリスト
+    pub allowed_origins: Vec<String>,
 }
 
 /// サーバー設定
@@ -80,6 +88,9 @@ impl Config {
             },
             database: DatabaseConfig {
                 url: std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+                    if std::env::var("PRODUCTION").is_ok() || std::env::var("NODE_ENV").map(|v| v == "production").unwrap_or(false) {
+                        panic!("DATABASE_URL environment variable is required in production");
+                    }
                     "postgresql://postgres:password@localhost:5432/gridder".to_string()
                 }),
                 max_connections: std::env::var("DATABASE_MAX_CONNECTIONS")
@@ -101,8 +112,12 @@ impl Config {
                     .unwrap_or_else(|_| "128".to_string())
                     .parse()
                     .context("Invalid MAX_PASSPHRASE_LENGTH")?,
-                jwt_secret: std::env::var("JWT_SECRET")
-                    .unwrap_or_else(|_| "gridder-dev-secret-change-in-production".to_string()),
+                jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| {
+                    if std::env::var("PRODUCTION").is_ok() || std::env::var("NODE_ENV").map(|v| v == "production").unwrap_or(false) {
+                        panic!("JWT_SECRET environment variable is required in production");
+                    }
+                    "gridder-dev-secret-change-in-production".to_string()
+                }),
                 jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
                     .unwrap_or_else(|_| "24".to_string())
                     .parse()
@@ -121,6 +136,16 @@ impl Config {
                     .unwrap_or_else(|_| "100".to_string())
                     .parse()
                     .context("Invalid SNAPSHOT_THRESHOLD")?,
+            },
+            cors: CorsConfig {
+                allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                    .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
+                    .unwrap_or_else(|_| {
+                        if std::env::var("PRODUCTION").is_ok() || std::env::var("NODE_ENV").map(|v| v == "production").unwrap_or(false) {
+                            panic!("CORS_ALLOWED_ORIGINS environment variable is required in production");
+                        }
+                        vec!["http://localhost:5173".to_string(), "http://localhost:3000".to_string()]
+                    }),
             },
         };
 
