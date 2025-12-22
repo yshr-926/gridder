@@ -167,7 +167,7 @@ jobs:
 
       # Build Backend Image for scanning
       - name: Build backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./apps/backend
           file: ./apps/backend/Dockerfile
@@ -194,7 +194,7 @@ jobs:
 
       # Build Frontend Image for scanning
       - name: Build frontend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/web/Dockerfile
