@@ -49,7 +49,7 @@ importers:
         version: 19.2.3(react@19.2.3)
       react-konva:
         specifier: ^19.2.1
-        version: 19.2.1(@types/react@19.2.7)(konva@10.0.12)(react-dom@19.2.3)(react@19.2.3)
+        version: 19.2.1(@types/react@19.2.8)(konva@10.0.12)(react-dom@19.2.3)(react@19.2.3)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
@@ -67,7 +67,7 @@ importers:
         version: 13.6.29
       zustand:
         specifier: ^5.0.9
-        version: 5.0.9(@types/react@19.2.7)(react@19.2.3)
+        version: 5.0.9(@types/react@19.2.8)(react@19.2.3)
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.11.0
@@ -92,7 +92,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.3.1
-        version: 16.3.1(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3)(@types/react@19.2.7)(react-dom@19.2.3)(react@19.2.3)
+        version: 16.3.1(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3)(@types/react@19.2.8)(react-dom@19.2.3)(react@19.2.3)
       '@testing-library/user-event':
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -103,11 +103,11 @@ importers:
         specifier: ^24.10.7
         version: 24.10.7
       '@types/react':
-        specifier: ^19.2.7
-        version: 19.2.7
+        specifier: ^19.2.8
+        version: 19.2.8
       '@types/react-dom':
         specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.7)
+        version: 19.2.3(@types/react@19.2.8)
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.52.0
         version: 8.52.0(@typescript-eslint/parser@8.52.0)(eslint@9.39.2)(typescript@5.9.3)
@@ -1451,7 +1451,7 @@ packages:
       redent: 3.0.0
     dev: true
 
-  /@testing-library/react@16.3.1(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3)(@types/react@19.2.7)(react-dom@19.2.3)(react@19.2.3):
+  /@testing-library/react@16.3.1(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3)(@types/react@19.2.8)(react-dom@19.2.3)(react@19.2.3):
     resolution: {integrity: sha512-gr4KtAWqIOQoucWYD/f6ki+j5chXfcPc74Col/6poTyqTmn7zRmodWahWRCp8tYd+GMqBonw6hstNzqjbs6gjw==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -1468,8 +1468,8 @@ packages:
     dependencies:
       '@babel/runtime': 7.28.4
       '@testing-library/dom': 10.4.1
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3(@types/react@19.2.7)
+      '@types/react': 19.2.8
+      '@types/react-dom': 19.2.3(@types/react@19.2.8)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
     dev: true
@@ -1549,32 +1549,32 @@ packages:
       undici-types: 7.16.0
     dev: true
 
-  /@types/react-dom@19.2.3(@types/react@19.2.7):
+  /@types/react-dom@19.2.3(@types/react@19.2.8):
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
     peerDependencies:
       '@types/react': ^19.2.0
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
     dev: true
 
-  /@types/react-reconciler@0.28.9(@types/react@19.2.7):
+  /@types/react-reconciler@0.28.9(@types/react@19.2.8):
     resolution: {integrity: sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==}
     peerDependencies:
       '@types/react': '*'
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
     dev: false
 
-  /@types/react-reconciler@0.32.3(@types/react@19.2.7):
+  /@types/react-reconciler@0.32.3(@types/react@19.2.8):
     resolution: {integrity: sha512-cMi5ZrLG7UtbL7LTK6hq9w/EZIRk4Mf1Z5qHoI+qBh7/WkYkFXQ7gOto2yfUvPzF5ERMAhaXS5eTQ2SAnHjLzA==}
     peerDependencies:
       '@types/react': '*'
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
     dev: false
 
-  /@types/react@19.2.7:
-    resolution: {integrity: sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg==}
+  /@types/react@19.2.8:
+    resolution: {integrity: sha512-3MbSL37jEchWZz2p2mjntRZtPt837ij10ApxKfgmXCTuHWagYg7iA5bqPw6C8BMPfwidlvfPI/fxOc42HLhcyg==}
     dependencies:
       csstype: 3.2.3
 
@@ -2739,12 +2739,12 @@ packages:
       istanbul-lib-report: 3.0.1
     dev: true
 
-  /its-fine@2.0.0(@types/react@19.2.7)(react@19.2.3):
+  /its-fine@2.0.0(@types/react@19.2.8)(react@19.2.3):
     resolution: {integrity: sha512-KLViCmWx94zOvpLwSlsx6yOCeMhZYaxrJV87Po5k/FoZzcPSahvK5qJ7fYhS61sZi5ikmh2S3Hz55A2l3U69ng==}
     peerDependencies:
       react: ^19.0.0
     dependencies:
-      '@types/react-reconciler': 0.28.9(@types/react@19.2.7)
+      '@types/react-reconciler': 0.28.9(@types/react@19.2.8)
       react: 19.2.3
     transitivePeerDependencies:
       - '@types/react'
@@ -3407,15 +3407,15 @@ packages:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
     dev: true
 
-  /react-konva@19.2.1(@types/react@19.2.7)(konva@10.0.12)(react-dom@19.2.3)(react@19.2.3):
+  /react-konva@19.2.1(@types/react@19.2.8)(konva@10.0.12)(react-dom@19.2.3)(react@19.2.3):
     resolution: {integrity: sha512-sqZWCzQGpdMrU5aeunR0oxUY8UeCPbU8gnAYxMtAn6BT4coeSpiATKOctsoxRu6F56TAcF+s0c6Lul9ansNqQA==}
     peerDependencies:
       konva: ^8.0.1 || ^7.2.5 || ^9.0.0 || ^10.0.0
       react: ^19.2.0
       react-dom: ^19.2.0
     dependencies:
-      '@types/react-reconciler': 0.32.3(@types/react@19.2.7)
-      its-fine: 2.0.0(@types/react@19.2.7)(react@19.2.3)
+      '@types/react-reconciler': 0.32.3(@types/react@19.2.8)
+      its-fine: 2.0.0(@types/react@19.2.8)(react@19.2.3)
       konva: 10.0.12
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -4211,7 +4211,7 @@ packages:
   /zod@4.2.1:
     resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
 
-  /zustand@5.0.9(@types/react@19.2.7)(react@19.2.3):
+  /zustand@5.0.9(@types/react@19.2.8)(react@19.2.3):
     resolution: {integrity: sha512-ALBtUj0AfjJt3uNRQoL1tL2tMvj6Gp/6e39dnfT6uzpelGru8v1tPOGBzayOWbPJvujM8JojDk3E1LxeFisBNg==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
@@ -4229,6 +4229,6 @@ packages:
       use-sync-external-store:
         optional: true
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
       react: 19.2.3
     dev: false
