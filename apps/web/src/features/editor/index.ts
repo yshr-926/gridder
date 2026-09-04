@@ -12,19 +12,29 @@ export {
   useEditorHistory,
 } from './useEditorSession';
 export {
+  isAxisAlignedRect,
   isPointInPolygon,
   polygonBounds,
   rectContainsRect,
   rectFromPoints,
+  RESIZE_HANDLE_KINDS,
+  resizeCursorForHandle,
+  resizeHandleAtPoint,
+  resizeHandlePoint,
+  resizeRectBounds,
+  ringFromRect,
   shapeAtPoint,
   shapesWithinRegion,
   type GridRect,
+  type ResizeCursorAxis,
+  type ResizeHandleKind,
 } from './hitTest';
 export {
   IDLE_STATE,
   movePreview,
   previewRegion,
   reduceInteraction,
+  resizePreview,
   type InteractionEffect,
   type InteractionEvent,
   type InteractionResult,
@@ -52,3 +62,10 @@ export {
   sendToBack,
 } from './editCommands';
 export { useEditShortcuts } from './useEditShortcuts';
+export { rotateSelection } from './rotate';
+export { useRotateShortcut } from './useRotateShortcut';
+export { useDrawingBounds } from './useDrawingBounds';
+export {
+  setManualDrawingBounds,
+  fitDrawingBoundsToContent,
+} from './drawingBoundsCommands';

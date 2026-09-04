@@ -2,6 +2,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { EditorDocument } from '@gridder/editor-core';
 import { EditorSession } from './editorSession';
 import { useEditShortcuts } from './useEditShortcuts';
+import { useRotateShortcut } from './useRotateShortcut';
 
 /**
  * Process-wide editor session. The first release has one open sketch, so a
@@ -40,6 +41,7 @@ interface EditorHistoryControls {
 export const useEditorHistory = (): EditorHistoryControls => {
   useEditorDocument();
   useEditShortcuts();
+  useRotateShortcut();
 
   const undo = useCallback(() => {
     editorSession.undo();
