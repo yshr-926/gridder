@@ -8,16 +8,18 @@ import {
 
 /**
  * Pointer arbitration for the polygon editor's normal state (spec §6.1,
- * issue #42). One controller decides, from a stream of pointer events, whether
- * the gesture is a click-select, a Shift-toggle, a blank-drag rectangle, or a
- * Shift-drag marquee — without adding tool modes.
+ * issues #42 and #43). One controller decides, from a stream of pointer
+ * events, whether the gesture is a click-select, a Shift-toggle, a blank-drag
+ * rectangle, a Shift-drag marquee, or a shape-drag move — without adding tool
+ * modes.
  *
  * It is a pure reducer: {@link reduceInteraction} takes the current
- * {@link InteractionState} and one {@link InteractionEvent} and returns the next
- * state plus at most one {@link InteractionEffect} for the caller to carry out
- * (mutate the document through a Command, change the selection). Panning is not
- * modelled here: while `#40`'s `useViewportPan` reports a pan in progress the
- * caller feeds no events to this controller.
+ * {@link InteractionState}, one {@link InteractionEvent}, the document, and the
+ * live selection, and returns the next state plus at most one
+ * {@link InteractionEffect} for the caller to carry out (mutate the document
+ * through a Command, change the selection). Panning is not modelled here:
+ * while `#40`'s `useViewportPan` reports a pan in progress the caller feeds no
+ * events to this controller.
  */
 
 /** A pointer sample in both grid-vertex and grid-unit-float space. */
@@ -51,6 +53,15 @@ export type InteractionState =
       readonly kind: 'marquee';
       readonly originPrecise: GridPoint;
       readonly currentPrecise: GridPoint;
+    }
+  | {
+      readonly kind: 'moving';
+      /** Where the drag started (grid vertex), the delta's zero point. */
+      readonly originVertex: GridPoint;
+      /** Every shape being dragged (issue #43: whole selection moves together). */
+      readonly shapeIds: readonly string[];
+      /** Live offset in whole grid units, applied to every shape's vertices. */
+      readonly delta: GridPoint;
     };
 
 export type InteractionEvent =
@@ -68,6 +79,12 @@ export type InteractionEffect =
       readonly type: 'createRect';
       readonly start: GridPoint;
       readonly end: GridPoint;
+    }
+  | {
+      readonly type: 'moveShapes';
+      readonly shapeIds: readonly string[];
+      /** Whole-grid-unit offset applied to every vertex of every shape. */
+      readonly delta: GridPoint;
     };
 
 export interface InteractionResult {
@@ -84,6 +101,12 @@ const samePoint = (a: GridPoint, b: GridPoint): boolean => a.x === b.x && a.y ==
 
 const movedEnough = (from: GridPoint, to: GridPoint): boolean =>
   Math.hypot(to.x - from.x, to.y - from.y) >= DRAG_THRESHOLD_CELLS;
+
+/** Whole-grid-unit offset from `origin` to `current` (issue #43 move delta). */
+const gridDelta = (origin: GridPoint, current: GridPoint): GridPoint => ({
+  x: current.x - origin.x,
+  y: current.y - origin.y,
+});
 
 /**
  * The marquee / rectangle region currently being dragged, in grid units, or
@@ -103,7 +126,13 @@ export const previewRegion = (state: InteractionState): GridRect | null => {
 export const reduceInteraction = (
   state: InteractionState,
   event: InteractionEvent,
-  document: EditorDocument
+  document: EditorDocument,
+  /**
+   * Currently-selected shape IDs (issue #43). A drag that starts on an
+   * unselected shape moves only that shape (after selecting it); a drag that
+   * starts on an already-selected shape moves the whole selection together.
+   */
+  selectedIds: readonly string[] = []
 ): InteractionResult => {
   if (event.type === 'pointerCancel') {
     return { state: IDLE_STATE };
@@ -132,10 +161,26 @@ export const reduceInteraction = (
         if (!movedEnough(state.originPrecise, event.sample.precise)) {
           return { state };
         }
-        // A drag that started on a shape is reserved for move/resize (other
-        // issues); here it just holds until pointer-up acts as a click.
+        // A drag that started on a shape moves it (spec §6.1). Shift is
+        // reserved for the blank-space marquee, so a Shift-drag on a shape
+        // does not move it — it falls through to nothing (issue #44 territory:
+        // resize handles have their own hit-testing outside this surface).
         if (state.hitShapeId !== null) {
-          return { state };
+          if (state.shiftKey) {
+            return { state };
+          }
+          const hitShapeId = state.hitShapeId;
+          const alreadySelected = selectedIds.includes(hitShapeId);
+          const shapeIds = alreadySelected ? selectedIds : [hitShapeId];
+          return {
+            state: {
+              kind: 'moving',
+              originVertex: state.originVertex,
+              shapeIds,
+              delta: gridDelta(state.originVertex, event.sample.vertex),
+            },
+            effect: alreadySelected ? undefined : { type: 'selectOnly', shapeId: hitShapeId },
+          };
         }
         if (state.shiftKey) {
           return {
@@ -216,5 +261,42 @@ export const reduceInteraction = (
       }
       return { state };
     }
+
+    case 'moving': {
+      if (event.type === 'pointerMove') {
+        const delta = gridDelta(state.originVertex, event.sample.vertex);
+        if (delta.x === state.delta.x && delta.y === state.delta.y) {
+          return { state };
+        }
+        return { state: { ...state, delta } };
+      }
+      if (event.type === 'pointerUp') {
+        const delta = gridDelta(state.originVertex, event.sample.vertex);
+        // A move that never left its origin cell commits nothing — it was a
+        // click, not a drag, and the earlier selectOnly effect already ran.
+        if (delta.x === 0 && delta.y === 0) {
+          return { state: IDLE_STATE };
+        }
+        return {
+          state: IDLE_STATE,
+          effect: { type: 'moveShapes', shapeIds: state.shapeIds, delta },
+        };
+      }
+      return { state };
+    }
   }
+};
+
+/**
+ * Live move offset in whole grid units, or `null` when no move is in
+ * progress. The caller applies this to the moving shapes' Konva nodes only —
+ * React document state stays untouched until pointer-up (spec §14).
+ */
+export const movePreview = (
+  state: InteractionState
+): { readonly shapeIds: readonly string[]; readonly delta: GridPoint } | null => {
+  if (state.kind !== 'moving') {
+    return null;
+  }
+  return { shapeIds: state.shapeIds, delta: state.delta };
 };

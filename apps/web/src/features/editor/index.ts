@@ -22,6 +22,7 @@ export {
 } from './hitTest';
 export {
   IDLE_STATE,
+  movePreview,
   previewRegion,
   reduceInteraction,
   type InteractionEffect,

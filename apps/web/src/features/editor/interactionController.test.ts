@@ -7,6 +7,7 @@ import {
 } from '@gridder/editor-core';
 import {
   IDLE_STATE,
+  movePreview,
   previewRegion,
   reduceInteraction,
   type InteractionEvent,
@@ -48,12 +49,13 @@ const sample = (
 /** Drive a sequence of events through the reducer, collecting effects. */
 const run = (
   document: EditorDocument,
-  events: readonly InteractionEvent[]
+  events: readonly InteractionEvent[],
+  selectedIds: readonly string[] = []
 ): { state: InteractionState; effects: unknown[] } => {
   let state: InteractionState = IDLE_STATE;
   const effects: unknown[] = [];
   for (const event of events) {
-    const result = reduceInteraction(state, event, document);
+    const result = reduceInteraction(state, event, document, selectedIds);
     state = result.state;
     if (result.effect !== undefined) {
       effects.push(result.effect);
@@ -173,16 +175,20 @@ describe('reduceInteraction — Shift blank-drag marquee', () => {
     });
   });
 
-  it('test_dragThatStartsOnAShape_doesNotCreateARectangle', () => {
+  it('test_dragThatStartsOnAShape_movesItInstead_doesNotCreateARectangle', () => {
+    // issue #43: a drag that starts on a shape moves it — it never falls
+    // through to blank-drag rectangle creation.
     const document = documentOf([rectShape('a', 0, 0, 10, 10)]);
     const { state, effects } = run(document, [
       { type: 'pointerDown', sample: sample(2, 2) },
       { type: 'pointerMove', sample: sample(7, 7) },
       { type: 'pointerUp', sample: sample(7, 7) },
     ]);
-    // Falls through to a plain click-select on the shape.
     expect(state).toEqual(IDLE_STATE);
-    expect(effects).toEqual([{ type: 'selectOnly', shapeId: 'a' }]);
+    expect(effects).toEqual([
+      { type: 'selectOnly', shapeId: 'a' },
+      { type: 'moveShapes', shapeIds: ['a'], delta: { x: 5, y: 5 } },
+    ]);
   });
 
   it('test_pointerCancel_returnsToIdle_withNoEffect', () => {
@@ -194,5 +200,105 @@ describe('reduceInteraction — Shift blank-drag marquee', () => {
     ]);
     expect(state).toEqual(IDLE_STATE);
     expect(effects).toEqual([]);
+  });
+});
+
+describe('reduceInteraction — shape drag move (issue #43)', () => {
+  it('test_dragOnUnselectedShape_selectsIt_thenMovesOnlyThatShape', () => {
+    const moved = rectShape('a', 0, 0, 4, 4);
+    const other = rectShape('b', 10, 10, 4, 4);
+    const document = documentOf([moved, other]);
+    const { state, effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(2, 2) },
+        { type: 'pointerMove', sample: sample(5, 3) },
+        { type: 'pointerUp', sample: sample(5, 3) },
+      ],
+      ['b'] // 'b' selected beforehand, but the drag started on 'a'.
+    );
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([
+      { type: 'selectOnly', shapeId: 'a' },
+      { type: 'moveShapes', shapeIds: ['a'], delta: { x: 3, y: 1 } },
+    ]);
+  });
+
+  it('test_dragOnAlreadySelectedShape_movesWholeSelection_withoutReselecting', () => {
+    const a = rectShape('a', 0, 0, 4, 4);
+    const b = rectShape('b', 10, 10, 4, 4);
+    const document = documentOf([a, b]);
+    const { state, effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(2, 2) },
+        { type: 'pointerMove', sample: sample(4, 2) },
+        { type: 'pointerUp', sample: sample(4, 2) },
+      ],
+      ['a', 'b']
+    );
+    expect(state).toEqual(IDLE_STATE);
+    // No selectOnly: the drag started on an already-selected shape, so the
+    // whole current selection moves together with one integer delta.
+    expect(effects).toEqual([
+      { type: 'moveShapes', shapeIds: ['a', 'b'], delta: { x: 2, y: 0 } },
+    ]);
+  });
+
+  it('test_movePreview_tracksTheLiveDelta_untilPointerUp', () => {
+    const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+    let state: InteractionState = IDLE_STATE;
+    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(2, 2) }, document, [])
+      .state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(5, 6) },
+      document,
+      []
+    ).state;
+    expect(state.kind).toBe('moving');
+    expect(movePreview(state)).toEqual({ shapeIds: ['a'], delta: { x: 3, y: 4 } });
+
+    const further = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(1, 2) },
+      document,
+      []
+    ).state;
+    expect(movePreview(further)).toEqual({ shapeIds: ['a'], delta: { x: -1, y: 0 } });
+  });
+
+  it('test_moveThatReturnsToOrigin_commitsNothing_onPointerUp', () => {
+    const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+    const { state, effects } = run(document, [
+      { type: 'pointerDown', sample: sample(2, 2) },
+      { type: 'pointerMove', sample: sample(6, 6) },
+      { type: 'pointerMove', sample: sample(2, 2) },
+      { type: 'pointerUp', sample: sample(2, 2) },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    // Only the selection effect from entering `moving`; no-op move commits no Command.
+    expect(effects).toEqual([{ type: 'selectOnly', shapeId: 'a' }]);
+  });
+
+  it('test_shiftDragOnAShape_doesNotMoveIt_fallsThroughToShiftClickToggle', () => {
+    // Shift is reserved for the blank-space marquee (spec §6.1), so a
+    // Shift-drag that starts on a shape stays `pending` through the move —
+    // pointer-up on it acts as a Shift+click toggle, not a move.
+    const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+    const { state, effects } = run(document, [
+      { type: 'pointerDown', sample: sample(2, 2, true) },
+      { type: 'pointerMove', sample: sample(6, 6, true) },
+      { type: 'pointerUp', sample: sample(6, 6, true) },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([{ type: 'toggleSelection', shapeId: 'a' }]);
+  });
+
+  it('test_movePreview_isNull_outsideMovingState', () => {
+    expect(movePreview(IDLE_STATE)).toBeNull();
+    expect(
+      movePreview({ kind: 'creatingRect', originVertex: { x: 0, y: 0 }, currentVertex: { x: 1, y: 1 } })
+    ).toBeNull();
   });
 });

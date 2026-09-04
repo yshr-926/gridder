@@ -18,3 +18,4 @@ export {
   useObjects,
   useSelection,
 } from './selectors';
+export { useMovePreviewStore } from './movePreviewStore';

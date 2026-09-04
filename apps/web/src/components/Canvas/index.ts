@@ -10,6 +10,7 @@ export {
   DEFAULT_SHAPES_LAYER_THEME,
   type ShapesLayerTheme,
   type ShapesLayerProps,
+  type ShapesLayerMovePreview,
   type ShapePolygonProps,
   type ShapeAnnotationProps,
 } from './ShapesLayer';

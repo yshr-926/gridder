@@ -1,16 +1,22 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GridPoint } from '@gridder/editor-core';
 import type { Position } from '@/types';
 import { screenToWorld } from '@/features/viewport';
+import { useSelectionStore } from '@/stores/selectionStore';
+import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { applyInteractionEffect } from './applyInteractionEffect';
 import { editorSession } from './useEditorSession';
 import {
   IDLE_STATE,
+  movePreview,
   reduceInteraction,
   type InteractionEvent,
   type InteractionState,
   type PointerSample,
 } from './interactionController';
+
+/** Move-gesture pointer-move updates are throttled to once per frame (16ms). */
+const MOVE_THROTTLE_MS = 16;
 
 interface UseEditorInteractionArgs {
   /** Current viewport scale. */
@@ -50,6 +56,8 @@ export const useEditorInteraction = ({
 }: UseEditorInteractionArgs): UseEditorInteractionResult => {
   const stateRef = useRef<InteractionState>(IDLE_STATE);
   const [state, setState] = useState<InteractionState>(IDLE_STATE);
+  /** Timestamp (`performance.now()`) of the last processed move while `moving`. */
+  const lastMoveThrottleRef = useRef(0);
 
   const toSample = useCallback(
     (screenPoint: Position, shiftKey: boolean): PointerSample => {
@@ -64,6 +72,23 @@ export const useEditorInteraction = ({
     [scale, offset, gridSize]
   );
 
+  // The Konva-only move preview (issue #43, spec §14) is transient UI state
+  // owned by this hook; clear it whenever the gesture leaves `moving` for any
+  // reason (commit, cancel, or unmount) so a stale offset never lingers.
+  const syncMovePreview = useCallback((nextState: InteractionState) => {
+    const preview = movePreview(nextState);
+    const store = useMovePreviewStore.getState();
+    if (preview === null) {
+      if (store.preview !== null) {
+        store.clearPreview();
+      }
+      return;
+    }
+    store.setPreview(preview.shapeIds, preview.delta);
+  }, []);
+
+  useEffect(() => () => syncMovePreview(IDLE_STATE), [syncMovePreview]);
+
   const dispatchEvent = useCallback(
     (event: InteractionEvent) => {
       if (isViewportInteracting && stateRef.current.kind === 'idle') {
@@ -72,17 +97,19 @@ export const useEditorInteraction = ({
       const { state: nextState, effect } = reduceInteraction(
         stateRef.current,
         event,
-        editorSession.getDocument()
+        editorSession.getDocument(),
+        useSelectionStore.getState().selectedIds
       );
       if (nextState !== stateRef.current) {
         stateRef.current = nextState;
         setState(nextState);
+        syncMovePreview(nextState);
       }
       if (effect !== undefined) {
         applyInteractionEffect(editorSession, effect);
       }
     },
-    [isViewportInteracting]
+    [isViewportInteracting, syncMovePreview]
   );
 
   const onPointerDown = useCallback(
@@ -100,7 +127,24 @@ export const useEditorInteraction = ({
       if (stateRef.current.kind === 'idle') {
         return;
       }
+      // Throttle only the move-drag path (issue #43): rectangle/marquee
+      // previews stay at native pointer rate, but a shape drag recomputes a
+      // delta and repaints every dragged node, so it is capped to ~60fps. The
+      // very first move that enters `moving` (from `pending`) always goes
+      // through — only subsequent moves while already `moving` are subject to
+      // the interval, so the timestamp is (re)armed after every processed
+      // move that is in, or lands in, `moving`.
+      const wasMoving = stateRef.current.kind === 'moving';
+      if (wasMoving) {
+        const now = performance.now();
+        if (now - lastMoveThrottleRef.current < MOVE_THROTTLE_MS) {
+          return;
+        }
+      }
       dispatchEvent({ type: 'pointerMove', sample: toSample(screenPoint, shiftKey) });
+      if (wasMoving || stateRef.current.kind === 'moving') {
+        lastMoveThrottleRef.current = performance.now();
+      }
     },
     [dispatchEvent, toSample]
   );

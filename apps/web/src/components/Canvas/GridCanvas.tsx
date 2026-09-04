@@ -7,6 +7,7 @@ import { useViewportStore } from '@/stores/viewportStore';
 import { screenToWorld, useViewportPan } from '@/features/viewport';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
@@ -66,6 +67,10 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
 
   // 新しいポリゴン文書経路での選択図形（#42）
   const selectedIds = useSelectionStore((state) => state.selectedIds);
+  // 図形ドラッグ移動中の Konva ノード限定プレビュー（#43, spec §14）
+  const movePreview = useMovePreviewStore((state) => state.preview) ?? undefined;
+  // #43 の移動ジェスチャーが要求する grab/grabbing カーソル
+  const [moveCursor, setMoveCursor] = useState<'grab' | 'grabbing' | null>(null);
 
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
@@ -158,7 +163,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           ? 'grabbing'
           : viewportPan.isSpacePressed
             ? 'grab'
-            : 'default',
+            : (moveCursor ?? 'default'),
       }}
       onPointerDownCapture={viewportPan.handlePointerDownCapture}
       onPointerMoveCapture={viewportPan.handlePointerMoveCapture}
@@ -194,7 +199,12 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
         {/* Objects Layer: 文書が渡されたら新しいポリゴンレンダラー、なければ従来のセルレンダラー */}
         <Layer>
           {isEditorDocumentMode ? (
-            <ShapesLayer document={editorDocument} gridSize={gridSize} scale={scale} />
+            <ShapesLayer
+              document={editorDocument}
+              gridSize={gridSize}
+              scale={scale}
+              movePreview={movePreview}
+            />
           ) : (
             <ObjectsLayer />
           )}
@@ -209,6 +219,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               zoom={scale}
               gridSize={gridSize}
               isViewportInteracting={viewportPan.isViewportInteracting}
+              onCursorChange={setMoveCursor}
             />
           ) : (
             <InteractionLayer
@@ -227,6 +238,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               selectedIds={selectedIds}
               gridSize={gridSize}
               scale={scale}
+              movePreview={movePreview}
             />
           </Layer>
         )}

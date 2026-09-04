@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Group, Rect } from 'react-konva';
 import type { EditorDocument } from '@gridder/editor-core';
 import { polygonBounds } from '@/features/editor';
+import type { ShapesLayerMovePreview } from './ShapesLayer';
 
 /**
  * SelectionOverlay Props
@@ -15,6 +16,12 @@ interface SelectionOverlayProps {
   gridSize: number;
   /** Viewport scale — used to keep the frame a constant screen width. */
   scale: number;
+  /**
+   * Live move-gesture offset (issue #43). A selected shape's frame follows
+   * its Konva node during the drag instead of lagging behind at the
+   * pre-drag document position.
+   */
+  movePreview?: ShapesLayerMovePreview;
 }
 
 /** Selection frame colour (single accent per ui-principles §3). */
@@ -36,6 +43,7 @@ export const SelectionOverlay = ({
   selectedIds,
   gridSize,
   scale,
+  movePreview,
 }: SelectionOverlayProps) => {
   const frames = useMemo(() => {
     const safeScale = Math.max(scale, Number.EPSILON);
@@ -48,16 +56,19 @@ export const SelectionOverlay = ({
           return null;
         }
         const bounds = polygonBounds(shape.polygon);
+        const isMoving = movePreview !== undefined && movePreview.shapeIds.includes(shapeId);
+        const offsetX = isMoving ? movePreview.delta.x * gridSize : 0;
+        const offsetY = isMoving ? movePreview.delta.y * gridSize : 0;
         return {
           id: shapeId,
-          x: bounds.minX * gridSize - padWorld,
-          y: bounds.minY * gridSize - padWorld,
+          x: bounds.minX * gridSize - padWorld + offsetX,
+          y: bounds.minY * gridSize - padWorld + offsetY,
           width: (bounds.maxX - bounds.minX) * gridSize + padWorld * 2,
           height: (bounds.maxY - bounds.minY) * gridSize + padWorld * 2,
         };
       })
       .filter((frame): frame is NonNullable<typeof frame> => frame !== null);
-  }, [document, selectedIds, gridSize, scale]);
+  }, [document, selectedIds, gridSize, scale, movePreview]);
 
   if (frames.length === 0) {
     return null;

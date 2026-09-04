@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Position } from '@/types';
@@ -19,6 +19,12 @@ interface EditorInteractionLayerProps {
   gridSize: number;
   /** `#40`'s pan gesture has priority when true. */
   isViewportInteracting: boolean;
+  /**
+   * Reports the cursor the container should show for the move gesture
+   * (issue #43): `grab` / `grabbing`, or `null` when this layer has no
+   * cursor opinion (the caller falls back to its own default).
+   */
+  onCursorChange?: (cursor: 'grab' | 'grabbing' | null) => void;
 }
 
 /** Blank-drag rectangle preview fill / stroke (accent, low alpha). */
@@ -29,18 +35,22 @@ const MARQUEE_PREVIEW_FILL = 'rgba(100, 116, 139, 0.10)';
 const MARQUEE_PREVIEW_STROKE = '#475569';
 
 /**
- * The pointer-arbitration layer for the polygon editor (issue #42). A single
- * transparent Konva rect captures pointer events across the whole world and
- * feeds them to {@link useEditorInteraction}; the drag preview (blank-drag
- * rectangle or Shift-drag marquee) is drawn here as Konva-only nodes, so React
- * document state is never touched mid-gesture. Replaces the cell-era
- * `InteractionLayer` on `GridCanvas`'s document path.
+ * The pointer-arbitration layer for the polygon editor (issues #42, #43). A
+ * single transparent Konva rect captures pointer events across the whole
+ * world and feeds them to {@link useEditorInteraction}; the drag preview
+ * (blank-drag rectangle or Shift-drag marquee) is drawn here as Konva-only
+ * nodes, so React document state is never touched mid-gesture. A shape-drag
+ * move has no preview node of its own here — `GridCanvas` reads the same
+ * move-gesture state from `useMovePreviewStore` and offsets the moving
+ * shapes' actual Konva nodes in `ShapesLayer` / `SelectionOverlay` instead.
+ * Replaces the cell-era `InteractionLayer` on `GridCanvas`'s document path.
  */
 export const EditorInteractionLayer = ({
   panPosition,
   zoom,
   gridSize,
   isViewportInteracting,
+  onCursorChange,
 }: EditorInteractionLayerProps) => {
   const { state, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } =
     useEditorInteraction({
@@ -88,6 +98,22 @@ export const EditorInteractionLayer = ({
     },
     [pointerFromEvent, onPointerUp]
   );
+
+  // Cursor feedback for the move gesture (spec §6.1, issue #43): `grabbing`
+  // once the drag is moving a shape, `grab` while the pointer is down on a
+  // shape but hasn't crossed the drag threshold yet. Reported to the parent
+  // so it can be applied to the Stage container, matching how `#40`'s pan
+  // cursor is set on `GridCanvas`.
+  const cursor: 'grab' | 'grabbing' | null =
+    state.kind === 'moving'
+      ? 'grabbing'
+      : state.kind === 'pending' && state.hitShapeId !== null
+        ? 'grab'
+        : null;
+
+  useEffect(() => {
+    onCursorChange?.(cursor);
+  }, [cursor, onCursorChange]);
 
   const preview = useMemo(() => {
     const region = previewRegion(state);

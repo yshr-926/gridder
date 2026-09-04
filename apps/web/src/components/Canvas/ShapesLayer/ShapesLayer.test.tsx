@@ -156,6 +156,32 @@ describe('ShapesLayer', () => {
     expect(fontAt2x * 2).toBeCloseTo(fontAtHalf * 0.5);
   });
 
+  it('test_ShapesLayer_movePreview_offsetsOnlyTheMovingShapesGroup_issue43', () => {
+    const document = createDummyDocument({ shapeCount: 3, cellsPerShape: 4, withHole: false });
+
+    const { container } = render(
+      <ShapesLayer
+        document={document}
+        gridSize={10}
+        scale={1}
+        movePreview={{ shapeIds: ['shape-1'], delta: { x: 2, y: -3 } }}
+      />
+    );
+
+    const movedGroup = container.querySelector('[name="shape-move-group-shape-1"]');
+    const staticGroup = container.querySelector('[name="shape-move-group-shape-0"]');
+    expect(movedGroup?.getAttribute('x')).toBe('20');
+    expect(movedGroup?.getAttribute('y')).toBe('-30');
+    expect(staticGroup?.getAttribute('x')).toBe('0');
+    expect(staticGroup?.getAttribute('y')).toBe('0');
+
+    const movedAnnotationGroup = container.querySelector(
+      '[name="shape-annotation-move-group-shape-1"]'
+    );
+    expect(movedAnnotationGroup?.getAttribute('x')).toBe('20');
+    expect(movedAnnotationGroup?.getAttribute('y')).toBe('-30');
+  });
+
   it('test_ShapesLayer_emptyDocument_rendersNoShapeNodes', () => {
     const empty: EditorDocument = {
       formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,

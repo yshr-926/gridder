@@ -116,4 +116,38 @@ describe('SelectionOverlay', () => {
     expect(frame.getAttribute('data-stroke-scale-enabled')).toBe('false');
     expect(Number(frame.getAttribute('data-stroke-width'))).toBeGreaterThan(0);
   });
+
+  it('test_SelectionOverlay_movePreview_offsetsOnlyTheMovingShapesFrame_issue43', () => {
+    const document = documentOf([
+      rectShape('a', 0, 0, 4, 4),
+      rectShape('b', 10, 0, 4, 4),
+    ]);
+    const withoutPreview = render(
+      <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+    );
+    const [beforeA, beforeB] = ['a', 'b'].map((id) => {
+      const frame = withoutPreview.container.querySelector(`[data-name="selection-frame-${id}"]`);
+      return { x: Number(frame?.getAttribute('data-x')), y: Number(frame?.getAttribute('data-y')) };
+    });
+    withoutPreview.unmount();
+
+    const withPreview = render(
+      <SelectionOverlay
+        document={document}
+        selectedIds={['a', 'b']}
+        gridSize={10}
+        scale={1}
+        movePreview={{ shapeIds: ['a'], delta: { x: 2, y: -1 } }}
+      />
+    );
+    const frameA = withPreview.container.querySelector('[data-name="selection-frame-a"]');
+    const frameB = withPreview.container.querySelector('[data-name="selection-frame-b"]');
+
+    // 'a' is in the move preview: its frame shifts by delta * gridSize.
+    expect(Number(frameA?.getAttribute('data-x'))).toBeCloseTo(beforeA.x + 20);
+    expect(Number(frameA?.getAttribute('data-y'))).toBeCloseTo(beforeA.y - 10);
+    // 'b' is selected but not part of the move: its frame stays put.
+    expect(Number(frameB?.getAttribute('data-x'))).toBeCloseTo(beforeB.x);
+    expect(Number(frameB?.getAttribute('data-y'))).toBeCloseTo(beforeB.y);
+  });
 });
