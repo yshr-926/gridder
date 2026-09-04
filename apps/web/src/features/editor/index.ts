@@ -41,3 +41,14 @@ export {
   setShapesOpacity,
   setShapesBorderVisible,
 } from './inspectorCommands';
+export {
+  copySelection,
+  pasteClipboard,
+  duplicateSelection,
+  deleteSelection,
+  bringForward,
+  sendBackward,
+  bringToFront,
+  sendToBack,
+} from './editCommands';
+export { useEditShortcuts } from './useEditShortcuts';

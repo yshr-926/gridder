@@ -4,6 +4,7 @@ import { useSelectedShapes } from '@/features/editor';
 import { ShapeAppearance } from './ShapeAppearance';
 import { ShapeDimensions } from './ShapeDimensions';
 import { ShapeNameField } from './ShapeNameField';
+import { ShapeStructureActions } from './ShapeStructureActions';
 
 /**
  * Right-hand contextual inspector (issue #45, spec §12 / ui-principles §7).
@@ -63,6 +64,7 @@ export const PropertyPanel = () => {
           </>
         )}
         <ShapeAppearance shapes={shapes} />
+        <ShapeStructureActions />
       </div>
     </aside>
   );
