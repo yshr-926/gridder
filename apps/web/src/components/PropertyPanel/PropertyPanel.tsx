@@ -1,55 +1,20 @@
-import { Button, Input, Select, Divider, IconButton } from '../ui';
-import {
-  RotateIcon,
-  CopyIcon,
-  TrashIcon,
-  DownloadIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from '../icons';
-import { useCanvasStore, useGridSettingsStore, useUIStore } from '../../stores';
-import type { Unit } from '../../types';
-import { cn } from '../../utils/cn';
+import { Copy, RotateCw, Trash2 } from 'lucide-react';
+import { IconButton } from '../ui';
+import { useCanvasStore } from '../../stores';
 import { DecorationSettings } from './DecorationSettings';
 import { ObjectNameEditor } from './ObjectNameEditor';
 import { TextDisplaySettings } from './TextDisplaySettings';
 import { DimensionDisplaySettings } from './DimensionDisplaySettings';
 import { GroupPanel } from './GroupPanel';
 
-const UNIT_OPTIONS = [
-  { value: 'mm', label: 'mm' },
-  { value: 'cm', label: 'cm' },
-  { value: 'm', label: 'm' },
-];
+export const PropertyPanel = () => {
+  const selectedObjectId = useCanvasStore(state => state.selectedObjectId);
+  const objects = useCanvasStore(state => state.objects);
+  const updateObject = useCanvasStore(state => state.updateObject);
+  const removeObject = useCanvasStore(state => state.removeObject);
+  const duplicateObject = useCanvasStore(state => state.duplicateObject);
 
-interface PropertyPanelProps {
-  onExportJSON: () => void;
-  onExportPNG: () => void;
-  onExportJPEG: () => void;
-}
-
-export const PropertyPanel = ({
-  onExportJSON,
-  onExportPNG,
-  onExportJPEG,
-}: PropertyPanelProps) => {
-  const isOpen = useUIStore((state) => state.isPropertyPanelOpen);
-  const togglePanel = useUIStore((state) => state.togglePropertyPanel);
-
-  const cellSize = useGridSettingsStore((state) => state.cellSize);
-  const setCellSize = useGridSettingsStore((state) => state.setCellSize);
-  const unit = useGridSettingsStore((state) => state.unit);
-  const setUnit = useGridSettingsStore((state) => state.setUnit);
-
-  const selectedObjectId = useCanvasStore((state) => state.selectedObjectId);
-  const objects = useCanvasStore((state) => state.objects);
-  const updateObject = useCanvasStore((state) => state.updateObject);
-  const removeObject = useCanvasStore((state) => state.removeObject);
-  const duplicateObject = useCanvasStore((state) => state.duplicateObject);
-
-  const selectedObject = selectedObjectId
-    ? objects.find((obj) => obj.id === selectedObjectId)
-    : null;
+  const selectedObject = selectedObjectId ? objects.find(obj => obj.id === selectedObjectId) : null;
 
   const handleRotate = () => {
     if (!selectedObject) return;
@@ -67,163 +32,61 @@ export const PropertyPanel = ({
     removeObject(selectedObjectId);
   };
 
-  const handleCellSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0) {
-      setCellSize(value);
-    }
-  };
-
-  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setUnit(e.target.value as Unit);
-  };
+  if (!selectedObject) {
+    return null;
+  }
 
   return (
     <aside
-      className={cn(
-        'border-l border-gray-200 bg-white flex flex-col transition-all duration-200',
-        isOpen ? 'w-64' : 'w-12'
-      )}
+      className="flex w-inspector shrink-0 animate-inspector-in flex-col overflow-y-auto border-l border-ui-border bg-surface"
       role="complementary"
-      aria-label="プロパティパネル"
+      aria-label="図形インスペクター"
     >
-      {/* Toggle Button */}
-      <button
-        onClick={togglePanel}
-        className="h-10 flex items-center justify-center border-b border-gray-200 hover:bg-gray-50 transition-colors"
-        aria-expanded={isOpen}
-        aria-controls="property-panel-content"
-        aria-label={isOpen ? 'パネルを閉じる' : 'パネルを開く'}
-      >
-        {isOpen ? (
-          <ChevronRightIcon className="w-4 h-4 text-gray-600" />
-        ) : (
-          <ChevronLeftIcon className="w-4 h-4 text-gray-600" />
-        )}
-      </button>
+      <div className="border-b border-ui-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-ui">選択中の図形</h2>
+      </div>
 
-      {/* Panel Content */}
-      <div
-        id="property-panel-content"
-        className={cn('flex-1 overflow-y-auto', !isOpen && 'hidden')}
-      >
-        {/* Scale Settings */}
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
-            スケール設定
-          </h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">1マス =</span>
-            <Input
-              type="number"
-              inputSize="sm"
-              value={cellSize}
-              onChange={handleCellSizeChange}
-              className="w-16 text-center"
-              min={1}
-              aria-label="セルサイズ"
-            />
-            <Select
-              options={UNIT_OPTIONS}
-              selectSize="sm"
-              value={unit}
-              onChange={handleUnitChange}
-              className="w-20"
-              aria-label="単位"
-            />
-          </div>
-        </div>
-
-        {/* Object Name Editor */}
+      <div className="flex-1">
         <ObjectNameEditor selectedObjectId={selectedObjectId} />
-
-        {/* Decoration Settings */}
         <DecorationSettings selectedObjectId={selectedObjectId} />
 
-        {/* Selected Object Properties */}
-        {selectedObject && (
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
-              選択中のオブジェクト
-            </h2>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">セル数:</span>
-                <span className="text-gray-800">{selectedObject.cells.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">回転:</span>
-                <span className="text-gray-800">{selectedObject.rotation}°</span>
-              </div>
+        <div className="border-b border-ui-border p-4">
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-ui-muted">図形</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-ui-muted">セル数</span>
+              <span className="tabular-nums text-ui">{selectedObject.cells.length}</span>
             </div>
-            <div className="flex gap-2 mt-3">
-              <IconButton
-                icon={<RotateIcon className="w-4 h-4" />}
-                label="90度回転"
-                size="sm"
-                onClick={handleRotate}
-              />
-              <IconButton
-                icon={<CopyIcon className="w-4 h-4" />}
-                label="複製"
-                size="sm"
-                onClick={handleDuplicate}
-              />
-              <IconButton
-                icon={<TrashIcon className="w-4 h-4" />}
-                label="削除"
-                size="sm"
-                onClick={handleDelete}
-              />
+            <div className="flex justify-between text-sm">
+              <span className="text-ui-muted">回転</span>
+              <span className="tabular-nums text-ui">{selectedObject.rotation}°</span>
             </div>
           </div>
-        )}
-
-        {/* Text Display Settings */}
-        <TextDisplaySettings />
-
-        {/* Dimension Display Settings */}
-        <DimensionDisplaySettings />
-
-        {/* Group Panel */}
-        <GroupPanel />
-
-        {/* Export Section */}
-        <div className="p-4">
-          <h2 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
-            エクスポート
-          </h2>
-          <div className="space-y-2">
-            <Button
-              variant="secondary"
+          <div className="mt-3 flex gap-1">
+            <IconButton
+              icon={<RotateCw aria-hidden="true" className="size-4" />}
+              label="90度回転"
               size="sm"
-              className="w-full justify-start"
-              onClick={onExportJSON}
-            >
-              <DownloadIcon className="w-4 h-4 mr-2" />
-              JSON で保存
-            </Button>
-            <Divider className="my-2" />
-            <Button
-              variant="secondary"
+              onClick={handleRotate}
+            />
+            <IconButton
+              icon={<Copy aria-hidden="true" className="size-4" />}
+              label="複製"
               size="sm"
-              className="w-full justify-start"
-              onClick={onExportPNG}
-            >
-              <DownloadIcon className="w-4 h-4 mr-2" />
-              PNG で書き出し
-            </Button>
-            <Button
-              variant="secondary"
+              onClick={handleDuplicate}
+            />
+            <IconButton
+              icon={<Trash2 aria-hidden="true" className="size-4" />}
+              label="削除"
               size="sm"
-              className="w-full justify-start"
-              onClick={onExportJPEG}
-            >
-              <DownloadIcon className="w-4 h-4 mr-2" />
-              JPEG で書き出し
-            </Button>
+              onClick={handleDelete}
+            />
           </div>
         </div>
+
+        <TextDisplaySettings />
+        <DimensionDisplaySettings />
+        <GroupPanel />
       </div>
     </aside>
   );

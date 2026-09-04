@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
-import { Toolbar } from './components/Toolbar';
 import { PropertyPanel } from './components/PropertyPanel';
-import { StatusBar } from './components/StatusBar';
 import { GridCanvas } from './components/Canvas';
 import type { GridCanvasRef } from './components/Canvas';
 import { ImportDialog } from './components/FileOperations';
@@ -15,7 +13,9 @@ import {
   useKeyboardShortcutsHelp,
   useToastStore,
   useSentryContext,
+  useUndoRedo,
 } from './hooks';
+import { useCanvasStore } from './stores';
 import {
   exportProjectAsJSON,
   exportAsPNG,
@@ -31,9 +31,6 @@ export const App = () => {
   // Canvas への参照（画像エクスポート用）
   const canvasRef = useRef<GridCanvasRef>(null);
 
-  // カーソル位置（Canvas から設定）
-  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
-
   // インポートダイアログの表示状態
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
@@ -44,8 +41,8 @@ export const App = () => {
   const { isOpen: isHelpOpen, close: closeHelp } = useKeyboardShortcutsHelp();
 
   // トースト通知
-  const toasts = useToastStore((state) => state.toasts);
-  const removeToast = useToastStore((state) => state.removeToast);
+  const toasts = useToastStore(state => state.toasts);
+  const removeToast = useToastStore(state => state.removeToast);
 
   // キーボードショートカットを有効化
   useCanvasKeyboard();
@@ -56,12 +53,16 @@ export const App = () => {
   // Sentry コンテキスト同期（エラー追跡用）
   useSentryContext();
 
+  const { handleUndo, handleRedo, canUndo, canRedo } = useUndoRedo();
+  const toolMode = useCanvasStore(state => state.toolMode);
+  const setToolMode = useCanvasStore(state => state.setToolMode);
+
   // Ctrl+Shift+P でコマンドパレットを開閉
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toUpperCase() === 'P') {
         e.preventDefault();
-        setIsCommandPaletteOpen((prev) => !prev);
+        setIsCommandPaletteOpen(prev => !prev);
       }
     };
 
@@ -72,9 +73,7 @@ export const App = () => {
   // 起動時の復元確認
   useEffect(() => {
     if (hasAutoSavedData()) {
-      const shouldRestore = window.confirm(
-        '前回の作業データがあります。復元しますか？'
-      );
+      const shouldRestore = window.confirm('前回の作業データがあります。復元しますか？');
       if (shouldRestore) {
         restoreFromLocalStorage();
       } else {
@@ -83,18 +82,10 @@ export const App = () => {
     }
   }, []);
 
-  // カーソル位置変更ハンドラ
-  const handleCursorPositionChange = useCallback(
-    (position: { x: number; y: number } | null) => {
-      setCursorPosition(position);
-    },
-    []
-  );
-
-  // 新規プロジェクト作成
-  const handleNewProject = useCallback(() => {
+  // 新規スケッチ作成
+  const handleNewSketch = useCallback(() => {
     const shouldCreate = window.confirm(
-      '新規プロジェクトを作成しますか？現在の作業内容は失われます。'
+      '新しいスケッチを作成しますか？現在の作業内容は失われます。'
     );
     if (shouldCreate) {
       createNewProject();
@@ -102,18 +93,13 @@ export const App = () => {
     }
   }, []);
 
-  // プロジェクトを開く（インポートダイアログを表示）
-  const handleOpenProject = useCallback(() => {
+  // スケッチを開く（インポートダイアログを表示）
+  const handleOpenSketch = useCallback(() => {
     setIsImportDialogOpen(true);
   }, []);
 
-  // プロジェクト保存（JSON エクスポート）
-  const handleSaveProject = useCallback(() => {
-    exportProjectAsJSON();
-  }, []);
-
-  // JSON エクスポート（PropertyPanel 用、handleSaveProject と同じ）
-  const handleExportJSON = useCallback(() => {
+  // スケッチ保存（JSON エクスポート）
+  const handleSaveSketch = useCallback(() => {
     exportProjectAsJSON();
   }, []);
 
@@ -133,6 +119,10 @@ export const App = () => {
     }
   }, []);
 
+  const handleAddPolygon = useCallback(() => {
+    setToolMode('polygon');
+  }, [setToolMode]);
+
   // インポート成功時のコールバック
   const handleImportSuccess = useCallback(() => {
     console.log('Project imported successfully');
@@ -144,41 +134,32 @@ export const App = () => {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-white">
-      {/* Header */}
+    <div className="flex h-screen flex-col bg-canvas text-ui">
       <Header
-        onNewProject={handleNewProject}
-        onOpenProject={handleOpenProject}
-        onSaveProject={handleSaveProject}
+        onNewSketch={handleNewSketch}
+        onOpenSketch={handleOpenSketch}
+        onSaveSketch={handleSaveSketch}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onAddPolygon={handleAddPolygon}
+        isAddingPolygon={toolMode === 'polygon'}
+        onSharePNG={handleExportPNG}
+        onShareJPEG={handleExportJPEG}
       />
 
-      {/* Main Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Toolbar (Left) */}
-        <Toolbar />
-
-        {/* Canvas (Center) */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <main
-          className="flex-1 overflow-hidden bg-gray-100 relative"
+          className="relative min-w-0 flex-1 overflow-hidden bg-canvas"
           role="application"
           aria-label="作図キャンバス"
         >
-          <GridCanvas
-            ref={canvasRef}
-            onCursorPositionChange={handleCursorPositionChange}
-          />
+          <GridCanvas ref={canvasRef} />
         </main>
 
-        {/* PropertyPanel (Right) */}
-        <PropertyPanel
-          onExportJSON={handleExportJSON}
-          onExportPNG={handleExportPNG}
-          onExportJPEG={handleExportJPEG}
-        />
+        <PropertyPanel />
       </div>
-
-      {/* StatusBar */}
-      <StatusBar cursorPosition={cursorPosition} />
 
       {/* Import Dialog */}
       <ImportDialog
@@ -199,9 +180,7 @@ export const App = () => {
         onClose={() => setIsCommandPaletteOpen(false)}
       />
 
-      {/* Performance Overlay (Development only, toggle with Ctrl+Shift+D) */}
       <PerformanceOverlay />
-
     </div>
   );
 };
