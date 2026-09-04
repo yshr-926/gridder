@@ -1,12 +1,14 @@
 import { useRef, useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { Stage, Layer } from 'react-konva';
 import type Konva from 'konva';
+import type { EditorDocument } from '@gridder/editor-core';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { screenToWorld, useViewportPan } from '@/features/viewport';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
+import { ShapesLayer } from './ShapesLayer';
 import { InteractionLayer } from './InteractionLayer';
 import { debounceResize } from '@/utils/performance';
 
@@ -24,6 +26,12 @@ export interface GridCanvasRef {
 interface GridCanvasProps {
   /** カーソル位置変更時のコールバック */
   onCursorPositionChange?: (position: { x: number; y: number } | null) => void;
+  /**
+   * editor-core の文書スナップショット。
+   * 渡された場合はポリゴンレンダラー Adapter（{@link ShapesLayer}）で描画し、
+   * 渡されない場合は既存のセルベース {@link ObjectsLayer} をそのまま使う。
+   */
+  editorDocument?: EditorDocument;
 }
 
 /**
@@ -31,7 +39,7 @@ interface GridCanvasProps {
  * Konva.js を使用したメインキャンバス
  */
 export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
-  ({ onCursorPositionChange }, ref) => {
+  ({ onCursorPositionChange, editorDocument }, ref) => {
   // Stage への参照
   const stageRef = useRef<Konva.Stage>(null);
 
@@ -175,9 +183,13 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           />
         </Layer>
 
-        {/* Objects Layer */}
+        {/* Objects Layer: 文書が渡されたら新しいポリゴンレンダラー、なければ従来のセルレンダラー */}
         <Layer>
-          <ObjectsLayer />
+          {editorDocument ? (
+            <ShapesLayer document={editorDocument} gridSize={gridSize} scale={scale} />
+          ) : (
+            <ObjectsLayer />
+          )}
         </Layer>
 
         {/* Interaction Layer */}
