@@ -14,6 +14,7 @@ import { ShapesLayer } from './ShapesLayer';
 import { InteractionLayer } from './InteractionLayer';
 import { EditorInteractionLayer } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
+import { DrawingRangeLayer } from './DrawingRangeLayer';
 import { debounceResize } from '@/utils/performance';
 
 /**
@@ -195,6 +196,8 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             zoom={scale}
           />
         </Layer>
+
+        {isEditorDocumentMode && <Layer><DrawingRangeLayer gridSize={gridSize} scale={scale} offset={offset} /></Layer>}
 
         {/* Objects Layer: 文書が渡されたら新しいポリゴンレンダラー、なければ従来のセルレンダラー */}
         <Layer>

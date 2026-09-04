@@ -15,7 +15,7 @@ import {
   useSentryContext,
 } from './hooks';
 import { useCanvasStore } from './stores';
-import { useEditorDocument, useEditorHistory } from './features/editor';
+import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
 import {
   exportProjectAsJSON,
   exportAsPNG,
@@ -149,6 +149,7 @@ export const App = () => {
         isAddingPolygon={toolMode === 'polygon'}
         onSharePNG={handleExportPNG}
         onShareJPEG={handleExportJPEG}
+        onFitDrawingBoundsToContent={fitDrawingBoundsToContent}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

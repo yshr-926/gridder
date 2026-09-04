@@ -20,3 +20,4 @@ export { SelectionOverlay } from './SelectionOverlay';
 export { VertexMarker } from './VertexMarker';
 export { PolygonPreview } from './PolygonPreview';
 export { CursorOverlay } from './CursorOverlay';
+export { DrawingRangeLayer } from './DrawingRangeLayer';

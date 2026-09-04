@@ -6,6 +6,7 @@ import {
   FileText,
   FolderOpen,
   Image,
+  Maximize2,
   PenTool,
   Redo2,
   Save,
@@ -31,6 +32,8 @@ interface HeaderProps {
   isAddingPolygon: boolean;
   onSharePNG: () => void;
   onShareJPEG: () => void;
+  /** "内容に合わせる" (spec §4, issue #46): switch the drawing range back to auto. */
+  onFitDrawingBoundsToContent: () => void;
 }
 
 interface HeaderActionProps {
@@ -193,6 +196,7 @@ export const Header = ({
   isAddingPolygon,
   onSharePNG,
   onShareJPEG,
+  onFitDrawingBoundsToContent,
 }: HeaderProps) => (
   <TooltipProvider>
     <header className="flex h-header shrink-0 items-center border-b border-ui-border bg-surface px-3">
@@ -237,6 +241,9 @@ export const Header = ({
         </HeaderAction>
         <HeaderAction label="ポリゴンを追加" onClick={onAddPolygon} isPressed={isAddingPolygon}>
           <PenTool aria-hidden="true" className="size-4" />
+        </HeaderAction>
+        <HeaderAction label="内容に合わせる" onClick={onFitDrawingBoundsToContent}>
+          <Maximize2 aria-hidden="true" className="size-4" />
         </HeaderAction>
 
         <div className="ml-auto flex items-center gap-1">

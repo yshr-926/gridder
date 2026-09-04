@@ -16,6 +16,7 @@ describe('Header', () => {
     isAddingPolygon: false,
     onSharePNG: vi.fn(),
     onShareJPEG: vi.fn(),
+    onFitDrawingBoundsToContent: vi.fn(),
   };
 
   beforeEach(() => {
@@ -29,6 +30,7 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: '元に戻す' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'やり直す' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'ポリゴンを追加' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '内容に合わせる' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '共有' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '設定' })).toBeInTheDocument();
   });
@@ -42,6 +44,15 @@ describe('Header', () => {
 
     expect(props.onUndo).toHaveBeenCalledOnce();
     expect(props.onAddPolygon).toHaveBeenCalledOnce();
+  });
+
+  it('invokes the fit-to-content action', async () => {
+    const user = userEvent.setup();
+    render(<Header {...props} />);
+
+    await user.click(screen.getByRole('button', { name: '内容に合わせる' }));
+
+    expect(props.onFitDrawingBoundsToContent).toHaveBeenCalledOnce();
   });
 
   it('opens the file menu and invokes its actions', async () => {
