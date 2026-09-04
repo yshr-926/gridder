@@ -48,7 +48,9 @@ describe('fillPolygon', () => {
       });
     });
 
-    it('should fill a square', () => {
+    it('should fill exactly 9 cells for a 3x3 square', () => {
+      // 頂点(0,0), (3,0), (3,3), (0,3)で囲まれた正方形は
+      // セル(0,0), (1,0), (2,0), (0,1), (1,1), (2,1), (0,2), (1,2), (2,2)の9セル
       const vertices: Vertex[] = [
         { x: 0, y: 0 },
         { x: 3, y: 0 },
@@ -58,9 +60,17 @@ describe('fillPolygon', () => {
 
       const result = fillPolygon(vertices);
 
-      // 正方形の内部セル数を確認（境界の扱いで多少変動あり）
-      expect(result.cells.length).toBeGreaterThan(0);
+      // 正確に9セル（3x3）であることを確認
+      expect(result.cells.length).toBe(9);
       expect(result.position).toEqual({ x: 0, y: 0 });
+
+      // 各セルが期待される範囲内にあることを確認
+      for (const [x, y] of result.cells) {
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(x).toBeLessThanOrEqual(2);
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(y).toBeLessThanOrEqual(2);
+      }
     });
 
     it('should handle offset positions correctly', () => {
@@ -164,6 +174,106 @@ describe('fillPolygon', () => {
 
       // 浮動小数点でも正常に処理される
       expect(result.cells.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('境界条件 - セル中心ベースの判定', () => {
+    it('should not include cells outside the polygon boundary', () => {
+      // 頂点(1,1), (4,1), (4,4), (1,4)で囲まれた正方形
+      // セル(1,1), (2,1), (3,1), (1,2), (2,2), (3,2), (1,3), (2,3), (3,3)の9セル
+      const vertices: Vertex[] = [
+        { x: 1, y: 1 },
+        { x: 4, y: 1 },
+        { x: 4, y: 4 },
+        { x: 1, y: 4 },
+      ];
+
+      const result = fillPolygon(vertices);
+
+      // 正確に9セルであることを確認
+      expect(result.cells.length).toBe(9);
+      expect(result.position).toEqual({ x: 1, y: 1 });
+
+      // セルがポリゴン境界外を含まないことを確認
+      for (const [x, y] of result.cells) {
+        const globalX = x + result.position.x;
+        const globalY = y + result.position.y;
+        expect(globalX).toBeGreaterThanOrEqual(1);
+        expect(globalX).toBeLessThanOrEqual(3);
+        expect(globalY).toBeGreaterThanOrEqual(1);
+        expect(globalY).toBeLessThanOrEqual(3);
+      }
+    });
+
+    it('should fill a right triangle correctly with exact cell count', () => {
+      // 直角三角形(0,0), (4,0), (0,4)
+      // セル中心が三角形内（斜辺 x + y = 4 の内側）にあるセルのみを含む
+      // セル(x,y)の中心は(x+0.5, y+0.5)
+      // 条件: x+0.5 + y+0.5 < 4 つまり x + y < 3
+      // 該当セル: (0,0), (1,0), (2,0), (0,1), (1,1), (0,2) の6セル
+      const vertices: Vertex[] = [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 0, y: 4 },
+      ];
+
+      const result = fillPolygon(vertices);
+
+      // セル中心ベースでは6セルが含まれる
+      expect(result.cells.length).toBe(6);
+      expect(result.position).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should fill a concave L-shape with exact cell count', () => {
+      // L字型: 下2x3、右上が欠けた形
+      // 頂点: (0,0), (2,0), (2,1), (1,1), (1,3), (0,3)
+      const vertices: Vertex[] = [
+        { x: 0, y: 0 },
+        { x: 2, y: 0 },
+        { x: 2, y: 1 },
+        { x: 1, y: 1 },
+        { x: 1, y: 3 },
+        { x: 0, y: 3 },
+      ];
+
+      const result = fillPolygon(vertices);
+
+      // L字型は5セル: (0,0), (1,0), (0,1), (0,2)
+      // 正確なセル数は4になるはず
+      expect(result.cells.length).toBe(4);
+      expect(result.position).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should handle 2x2 square correctly', () => {
+      // 2x2 の正方形
+      const vertices: Vertex[] = [
+        { x: 0, y: 0 },
+        { x: 2, y: 0 },
+        { x: 2, y: 2 },
+        { x: 0, y: 2 },
+      ];
+
+      const result = fillPolygon(vertices);
+
+      // 4セル (2x2)
+      expect(result.cells.length).toBe(4);
+      expect(result.position).toEqual({ x: 0, y: 0 });
+    });
+
+    it('should handle 1x1 square correctly', () => {
+      // 1x1 の正方形
+      const vertices: Vertex[] = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ];
+
+      const result = fillPolygon(vertices);
+
+      // 1セル
+      expect(result.cells.length).toBe(1);
+      expect(result.position).toEqual({ x: 0, y: 0 });
     });
   });
 });

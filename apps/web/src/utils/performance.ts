@@ -4,6 +4,137 @@
  */
 
 /**
+ * FPS計測クラス
+ * Canvas操作のフレームレートを測定する
+ */
+export class FPSMeter {
+  private frames = 0;
+  private lastTime = performance.now();
+  private fps = 60;
+
+  /**
+   * フレームを更新し、FPSを計算
+   * requestAnimationFrame のコールバック内で呼び出す
+   * @returns 現在のFPS値
+   */
+  public update(): number {
+    this.frames++;
+    const currentTime = performance.now();
+    const elapsed = currentTime - this.lastTime;
+
+    if (elapsed >= 1000) {
+      this.fps = Math.round((this.frames * 1000) / elapsed);
+      this.frames = 0;
+      this.lastTime = currentTime;
+    }
+
+    return this.fps;
+  }
+
+  /**
+   * 現在のFPS値を取得
+   * @returns 現在のFPS値
+   */
+  public getFPS(): number {
+    return this.fps;
+  }
+
+  /**
+   * 計測をリセット
+   */
+  public reset(): void {
+    this.frames = 0;
+    this.lastTime = performance.now();
+    this.fps = 60;
+  }
+}
+
+/**
+ * ドラッグレイテンシ計測クラス
+ * マウスイベントから描画までの遅延を測定する
+ */
+export class DragLatencyMeter {
+  private startTime: number | null = null;
+  private latencies: number[] = [];
+  private maxSamples: number;
+
+  /**
+   * @param maxSamples 保持するサンプル数の上限（デフォルト: 100）
+   */
+  constructor(maxSamples: number = 100) {
+    this.maxSamples = maxSamples;
+  }
+
+  /**
+   * 計測を開始
+   */
+  public start(): void {
+    this.startTime = performance.now();
+  }
+
+  /**
+   * 計測を終了し、レイテンシを記録
+   */
+  public end(): void {
+    if (this.startTime !== null) {
+      const latency = performance.now() - this.startTime;
+      this.latencies.push(latency);
+
+      // サンプル数の上限を超えたら古いものを削除
+      if (this.latencies.length > this.maxSamples) {
+        this.latencies.shift();
+      }
+
+      this.startTime = null;
+    }
+  }
+
+  /**
+   * 平均レイテンシを取得
+   * @returns 平均レイテンシ（ミリ秒）
+   */
+  public getAverageLatency(): number {
+    if (this.latencies.length === 0) return 0;
+    const sum = this.latencies.reduce((a, b) => a + b, 0);
+    return sum / this.latencies.length;
+  }
+
+  /**
+   * 最大レイテンシを取得
+   * @returns 最大レイテンシ（ミリ秒）
+   */
+  public getMaxLatency(): number {
+    if (this.latencies.length === 0) return 0;
+    return Math.max(...this.latencies);
+  }
+
+  /**
+   * 最小レイテンシを取得
+   * @returns 最小レイテンシ（ミリ秒）
+   */
+  public getMinLatency(): number {
+    if (this.latencies.length === 0) return 0;
+    return Math.min(...this.latencies);
+  }
+
+  /**
+   * サンプル数を取得
+   * @returns サンプル数
+   */
+  public getSampleCount(): number {
+    return this.latencies.length;
+  }
+
+  /**
+   * 計測をリセット
+   */
+  public reset(): void {
+    this.latencies = [];
+    this.startTime = null;
+  }
+}
+
+/**
  * Creates a throttled version of a function that only executes at most once per specified interval
  * Optimized for 60fps (16ms) mouse move operations
  *

@@ -1,7 +1,7 @@
 /**
  * 多角形塗りつぶしアルゴリズム
  *
- * スキャンラインアルゴリズムを使用して多角形を塗りつぶし、
+ * セル中心ベースのレイキャスティング法を使用して多角形を塗りつぶし、
  * ブレゼンハムのアルゴリズムで輪郭線を取得します。
  */
 
@@ -10,10 +10,41 @@ import type { FillPolygonResult, Vertex } from './types';
 import { drawLine } from '@/features/commands/commands/line';
 
 /**
- * 多角形の頂点配列からセルを塗りつぶす（スキャンラインアルゴリズム）
+ * 点がポリゴン内にあるかを判定（レイキャスティング法）
  *
- * スキャンラインアルゴリズムは各行（y座標）ごとに多角形との交点を計算し、
- * 交点間を塗りつぶすことで多角形内部のセルを効率的に取得します。
+ * 点から右方向に半直線を引き、ポリゴンの辺との交点数をカウントします。
+ * 交点数が奇数なら内側、偶数なら外側と判定します。
+ *
+ * @param x - X座標
+ * @param y - Y座標
+ * @param vertices - 多角形の頂点配列
+ * @returns 点がポリゴン内にあればtrue
+ */
+const isPointInPolygon = (x: number, y: number, vertices: Vertex[]): boolean => {
+  let inside = false;
+  const n = vertices.length;
+
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = vertices[i].x;
+    const yi = vertices[i].y;
+    const xj = vertices[j].x;
+    const yj = vertices[j].y;
+
+    // 辺がy座標をまたぐかチェックし、交点のx座標が点の右側にあるか判定
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+};
+
+/**
+ * 多角形の頂点配列からセルを塗りつぶす（セル中心ベース判定）
+ *
+ * 各セルの中心座標がポリゴン内にあるかをレイキャスティング法で判定し、
+ * 内側にあるセルのみを塗りつぶします。これにより、頂点座標がセルの
+ * 左上を指す場合でも、正確な境界で塗りつぶしが行われます。
  *
  * @param vertices - 多角形の頂点配列（最低3つ必要）
  * @returns 塗りつぶし結果（ローカル座標のセル配列とposition）
@@ -22,10 +53,11 @@ import { drawLine } from '@/features/commands/commands/line';
  * ```typescript
  * const result = fillPolygon([
  *   { x: 0, y: 0 },
- *   { x: 4, y: 0 },
- *   { x: 2, y: 3 },
+ *   { x: 3, y: 0 },
+ *   { x: 3, y: 3 },
+ *   { x: 0, y: 3 },
  * ]);
- * // result.cells には三角形内部のセル座標が含まれる
+ * // result.cells には 3x3 = 9 セルが含まれる
  * // result.position は { x: 0, y: 0 }
  * ```
  */
@@ -54,35 +86,15 @@ export const fillPolygon = (vertices: Vertex[]): FillPolygonResult => {
     return { cells: [], position: { x: 0, y: 0 } };
   }
 
-  // 各行をスキャン
-  for (let y = minY; y <= maxY; y++) {
-    const intersections: number[] = [];
+  // 各セルの中心がポリゴン内にあるかチェック
+  for (let y = minY; y < maxY; y++) {
+    for (let x = minX; x < maxX; x++) {
+      // セルの中心座標（グリッド座標 + 0.5）
+      const centerX = x + 0.5;
+      const centerY = y + 0.5;
 
-    // 各辺との交点を計算
-    for (let i = 0; i < vertices.length; i++) {
-      const v1 = vertices[i];
-      const v2 = vertices[(i + 1) % vertices.length];
-
-      // 交差判定: 辺が y 座標をまたぐかどうか
-      if ((v1.y <= y && v2.y > y) || (v2.y <= y && v1.y > y)) {
-        // 線形補間で交点の x 座標を計算
-        const x = v1.x + ((y - v1.y) / (v2.y - v1.y)) * (v2.x - v1.x);
-        intersections.push(x);
-      }
-    }
-
-    // 交点をソート
-    intersections.sort((a, b) => a - b);
-
-    // ペアごとに塗りつぶし（ローカル座標で格納）
-    for (let i = 0; i < intersections.length; i += 2) {
-      if (i + 1 < intersections.length) {
-        const startX = Math.ceil(intersections[i]);
-        const endX = Math.floor(intersections[i + 1]);
-
-        for (let x = startX; x <= endX; x++) {
-          cells.push([x - minX, y - minY]);
-        }
+      if (isPointInPolygon(centerX, centerY, vertices)) {
+        cells.push([x - minX, y - minY]);
       }
     }
   }

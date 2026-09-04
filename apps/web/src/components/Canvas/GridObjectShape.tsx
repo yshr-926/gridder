@@ -7,6 +7,7 @@ import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useUIStore } from '@/stores/uiStore';
 import { ObjectTextLabel } from './ObjectTextLabel';
 import { DimensionLabel } from './DimensionLabel';
+import { getObjectOutline } from '@/utils/outline';
 
 /**
  * GridObjectShape Props
@@ -56,14 +57,34 @@ const SELECTION_BORDER_WIDTH = 2;
  * GridObjectShape コンポーネント
  * 個々のグリッドオブジェクトを描画する
  */
+
 /**
- * Custom comparison function for memo
- * Only re-render when object data or selection state changes
+ * メモ化の比較関数（パフォーマンス最適化版）
+ *
+ * パフォーマンス最適化ポイント:
+ * - ドラッグ中は位置情報の変更を無視（Konva がネイティブで管理）
+ * - オブジェクトIDと形状（cells）のみを比較
+ * - 不要な再レンダリングを防止して60fpsを維持
  */
 const arePropsEqual = (
   prevProps: GridObjectShapeProps,
   nextProps: GridObjectShapeProps
 ): boolean => {
+  // ドラッグ中は最小限の比較で再レンダリングを抑制
+  if (nextProps.isDragging) {
+    // ドラッグ中は形状・色・選択状態のみを比較
+    // 位置はKonvaのネイティブ管理を使用するため無視
+    return (
+      prevProps.object.id === nextProps.object.id &&
+      prevProps.object.cells === nextProps.object.cells &&
+      prevProps.object.color === nextProps.object.color &&
+      prevProps.gridSize === nextProps.gridSize &&
+      prevProps.isSelected === nextProps.isSelected &&
+      prevProps.isDragging === nextProps.isDragging
+    );
+  }
+
+  // 通常時（非ドラッグ中）は全プロパティを比較
   // Check if object reference changed
   if (prevProps.object !== nextProps.object) return false;
 
@@ -129,11 +150,15 @@ export const GridObjectShape = memo(
     }, [cells, gridSize]);
 
     /**
-     * セルの描画
+     * 装飾設定を取得
+     */
+    const decoration = useMemo(() => getDecoration(object), [object]);
+
+    /**
+     * セルの描画（枠線なし - 輪郭は別途描画）
      */
     const cellRects = useMemo(() => {
-      const decoration = getDecoration(object);
-      const { showBorder, borderColor, borderWidth, opacity } = decoration;
+      const { opacity } = decoration;
 
       return cells.map(([x, y], index) => (
         <Rect
@@ -144,11 +169,17 @@ export const GridObjectShape = memo(
           height={gridSize}
           fill={color}
           opacity={opacity}
-          stroke={showBorder ? (borderColor ?? color) : undefined}
-          strokeWidth={showBorder ? borderWidth : 0}
         />
       ));
-    }, [object, cells, id, gridSize, color]);
+    }, [cells, id, gridSize, color, decoration]);
+
+    /**
+     * 輪郭線のポイント配列
+     */
+    const outlinePoints = useMemo(() => {
+      if (!decoration.showBorder) return null;
+      return getObjectOutline(cells, gridSize);
+    }, [cells, gridSize, decoration.showBorder]);
 
     /**
      * 選択時のバウンディングボックス
@@ -257,6 +288,18 @@ export const GridObjectShape = memo(
         {/* 回転オフセットを補正するための内部グループ */}
         <Group x={rotationOffset.x} y={rotationOffset.y}>
           {cellRects}
+
+          {/* 輪郭線（枠線ON時のみ描画） */}
+          {outlinePoints && outlinePoints.length > 0 && (
+            <Line
+              points={outlinePoints}
+              stroke={decoration.borderColor ?? color}
+              strokeWidth={decoration.borderWidth}
+              closed={true}
+              listening={false}
+            />
+          )}
+
           {selectionHighlight}
 
           {/* オブジェクト名表示 */}

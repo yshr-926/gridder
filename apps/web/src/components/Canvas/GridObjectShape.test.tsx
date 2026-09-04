@@ -204,10 +204,19 @@ describe('GridObjectShape with decoration', () => {
     const rects = screen.getAllByTestId('konva-rect');
     expect(rects.length).toBeGreaterThan(0);
 
-    // Should have stroke on cells when showBorder is true
+    // Cell rects should no longer have stroke (outline is drawn with Line)
     const cellRect = rects.find((r) => r.getAttribute('data-fill') === '#3b82f6');
     expect(cellRect).toBeInTheDocument();
-    expect(cellRect?.getAttribute('data-stroke')).toBeTruthy();
+
+    // Border is now rendered using Line element for outline
+    const lines = screen.getAllByTestId('konva-line');
+    // There should be at least one Line for the outline (plus the selection highlight)
+    const outlineLine = lines.find((l) => {
+      const stroke = l.getAttribute('data-stroke');
+      // Check that there's a line with the object's color as stroke (outline)
+      return stroke === '#3b82f6' || stroke === baseObject.color;
+    });
+    expect(outlineLine).toBeInTheDocument();
   });
 
   it('should render without border when showBorder is false', () => {
