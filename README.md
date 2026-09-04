@@ -6,11 +6,15 @@ Gridderは、空間的なアイデアをグリッド上で素早く形にし、�
 
 ## Documents
 
+- [ドキュメントガイド](docs/README.md)
 - [第一リリース仕様](docs/spec.md)
+- [ターゲットアーキテクチャ](docs/architecture/target-architecture.md)
 - [UI原則](docs/ui-principles.md)
 - [ドメイン用語](CONTEXT.md)
 - [Architecture Decision Records](docs/adr/)
 - [エディタ技術調査](docs/architecture/editor-stack-research.md)
+
+旧計画文書は現行仕様と前提が異なるため、現行文書から分離して歴史的資料としてのみ扱います。位置付けは[ドキュメントガイド](docs/README.md#歴史的文書参照のみ)を参照してください。
 
 ## Stack
 
@@ -68,8 +72,9 @@ gridder/
 │   ├── eslint-config/       ESLint共有設定
 │   └── typescript-config/   TypeScript共有設定
 └── docs/
+    ├── README.md            文書の読み順と位置付け
     ├── adr/                 技術判断
-    └── architecture/        技術調査
+    └── architecture/        ターゲット構成と技術調査
 ```
 
-新しいエディタコアは、操作プロトタイプの承認後にポリゴンモデルで作成します。
+新しいエディタコアは `packages/editor-core` に置き、React やレンダラーから独立したポリゴン文書モデルを所有します。

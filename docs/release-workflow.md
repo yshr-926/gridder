@@ -52,11 +52,11 @@
 2. すべてのテストが通ることを確認
 
    ```bash
-   npm run lint
-   npm run type-check
-   npm run test:run
-   npm run test:e2e
-   npm run build
+   pnpm lint
+   pnpm type-check
+   pnpm test
+   pnpm test:e2e
+   pnpm build
    ```
 
 3. 変更内容を確認
