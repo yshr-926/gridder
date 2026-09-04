@@ -6,10 +6,13 @@ import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useViewportStore } from '@/stores/viewportStore';
 import { screenToWorld, useViewportPan } from '@/features/viewport';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
 import { InteractionLayer } from './InteractionLayer';
+import { EditorInteractionLayer } from './EditorInteractionLayer';
+import { SelectionOverlay } from './SelectionOverlay';
 import { debounceResize } from '@/utils/performance';
 
 /**
@@ -61,8 +64,13 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   const { handleZoom } = useCanvasZoom();
   const viewportPan = useViewportPan();
 
+  // 新しいポリゴン文書経路での選択図形（#42）
+  const selectedIds = useSelectionStore((state) => state.selectedIds);
+
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
+
+  const isEditorDocumentMode = editorDocument !== undefined;
 
   /**
    * デバウンスされたリサイズハンドラ
@@ -185,21 +193,43 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
 
         {/* Objects Layer: 文書が渡されたら新しいポリゴンレンダラー、なければ従来のセルレンダラー */}
         <Layer>
-          {editorDocument ? (
+          {isEditorDocumentMode ? (
             <ShapesLayer document={editorDocument} gridSize={gridSize} scale={scale} />
           ) : (
             <ObjectsLayer />
           )}
         </Layer>
 
-        {/* Interaction Layer */}
+        {/* Interaction Layer: 文書経路は新しい interaction controller（#42）、
+            旧経路はセルベースの InteractionLayer（削除は #59） */}
         <Layer>
-          <InteractionLayer
-            panPosition={offset}
-            zoom={scale}
-            isViewportInteracting={viewportPan.isViewportInteracting}
-          />
+          {isEditorDocumentMode ? (
+            <EditorInteractionLayer
+              panPosition={offset}
+              zoom={scale}
+              gridSize={gridSize}
+              isViewportInteracting={viewportPan.isViewportInteracting}
+            />
+          ) : (
+            <InteractionLayer
+              panPosition={offset}
+              zoom={scale}
+              isViewportInteracting={viewportPan.isViewportInteracting}
+            />
+          )}
         </Layer>
+
+        {/* Selection Overlay: 選択枠のみ（ハンドルは #44）。ズームに依らず画面上の線幅を保つ */}
+        {isEditorDocumentMode && (
+          <Layer listening={false}>
+            <SelectionOverlay
+              document={editorDocument}
+              selectedIds={selectedIds}
+              gridSize={gridSize}
+              scale={scale}
+            />
+          </Layer>
+        )}
       </Stage>
     </div>
   );

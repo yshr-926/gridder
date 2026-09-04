@@ -14,6 +14,8 @@ export {
   type ShapeAnnotationProps,
 } from './ShapesLayer';
 export { InteractionLayer } from './InteractionLayer';
+export { EditorInteractionLayer } from './EditorInteractionLayer';
+export { SelectionOverlay } from './SelectionOverlay';
 export { VertexMarker } from './VertexMarker';
 export { PolygonPreview } from './PolygonPreview';
 export { CursorOverlay } from './CursorOverlay';

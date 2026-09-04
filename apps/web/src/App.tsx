@@ -13,9 +13,9 @@ import {
   useKeyboardShortcutsHelp,
   useToastStore,
   useSentryContext,
-  useUndoRedo,
 } from './hooks';
 import { useCanvasStore } from './stores';
+import { useEditorDocument, useEditorHistory } from './features/editor';
 import {
   exportProjectAsJSON,
   exportAsPNG,
@@ -53,7 +53,9 @@ export const App = () => {
   // Sentry コンテキスト同期（エラー追跡用）
   useSentryContext();
 
-  const { handleUndo, handleRedo, canUndo, canRedo } = useUndoRedo();
+  // ポリゴン文書（editor-core）とその Undo/Redo 履歴（#42）
+  const editorDocument = useEditorDocument();
+  const { undo: handleUndo, redo: handleRedo, canUndo, canRedo } = useEditorHistory();
   const toolMode = useCanvasStore(state => state.toolMode);
   const setToolMode = useCanvasStore(state => state.setToolMode);
 
@@ -155,7 +157,7 @@ export const App = () => {
           role="application"
           aria-label="作図キャンバス"
         >
-          <GridCanvas ref={canvasRef} />
+          <GridCanvas ref={canvasRef} editorDocument={editorDocument} />
         </main>
 
         <PropertyPanel />
