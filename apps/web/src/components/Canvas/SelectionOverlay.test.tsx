@@ -89,7 +89,9 @@ describe('SelectionOverlay', () => {
       <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={4} />
     );
     const wideWidth = Number(
-      zoomedIn.getByTestId('konva-rect').getAttribute('data-width')
+      zoomedIn.container
+        .querySelector('[data-name="selection-frame-a"]')
+        ?.getAttribute('data-width')
     );
     zoomedIn.unmount();
 
@@ -97,7 +99,9 @@ describe('SelectionOverlay', () => {
       <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
     );
     const narrowWidth = Number(
-      zoomedOut.getByTestId('konva-rect').getAttribute('data-width')
+      zoomedOut.container
+        .querySelector('[data-name="selection-frame-a"]')
+        ?.getAttribute('data-width')
     );
     zoomedOut.unmount();
 
@@ -109,12 +113,12 @@ describe('SelectionOverlay', () => {
 
   it('test_SelectionOverlay_frameStroke_isZoomInvariant', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
-    const { getByTestId } = render(
+    const { container } = render(
       <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={2.5} />
     );
-    const frame = getByTestId('konva-rect');
-    expect(frame.getAttribute('data-stroke-scale-enabled')).toBe('false');
-    expect(Number(frame.getAttribute('data-stroke-width'))).toBeGreaterThan(0);
+    const frame = container.querySelector('[data-name="selection-frame-a"]');
+    expect(frame?.getAttribute('data-stroke-scale-enabled')).toBe('false');
+    expect(Number(frame?.getAttribute('data-stroke-width'))).toBeGreaterThan(0);
   });
 
   it('test_SelectionOverlay_movePreview_offsetsOnlyTheMovingShapesFrame_issue43', () => {
@@ -149,5 +153,119 @@ describe('SelectionOverlay', () => {
     // 'b' is selected but not part of the move: its frame stays put.
     expect(Number(frameB?.getAttribute('data-x'))).toBeCloseTo(beforeB.x);
     expect(Number(frameB?.getAttribute('data-y'))).toBeCloseTo(beforeB.y);
+  });
+
+  describe('resize handles (issue #44)', () => {
+    it('test_SelectionOverlay_singleSelectedRect_rendersEightHandles', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
+      );
+      const handles = container.querySelectorAll('[data-name^="resize-handle-"]');
+      // 8 visible handles + 8 invisible hit-area squares.
+      expect(handles).toHaveLength(16);
+      for (const kind of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) {
+        expect(container.querySelector(`[data-name="resize-handle-${kind}"]`)).not.toBeNull();
+      }
+    });
+
+    it('test_SelectionOverlay_multipleSelected_rendersNoHandles', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 6, 0, 3, 3)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+      );
+      expect(container.querySelectorAll('[data-name^="resize-handle-"]')).toHaveLength(0);
+    });
+
+    it('test_SelectionOverlay_nonRectangularPolygon_rendersNoHandles', () => {
+      const triangle: EditorShape = {
+        id: 't',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 2, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6', opacity: 0.8, isBorderVisible: true },
+      };
+      const document = documentOf([triangle]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['t']} gridSize={10} scale={1} />
+      );
+      expect(container.querySelectorAll('[data-name^="resize-handle-"]')).toHaveLength(0);
+    });
+
+    it('test_SelectionOverlay_handlePositions_matchTheRectBoundsInPixels', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 6)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
+      );
+      const nw = container.querySelector('[data-name="resize-handle-nw"]');
+      const se = container.querySelector('[data-name="resize-handle-se"]');
+      // Handle rects are centred on the exact grid position (0,0) and
+      // (4,6)*10 = (40,60) respectively — x/y here is the top-left corner of
+      // a small square, so it sits slightly negative / short of that point.
+      expect(Number(nw?.getAttribute('data-x'))).toBeLessThan(0);
+      expect(Number(nw?.getAttribute('data-y'))).toBeLessThan(0);
+      const seX = Number(se?.getAttribute('data-x'));
+      const seY = Number(se?.getAttribute('data-y'));
+      expect(seX).toBeGreaterThan(30);
+      expect(seY).toBeGreaterThan(50);
+    });
+
+    it('test_SelectionOverlay_handleHitArea_isLargerThanTheVisibleHandle', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
+      );
+      const visible = container.querySelector('[data-name="resize-handle-nw"]');
+      const hit = container.querySelector('[data-name="resize-handle-hit-nw"]');
+      const visibleWidth = Number(visible?.getAttribute('data-width'));
+      const hitWidth = Number(hit?.getAttribute('data-width'));
+      expect(hitWidth).toBeGreaterThan(visibleWidth);
+    });
+
+    it('test_SelectionOverlay_resizePreview_handlesFollowLiveBounds', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      const { container } = render(
+        <SelectionOverlay
+          document={document}
+          selectedIds={['a']}
+          gridSize={10}
+          scale={1}
+          resizePreview={{ shapeId: 'a', bounds: { minX: 0, minY: 0, maxX: 9, maxY: 4 } }}
+        />
+      );
+      // The 'e' handle should now sit at grid x=9 (pixel 90), not the
+      // document's x=4 (pixel 40).
+      const east = container.querySelector('[data-name="resize-handle-e"]');
+      const eastX = Number(east?.getAttribute('data-x'));
+      expect(eastX).toBeGreaterThan(80);
+    });
+
+    it('test_SelectionOverlay_handleSize_isZoomInvariant', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      const zoomedIn = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={4} />
+      );
+      const widthAt4x = Number(
+        zoomedIn.container.querySelector('[data-name="resize-handle-nw"]')?.getAttribute('data-width')
+      );
+      zoomedIn.unmount();
+
+      const zoomedOut = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
+      );
+      const widthAt1x = Number(
+        zoomedOut.container.querySelector('[data-name="resize-handle-nw"]')?.getAttribute('data-width')
+      );
+      zoomedOut.unmount();
+
+      // World-space handle size is inversely proportional to scale, so the
+      // on-screen size (width * scale) stays constant.
+      expect(widthAt4x * 4).toBeCloseTo(widthAt1x * 1);
+    });
   });
 });

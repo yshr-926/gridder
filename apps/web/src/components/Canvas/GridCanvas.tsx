@@ -8,11 +8,12 @@ import { screenToWorld, useViewportPan } from '@/features/viewport';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
+import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
 import { InteractionLayer } from './InteractionLayer';
-import { EditorInteractionLayer } from './EditorInteractionLayer';
+import { EditorInteractionLayer, type EditorInteractionCursor } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { DrawingRangeLayer } from './DrawingRangeLayer';
 import { debounceResize } from '@/utils/performance';
@@ -70,8 +71,13 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   const selectedIds = useSelectionStore((state) => state.selectedIds);
   // 図形ドラッグ移動中の Konva ノード限定プレビュー（#43, spec §14）
   const movePreview = useMovePreviewStore((state) => state.preview) ?? undefined;
-  // #43 の移動ジェスチャーが要求する grab/grabbing カーソル
-  const [moveCursor, setMoveCursor] = useState<'grab' | 'grabbing' | null>(null);
+  // 矩形ハンドル伸縮中の Konva ノード限定プレビュー（#44, spec §14）
+  const resizePreview = useResizePreviewStore((state) => state.preview) ?? undefined;
+  // #43 の移動ジェスチャーが要求する grab/grabbing カーソル、
+  // #44 のハンドルドラッグが要求する方向別カーソル
+  const [interactionCursor, setInteractionCursor] = useState<EditorInteractionCursor | null>(
+    null
+  );
 
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
@@ -164,7 +170,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           ? 'grabbing'
           : viewportPan.isSpacePressed
             ? 'grab'
-            : (moveCursor ?? 'default'),
+            : (interactionCursor ?? 'default'),
       }}
       onPointerDownCapture={viewportPan.handlePointerDownCapture}
       onPointerMoveCapture={viewportPan.handlePointerMoveCapture}
@@ -207,6 +213,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               gridSize={gridSize}
               scale={scale}
               movePreview={movePreview}
+              resizePreview={resizePreview}
             />
           ) : (
             <ObjectsLayer />
@@ -222,7 +229,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               zoom={scale}
               gridSize={gridSize}
               isViewportInteracting={viewportPan.isViewportInteracting}
-              onCursorChange={setMoveCursor}
+              onCursorChange={setInteractionCursor}
             />
           ) : (
             <InteractionLayer
@@ -233,7 +240,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           )}
         </Layer>
 
-        {/* Selection Overlay: 選択枠のみ（ハンドルは #44）。ズームに依らず画面上の線幅を保つ */}
+        {/* Selection Overlay: 選択枠と矩形の伸縮ハンドル（#44）。ズームに依らず画面上のサイズを保つ */}
         {isEditorDocumentMode && (
           <Layer listening={false}>
             <SelectionOverlay
@@ -242,6 +249,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               gridSize={gridSize}
               scale={scale}
               movePreview={movePreview}
+              resizePreview={resizePreview}
             />
           </Layer>
         )}

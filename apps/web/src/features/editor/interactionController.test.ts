@@ -10,6 +10,7 @@ import {
   movePreview,
   previewRegion,
   reduceInteraction,
+  resizePreview,
   type InteractionEvent,
   type InteractionState,
   type PointerSample,
@@ -50,12 +51,13 @@ const sample = (
 const run = (
   document: EditorDocument,
   events: readonly InteractionEvent[],
-  selectedIds: readonly string[] = []
+  selectedIds: readonly string[] = [],
+  handleHitRadius = 0
 ): { state: InteractionState; effects: unknown[] } => {
   let state: InteractionState = IDLE_STATE;
   const effects: unknown[] = [];
   for (const event of events) {
-    const result = reduceInteraction(state, event, document, selectedIds);
+    const result = reduceInteraction(state, event, document, selectedIds, handleHitRadius);
     state = result.state;
     if (result.effect !== undefined) {
       effects.push(result.effect);
@@ -299,6 +301,187 @@ describe('reduceInteraction — shape drag move (issue #43)', () => {
     expect(movePreview(IDLE_STATE)).toBeNull();
     expect(
       movePreview({ kind: 'creatingRect', originVertex: { x: 0, y: 0 }, currentVertex: { x: 1, y: 1 } })
+    ).toBeNull();
+  });
+});
+
+describe('reduceInteraction — rectangle handle resize (issue #44)', () => {
+  it('test_pointerDownOnHandle_entersResizing_priorityOverMove', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    // Pointer-down exactly on the 'se' corner (4,4), rect selected.
+    const { state } = run(document, [{ type: 'pointerDown', sample: sample(4, 4) }], ['r'], 0.5);
+    expect(state).toMatchObject({ kind: 'resizing', shapeId: 'r', handle: 'se' });
+  });
+
+  it('test_pointerDownAwayFromHandle_fallsThroughToShapeHitTest_startsMoveInstead', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    // Pointer-down at the shape's centre, far from any handle.
+    const { state } = run(document, [{ type: 'pointerDown', sample: sample(2, 2) }], ['r'], 0.5);
+    expect(state.kind).toBe('pending');
+    expect(state).toMatchObject({ hitShapeId: 'r' });
+  });
+
+  it('test_handlesOnlyExist_whenExactlyOneShapeSelected', () => {
+    const a = rectShape('a', 0, 0, 4, 4);
+    const b = rectShape('b', 10, 10, 4, 4);
+    const document = documentOf([a, b]);
+    const { state } = run(
+      document,
+      [{ type: 'pointerDown', sample: sample(4, 4) }],
+      ['a', 'b'],
+      0.5
+    );
+    // Two shapes selected: no handles, so pointer-down on 'a's corner falls
+    // through to a shape hit-test — 'a' occupies (0,0)-(4,4), so (4,4) is on
+    // its border and counts as a hit, starting a move-pending gesture.
+    expect(state.kind).toBe('pending');
+  });
+
+  it('test_handlesOnlyExist_forAxisAlignedRectangles_notArbitraryPolygons', () => {
+    const triangle: EditorShape = {
+      id: 't',
+      polygon: {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 2, y: 4 },
+        ],
+        innerRings: [],
+      },
+      style: { fill: '#3b82f6', opacity: 0.8, isBorderVisible: true },
+    };
+    const document = documentOf([triangle]);
+    const { state } = run(document, [{ type: 'pointerDown', sample: sample(0, 0) }], ['t'], 0.5);
+    // No handles for a triangle: (0,0) hits its vertex/border, so this is a
+    // plain shape hit — pending, not resizing.
+    expect(state.kind).toBe('pending');
+  });
+
+  it('test_resizing_pointerMove_updatesCurrentBounds_liveWithoutCommitting', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    let state: InteractionState = IDLE_STATE;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(4, 4) },
+      document,
+      ['r'],
+      0.5
+    ).state;
+    expect(state.kind).toBe('resizing');
+
+    const moved = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(7, 9) },
+      document,
+      ['r'],
+      0.5
+    );
+    expect(resizePreview(moved.state)).toEqual({
+      shapeId: 'r',
+      bounds: { minX: 0, minY: 0, maxX: 7, maxY: 9 },
+    });
+    expect(moved.effect).toBeUndefined();
+  });
+
+  it('test_resizing_pointerUp_commitsOneResizeShapeEffect_withFinalBounds', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    const { state, effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(4, 4) }, // grabs 'se'
+        { type: 'pointerMove', sample: sample(6, 6) },
+        { type: 'pointerUp', sample: sample(6, 6) },
+      ],
+      ['r'],
+      0.5
+    );
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([
+      { type: 'resizeShape', shapeId: 'r', bounds: { minX: 0, minY: 0, maxX: 6, maxY: 6 } },
+    ]);
+  });
+
+  it('test_resizing_edgeHandle_resultingBoundsHaveIntegerVertices', () => {
+    const rect = rectShape('r', 0, 0, 5, 5);
+    const document = documentOf([rect]);
+    const { effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(5, 2.5) }, // 'e' edge handle
+        { type: 'pointerMove', sample: sample(9, 2.5) },
+        { type: 'pointerUp', sample: sample(9, 2.5) },
+      ],
+      ['r'],
+      0.5
+    );
+    expect(effects).toHaveLength(1);
+    const effect = effects[0] as { type: string; bounds: { minX: number; minY: number; maxX: number; maxY: number } };
+    expect(effect.type).toBe('resizeShape');
+    for (const value of Object.values(effect.bounds)) {
+      expect(Number.isInteger(value)).toBe(true);
+    }
+  });
+
+  it('test_resizing_dragPastOppositeEdge_flipsAndNormalizes_onCommit', () => {
+    const rect = rectShape('r', 2, 2, 4, 4); // (2,2)-(6,6)
+    const document = documentOf([rect]);
+    const { effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(6, 6) }, // 'se' corner
+        { type: 'pointerMove', sample: sample(-1, -1) }, // past the 'nw' corner (2,2)
+        { type: 'pointerUp', sample: sample(-1, -1) },
+      ],
+      ['r'],
+      0.5
+    );
+    expect(effects).toEqual([
+      { type: 'resizeShape', shapeId: 'r', bounds: { minX: -1, minY: -1, maxX: 2, maxY: 2 } },
+    ]);
+  });
+
+  it('test_resizing_noNetChange_commitsNothing_onPointerUp', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    const { state, effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(4, 4) },
+        { type: 'pointerUp', sample: sample(4, 4) },
+      ],
+      ['r'],
+      0.5
+    );
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_resizing_pointerCancel_returnsToIdle_withNoEffect_andClearsPreview', () => {
+    const rect = rectShape('r', 0, 0, 4, 4);
+    const document = documentOf([rect]);
+    const { state, effects } = run(
+      document,
+      [
+        { type: 'pointerDown', sample: sample(4, 4) },
+        { type: 'pointerMove', sample: sample(8, 8) },
+        { type: 'pointerCancel' },
+      ],
+      ['r'],
+      0.5
+    );
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+    expect(resizePreview(state)).toBeNull();
+  });
+
+  it('test_resizePreview_isNull_outsideResizingState', () => {
+    expect(resizePreview(IDLE_STATE)).toBeNull();
+    expect(
+      resizePreview({ kind: 'moving', originVertex: { x: 0, y: 0 }, shapeIds: ['a'], delta: { x: 1, y: 1 } })
     ).toBeNull();
   });
 });

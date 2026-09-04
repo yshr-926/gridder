@@ -144,3 +144,169 @@ export const shapesWithinRegion = (
   }
   return ids;
 };
+
+/**
+ * Edge and corner resize handles (issue #44, spec §6.2). Rectangles only —
+ * a non-rectangular polygon has no handles here (vertex editing is a
+ * separate Issue).
+ */
+export type ResizeHandleKind = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+/**
+ * Every handle kind, in a stable order used for rendering and hit-testing.
+ * Corners come first so {@link resizeHandleAtPoint} never mistakes a click
+ * near a corner for the adjacent edge handle.
+ */
+export const RESIZE_HANDLE_KINDS: readonly ResizeHandleKind[] = [
+  'nw',
+  'ne',
+  'se',
+  'sw',
+  'n',
+  'e',
+  's',
+  'w',
+];
+
+/**
+ * True when `polygon` is exactly a 4-vertex, axis-aligned rectangle with no
+ * holes — the only shape issue #44 puts resize handles on. A rectangle
+ * created by `#42`'s blank-drag, or one still unedited by anything that
+ * skews it, satisfies this; a general polygon (even one that happens to look
+ * rectangular after a boolean op) is out of scope here on purpose — the
+ * vertex ordering isn't guaranteed axis-aligned corners in sequence, so this
+ * checks the geometry directly rather than trusting shape provenance.
+ */
+export const isAxisAlignedRect = (polygon: GridPolygon): boolean => {
+  if (polygon.innerRings.length > 0 || polygon.outerRing.length !== 4) {
+    return false;
+  }
+  const bounds = polygonBounds(polygon);
+  if (bounds.minX >= bounds.maxX || bounds.minY >= bounds.maxY) {
+    return false;
+  }
+  const corners = new Set(polygon.outerRing.map((p) => `${p.x},${p.y}`));
+  const expected = [
+    `${bounds.minX},${bounds.minY}`,
+    `${bounds.maxX},${bounds.minY}`,
+    `${bounds.maxX},${bounds.maxY}`,
+    `${bounds.minX},${bounds.maxY}`,
+  ];
+  return expected.every((key) => corners.has(key));
+};
+
+/** Grid-unit position of one resize handle on `bounds`. */
+export const resizeHandlePoint = (bounds: GridRect, kind: ResizeHandleKind): GridPoint => {
+  const midX = (bounds.minX + bounds.maxX) / 2;
+  const midY = (bounds.minY + bounds.maxY) / 2;
+  const x = kind.includes('w') ? bounds.minX : kind.includes('e') ? bounds.maxX : midX;
+  const y = kind.includes('n') ? bounds.minY : kind.includes('s') ? bounds.maxY : midY;
+  return { x, y };
+};
+
+/**
+ * The resize handle at `point` (grid units) for `bounds`, within
+ * `hitRadius` grid units of the handle's exact position, or `null`. Corners
+ * are checked before edges so a click near a corner never falls through to
+ * the adjacent edge handle.
+ */
+export const resizeHandleAtPoint = (
+  bounds: GridRect,
+  point: GridPoint,
+  hitRadius: number
+): ResizeHandleKind | null => {
+  for (const kind of RESIZE_HANDLE_KINDS) {
+    const handle = resizeHandlePoint(bounds, kind);
+    if (Math.hypot(point.x - handle.x, point.y - handle.y) <= hitRadius) {
+      return kind;
+    }
+  }
+  return null;
+};
+
+/**
+ * Cursor family for a resize handle (spec §6.2, issue #44): opposite corners
+ * / edges share a cursor because dragging either one resizes along the same
+ * axis. Matches CSS `*-resize` cursor names minus the suffix.
+ */
+export type ResizeCursorAxis = 'ew' | 'ns' | 'nwse' | 'nesw';
+
+const RESIZE_CURSOR_BY_HANDLE: Readonly<Record<ResizeHandleKind, ResizeCursorAxis>> = {
+  e: 'ew',
+  w: 'ew',
+  n: 'ns',
+  s: 'ns',
+  nw: 'nwse',
+  se: 'nwse',
+  ne: 'nesw',
+  sw: 'nesw',
+};
+
+/** The cursor axis to show while hovering or dragging `kind`. */
+export const resizeCursorForHandle = (kind: ResizeHandleKind): ResizeCursorAxis =>
+  RESIZE_CURSOR_BY_HANDLE[kind];
+
+/** Smallest rectangle span allowed by a resize (spec §6.2 "最小1セル"). */
+const MIN_RECT_SIZE_CELLS = 1;
+
+/**
+ * Resize one axis: `fixed` is the edge opposite the dragged handle (stays
+ * put), `dragged` is where the handle's pointer coordinate landed. Sorting
+ * the pair back into `(min, max)` is exactly the flip normalisation issue #44
+ * asks for — if `dragged` crosses past `fixed`, the two swap roles instead of
+ * producing an inverted (`min > max`) rect. The minimum span is enforced by
+ * pushing `dragged` away from `fixed` first, so a flip can never itself
+ * collapse below {@link MIN_RECT_SIZE_CELLS}.
+ */
+const resizeAxis = (
+  fixed: number,
+  dragged: number
+): { readonly min: number; readonly max: number } => {
+  const clamped =
+    dragged >= fixed
+      ? Math.max(dragged, fixed + MIN_RECT_SIZE_CELLS)
+      : Math.min(dragged, fixed - MIN_RECT_SIZE_CELLS);
+  return clamped >= fixed
+    ? { min: fixed, max: clamped }
+    : { min: clamped, max: fixed };
+};
+
+/**
+ * The new rectangle bounds after dragging `kind` so its handle sits at
+ * `pointerVertex` (already snapped to a grid vertex by the caller). Each axis
+ * the handle touches is resized independently via {@link resizeAxis}; an axis
+ * the handle doesn't touch (e.g. the Y axis for the `e` handle) is left
+ * unchanged. Dragging past the opposite edge flips the rectangle rather than
+ * clamping at the minimum — "反転は正規化して扱う" (issue #44) — so the result
+ * is always normalised (`min <= max`) with at least
+ * {@link MIN_RECT_SIZE_CELLS} of span on every axis.
+ */
+export const resizeRectBounds = (
+  bounds: GridRect,
+  kind: ResizeHandleKind,
+  pointerVertex: GridPoint
+): GridRect => {
+  let { minX, minY, maxX, maxY } = bounds;
+
+  if (kind.includes('w')) {
+    ({ min: minX, max: maxX } = resizeAxis(maxX, pointerVertex.x));
+  } else if (kind.includes('e')) {
+    ({ min: minX, max: maxX } = resizeAxis(minX, pointerVertex.x));
+  }
+
+  if (kind.includes('n')) {
+    ({ min: minY, max: maxY } = resizeAxis(maxY, pointerVertex.y));
+  } else if (kind.includes('s')) {
+    ({ min: minY, max: maxY } = resizeAxis(minY, pointerVertex.y));
+  }
+
+  return { minX, minY, maxX, maxY };
+};
+
+/** The 4-vertex outer ring (TL, TR, BR, BL) for axis-aligned `bounds`. */
+export const ringFromRect = (bounds: GridRect): GridRing => [
+  { x: bounds.minX, y: bounds.minY },
+  { x: bounds.maxX, y: bounds.minY },
+  { x: bounds.maxX, y: bounds.maxY },
+  { x: bounds.minX, y: bounds.maxY },
+];

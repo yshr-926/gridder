@@ -1,5 +1,9 @@
 export { ShapesLayer } from './ShapesLayer';
-export type { ShapesLayerProps, ShapesLayerMovePreview } from './ShapesLayer';
+export type {
+  ShapesLayerProps,
+  ShapesLayerMovePreview,
+  ShapesLayerResizePreview,
+} from './ShapesLayer';
 export { ShapePolygon } from './ShapePolygon';
 export type { ShapePolygonProps } from './ShapePolygon';
 export { ShapeAnnotation } from './ShapeAnnotation';

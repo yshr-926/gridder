@@ -5,6 +5,7 @@ import { EditorInteractionLayer } from './EditorInteractionLayer';
 import { editorSession } from '@/features/editor';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
+import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 
 /**
  * Mock react-konva so the transparent surface is a real DOM node whose pointer
@@ -105,6 +106,7 @@ describe('EditorInteractionLayer', () => {
     drainSession();
     useSelectionStore.setState({ selectedIds: [], primaryId: null });
     useMovePreviewStore.setState({ preview: null });
+    useResizePreviewStore.setState({ preview: null });
   });
 
   it('test_EditorInteractionLayer_blankDrag_createsRectViaOneCommand_andSelectsIt', () => {
@@ -326,6 +328,248 @@ describe('EditorInteractionLayer', () => {
       expect(editorSession.getDocument().shapes['multi-b'].polygon.outerRing).toEqual(
         shapeB.polygon.outerRing
       );
+    });
+  });
+
+  describe('rectangle handle resize (issue #44)', () => {
+    it('test_EditorInteractionLayer_dragSeHandle_resizesByIntegerDelta_andCommitsOneUndoStep', () => {
+      const shape = {
+        id: 'resize-a',
+        polygon: {
+          outerRing: [
+            { x: 1, y: 1 },
+            { x: 3, y: 1 },
+            { x: 3, y: 3 },
+            { x: 1, y: 3 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+      useSelectionStore.setState({ selectedIds: ['resize-a'], primaryId: 'resize-a' });
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      // 'se' handle at grid (3,3) => px (60,60); drag to grid (6,7) => px (120,140).
+      fireEvent.pointerDown(node, { clientX: 60, clientY: 60 });
+      fireEvent.pointerMove(node, { clientX: 120, clientY: 140 });
+
+      // Mid-drag: preview only, document untouched.
+      expect(useResizePreviewStore.getState().preview).toEqual({
+        shapeId: 'resize-a',
+        bounds: { minX: 1, minY: 1, maxX: 6, maxY: 7 },
+      });
+      expect(editorSession.getDocument().shapes['resize-a'].polygon.outerRing).toEqual(
+        shape.polygon.outerRing
+      );
+
+      fireEvent.pointerUp(node, { clientX: 120, clientY: 140 });
+
+      const resized = editorSession.getDocument().shapes['resize-a'].polygon.outerRing;
+      expect(resized).toEqual([
+        { x: 1, y: 1 },
+        { x: 6, y: 1 },
+        { x: 6, y: 7 },
+        { x: 1, y: 7 },
+      ]);
+      for (const point of resized) {
+        expect(Number.isInteger(point.x)).toBe(true);
+        expect(Number.isInteger(point.y)).toBe(true);
+      }
+      expect(useResizePreviewStore.getState().preview).toBeNull();
+
+      // One undo restores the pre-resize geometry, distinct from the create.
+      editorSession.undo();
+      expect(editorSession.getDocument().shapes['resize-a'].polygon.outerRing).toEqual(
+        shape.polygon.outerRing
+      );
+      expect(editorSession.getDocument().shapes['resize-a']).toBeDefined();
+
+      editorSession.undo();
+      expect(editorSession.getDocument().shapes['resize-a']).toBeUndefined();
+    });
+
+    it('test_EditorInteractionLayer_dragEHandle_pastOppositeEdge_flipsAndNormalizes', () => {
+      const shape = {
+        id: 'resize-flip',
+        polygon: {
+          outerRing: [
+            { x: 2, y: 2 },
+            { x: 6, y: 2 },
+            { x: 6, y: 6 },
+            { x: 2, y: 6 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+      useSelectionStore.setState({ selectedIds: ['resize-flip'], primaryId: 'resize-flip' });
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      // 'e' handle at grid (6,4) => px (120,80); drag past the west edge (2)
+      // to grid (0,4) => px (0,80).
+      fireEvent.pointerDown(node, { clientX: 120, clientY: 80 });
+      fireEvent.pointerMove(node, { clientX: 0, clientY: 80 });
+      fireEvent.pointerUp(node, { clientX: 0, clientY: 80 });
+
+      const resized = editorSession.getDocument().shapes['resize-flip'].polygon.outerRing;
+      expect(resized).toEqual([
+        { x: 0, y: 2 },
+        { x: 2, y: 2 },
+        { x: 2, y: 6 },
+        { x: 0, y: 6 },
+      ]);
+    });
+
+    it('test_EditorInteractionLayer_clickOnHandle_withNoDrag_commitsNothing', () => {
+      const shape = {
+        id: 'resize-click',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 4, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+      useSelectionStore.setState({ selectedIds: ['resize-click'], primaryId: 'resize-click' });
+      const undoDepthBefore = editorSession.canUndo;
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 80 }); // 'se' handle
+      fireEvent.pointerUp(node, { clientX: 80, clientY: 80 });
+
+      expect(editorSession.canUndo).toBe(undoDepthBefore);
+      expect(editorSession.getDocument().shapes['resize-click'].polygon.outerRing).toEqual(
+        shape.polygon.outerRing
+      );
+    });
+
+    it('test_EditorInteractionLayer_handleDrag_takesPriorityOverMove', () => {
+      const shape = {
+        id: 'resize-priority',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 4, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+      useSelectionStore.setState({ selectedIds: ['resize-priority'], primaryId: 'resize-priority' });
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      // Pointer-down exactly on the 'se' corner handle, inside the shape body.
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 80 });
+      fireEvent.pointerMove(node, { clientX: 120, clientY: 120 });
+
+      // A resize preview exists, never a move preview.
+      expect(useResizePreviewStore.getState().preview).not.toBeNull();
+      expect(useMovePreviewStore.getState().preview).toBeNull();
+
+      fireEvent.pointerUp(node, { clientX: 120, clientY: 120 });
+    });
+
+    it('test_EditorInteractionLayer_multipleSelected_handlesDoNotIntercept_dragMovesInstead', () => {
+      const shapeA = {
+        id: 'multi-resize-a',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 4, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      const shapeB = {
+        id: 'multi-resize-b',
+        polygon: {
+          outerRing: [
+            { x: 10, y: 10 },
+            { x: 12, y: 10 },
+            { x: 12, y: 12 },
+            { x: 10, y: 12 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#ef4444' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shapeA));
+      editorSession.dispatch(new CreateShapeCommand(shapeB));
+      useSelectionStore.setState({
+        selectedIds: ['multi-resize-a', 'multi-resize-b'],
+        primaryId: 'multi-resize-b',
+      });
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      // Pointer-down on 'multi-resize-a's 'se' corner (4,4) => px (80,80):
+      // with 2 shapes selected, no handles exist, so this starts a move.
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 80 });
+      fireEvent.pointerMove(node, { clientX: 100, clientY: 80 });
+      fireEvent.pointerUp(node, { clientX: 100, clientY: 80 });
+
+      expect(useResizePreviewStore.getState().preview).toBeNull();
+      expect(editorSession.getDocument().shapes['multi-resize-a'].polygon.outerRing[0]).toEqual({
+        x: 1,
+        y: 0,
+      });
+    });
+
+    it('test_EditorInteractionLayer_reportsResizeCursor_forHoverAndDrag', () => {
+      const shape = {
+        id: 'resize-cursor',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 4, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+      useSelectionStore.setState({ selectedIds: ['resize-cursor'], primaryId: 'resize-cursor' });
+
+      const onCursorChange = vi.fn();
+      const { container } = render(
+        <EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />
+      );
+      const node = surface(container);
+
+      // Hover over the 'e' handle (4,2) => px (80,40) with no button down.
+      fireEvent.pointerMove(node, { clientX: 80, clientY: 40 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('ew-resize');
+
+      // Grab the 'nw' corner (0,0) and drag: 'nwse-resize' while dragging.
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(node, { clientX: -20, clientY: -20 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('nwse-resize');
+
+      fireEvent.pointerUp(node, { clientX: -20, clientY: -20 });
     });
   });
 });

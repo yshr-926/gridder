@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Group } from 'react-konva';
 import type { EditorDocument, EditorShape, GridPoint } from '@gridder/editor-core';
+import { ringFromRect, type GridRect } from '@/features/editor';
 import { ShapePolygon } from './ShapePolygon';
 import { ShapeAnnotation } from './ShapeAnnotation';
 import { DEFAULT_SHAPES_LAYER_THEME, type ShapesLayerTheme } from './shapesLayerTheme';
@@ -10,6 +11,13 @@ export interface ShapesLayerMovePreview {
   readonly shapeIds: readonly string[];
   /** Live offset in whole grid units, applied to each listed shape's node. */
   readonly delta: GridPoint;
+}
+
+/** A rectangle resize in progress (issue #44), or `undefined` when idle. */
+export interface ShapesLayerResizePreview {
+  readonly shapeId: string;
+  /** Live flip-normalised bounds, replacing the shape's document geometry. */
+  readonly bounds: GridRect;
 }
 
 /**
@@ -30,6 +38,12 @@ export interface ShapesLayerProps {
    * pixels — the document is not touched until pointer-up commits a Command.
    */
   movePreview?: ShapesLayerMovePreview;
+  /**
+   * Live resize-gesture bounds (issue #44, spec §14). When set, the listed
+   * shape's Konva node is redrawn from these bounds instead of its document
+   * polygon — the document is not touched until pointer-up commits a Command.
+   */
+  resizePreview?: ShapesLayerResizePreview;
 }
 
 /**
@@ -61,6 +75,7 @@ export const ShapesLayer = ({
   scale,
   theme = DEFAULT_SHAPES_LAYER_THEME,
   movePreview,
+  resizePreview,
 }: ShapesLayerProps) => {
   const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
 
@@ -71,13 +86,28 @@ export const ShapesLayer = ({
     return { x: movePreview.delta.x * gridSize, y: movePreview.delta.y * gridSize };
   };
 
+  /**
+   * The shape to actually draw: unchanged, unless it is the one shape being
+   * resized (issue #44), in which case its polygon is swapped for the live
+   * preview bounds — a Konva-only substitution that never touches `document`.
+   */
+  const shapeToRender = (shape: EditorShape): EditorShape => {
+    if (resizePreview === undefined || resizePreview.shapeId !== shape.id) {
+      return shape;
+    }
+    return {
+      ...shape,
+      polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
+    };
+  };
+
   return (
     <Group name="shapes-layer">
       {orderedShapes.map((shape) => {
         const offset = offsetFor(shape.id);
         return (
           <Group key={shape.id} name={`shape-move-group-${shape.id}`} x={offset.x} y={offset.y}>
-            <ShapePolygon shape={shape} gridSize={gridSize} theme={theme} />
+            <ShapePolygon shape={shapeToRender(shape)} gridSize={gridSize} theme={theme} />
           </Group>
         );
       })}
@@ -90,7 +120,12 @@ export const ShapesLayer = ({
             x={offset.x}
             y={offset.y}
           >
-            <ShapeAnnotation shape={shape} gridSize={gridSize} scale={scale} theme={theme} />
+            <ShapeAnnotation
+              shape={shapeToRender(shape)}
+              gridSize={gridSize}
+              scale={scale}
+              theme={theme}
+            />
           </Group>
         );
       })}

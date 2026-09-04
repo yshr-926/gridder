@@ -153,4 +153,76 @@ describe('applyInteractionEffect', () => {
       expect(session.getDocument().zOrder).toEqual([]);
     });
   });
+
+  describe('resizeShape (issue #44)', () => {
+    it('test_resizeShape_replacesOuterRing_withTheGivenBounds_inOneCommand', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('r', 0, 0, 4, 4)));
+
+      applyInteractionEffect(session, {
+        type: 'resizeShape',
+        shapeId: 'r',
+        bounds: { minX: 0, minY: 0, maxX: 9, maxY: 6 },
+      });
+
+      const shape = session.getDocument().shapes['r'];
+      expect(shape.polygon.outerRing).toEqual([
+        { x: 0, y: 0 },
+        { x: 9, y: 0 },
+        { x: 9, y: 6 },
+        { x: 0, y: 6 },
+      ]);
+      // Every resulting vertex stays an integer grid coordinate.
+      for (const point of shape.polygon.outerRing) {
+        expect(Number.isInteger(point.x)).toBe(true);
+        expect(Number.isInteger(point.y)).toBe(true);
+      }
+    });
+
+    it('test_resizeShape_isUndoable_restoresThePreResizePolygon', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('r', 1, 1, 3, 3)));
+      const before = session.getDocument().shapes['r'].polygon;
+
+      applyInteractionEffect(session, {
+        type: 'resizeShape',
+        shapeId: 'r',
+        bounds: { minX: 1, minY: 1, maxX: 8, maxY: 8 },
+      });
+      expect(session.getDocument().shapes['r'].polygon).not.toEqual(before);
+
+      session.undo();
+      expect(session.getDocument().shapes['r'].polygon).toEqual(before);
+    });
+
+    it('test_resizeShape_redoable_afterUndo', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('r', 0, 0, 4, 4)));
+
+      applyInteractionEffect(session, {
+        type: 'resizeShape',
+        shapeId: 'r',
+        bounds: { minX: 0, minY: 0, maxX: 7, maxY: 7 },
+      });
+      const resized = session.getDocument().shapes['r'].polygon;
+
+      session.undo();
+      session.redo();
+      expect(session.getDocument().shapes['r'].polygon).toEqual(resized);
+    });
+
+    it('test_resizeShape_unknownShapeId_isNoOp', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('r', 0, 0, 4, 4)));
+      const before = session.getDocument();
+
+      applyInteractionEffect(session, {
+        type: 'resizeShape',
+        shapeId: 'missing',
+        bounds: { minX: 0, minY: 0, maxX: 2, maxY: 2 },
+      });
+
+      expect(session.getDocument()).toBe(before);
+    });
+  });
 });

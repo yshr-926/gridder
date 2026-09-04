@@ -19,3 +19,4 @@ export {
   useSelection,
 } from './selectors';
 export { useMovePreviewStore } from './movePreviewStore';
+export { useResizePreviewStore } from './resizePreviewStore';

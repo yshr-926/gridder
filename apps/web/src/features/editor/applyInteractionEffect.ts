@@ -12,6 +12,7 @@ import { useSelectionStore } from '@/stores/selectionStore';
 import { createRectShape } from './document';
 import type { EditorSession } from './editorSession';
 import type { InteractionEffect } from './interactionController';
+import { ringFromRect } from './hitTest';
 
 /** Translate every vertex of a ring by a whole-grid-unit offset. */
 const translateRing = (ring: GridRing, delta: GridPoint): GridRing =>
@@ -32,7 +33,10 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
  * `moveShapes` (issue #43) applies the same integer grid delta to every
  * dragged shape's vertices, committed as one {@link ReplaceShapeVerticesCommand}
  * or, for a multi-shape drag, one {@link CompositeCommand} wrapping one per
- * shape — a single undo step for the whole gesture.
+ * shape — a single undo step for the whole gesture. `resizeShape`
+ * (issue #44) replaces the rectangle's four vertices with the ones for its
+ * new (already flip-normalised, min-1-cell) bounds, in one
+ * {@link ReplaceShapeVerticesCommand}.
  */
 export const applyInteractionEffect = (
   session: EditorSession,
@@ -91,6 +95,20 @@ export const applyInteractionEffect = (
       const command =
         commands.length === 1 ? commands[0] : new CompositeCommand(commands, 'Move shapes');
       session.dispatch(command);
+      return;
+    }
+    case 'resizeShape': {
+      const document = session.getDocument();
+      const shape = document.shapes[effect.shapeId];
+      if (shape === undefined) {
+        return;
+      }
+      session.dispatch(
+        new ReplaceShapeVerticesCommand(effect.shapeId, {
+          outerRing: ringFromRect(effect.bounds),
+          innerRings: shape.polygon.innerRings,
+        })
+      );
       return;
     }
   }

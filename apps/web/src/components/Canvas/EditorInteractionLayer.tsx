@@ -4,8 +4,18 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Position } from '@/types';
 import {
   previewRegion,
+  resizeCursorForHandle,
   useEditorInteraction,
 } from '@/features/editor';
+
+/** Cursor values this layer can report (issues #43, #44). */
+export type EditorInteractionCursor =
+  | 'grab'
+  | 'grabbing'
+  | 'ew-resize'
+  | 'ns-resize'
+  | 'nwse-resize'
+  | 'nesw-resize';
 
 /**
  * EditorInteractionLayer Props
@@ -21,11 +31,19 @@ interface EditorInteractionLayerProps {
   isViewportInteracting: boolean;
   /**
    * Reports the cursor the container should show for the move gesture
-   * (issue #43): `grab` / `grabbing`, or `null` when this layer has no
-   * cursor opinion (the caller falls back to its own default).
+   * (issue #43) or resize handle (issue #44), or `null` when this layer has
+   * no cursor opinion (the caller falls back to its own default).
    */
-  onCursorChange?: (cursor: 'grab' | 'grabbing' | null) => void;
+  onCursorChange?: (cursor: EditorInteractionCursor | null) => void;
 }
+
+/** `ResizeCursorAxis` -> CSS `*-resize` cursor name. */
+const RESIZE_CURSOR: Record<'ew' | 'ns' | 'nwse' | 'nesw', EditorInteractionCursor> = {
+  ew: 'ew-resize',
+  ns: 'ns-resize',
+  nwse: 'nwse-resize',
+  nesw: 'nesw-resize',
+};
 
 /** Blank-drag rectangle preview fill / stroke (accent, low alpha). */
 const RECT_PREVIEW_FILL = 'rgba(37, 99, 235, 0.12)';
@@ -35,14 +53,17 @@ const MARQUEE_PREVIEW_FILL = 'rgba(100, 116, 139, 0.10)';
 const MARQUEE_PREVIEW_STROKE = '#475569';
 
 /**
- * The pointer-arbitration layer for the polygon editor (issues #42, #43). A
- * single transparent Konva rect captures pointer events across the whole
- * world and feeds them to {@link useEditorInteraction}; the drag preview
- * (blank-drag rectangle or Shift-drag marquee) is drawn here as Konva-only
- * nodes, so React document state is never touched mid-gesture. A shape-drag
- * move has no preview node of its own here — `GridCanvas` reads the same
- * move-gesture state from `useMovePreviewStore` and offsets the moving
- * shapes' actual Konva nodes in `ShapesLayer` / `SelectionOverlay` instead.
+ * The pointer-arbitration layer for the polygon editor (issues #42, #43,
+ * #44). A single transparent Konva rect captures pointer events across the
+ * whole world and feeds them to {@link useEditorInteraction}; the drag
+ * preview (blank-drag rectangle or Shift-drag marquee) is drawn here as
+ * Konva-only nodes, so React document state is never touched mid-gesture. A
+ * shape-drag move or handle-drag resize has no preview node of its own here
+ * — `GridCanvas` reads the same gesture state from `useMovePreviewStore` /
+ * `useResizePreviewStore` and updates the affected shape's actual Konva
+ * node in `ShapesLayer` / `SelectionOverlay` instead. The resize handles
+ * themselves are drawn by `SelectionOverlay`, not here — this layer only
+ * decides, from the same pointer stream, whether a gesture grabs one.
  * Replaces the cell-era `InteractionLayer` on `GridCanvas`'s document path.
  */
 export const EditorInteractionLayer = ({
@@ -52,7 +73,7 @@ export const EditorInteractionLayer = ({
   isViewportInteracting,
   onCursorChange,
 }: EditorInteractionLayerProps) => {
-  const { state, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } =
+  const { state, hoveredHandle, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } =
     useEditorInteraction({
       scale: zoom,
       offset: panPosition,
@@ -99,17 +120,24 @@ export const EditorInteractionLayer = ({
     [pointerFromEvent, onPointerUp]
   );
 
-  // Cursor feedback for the move gesture (spec §6.1, issue #43): `grabbing`
-  // once the drag is moving a shape, `grab` while the pointer is down on a
-  // shape but hasn't crossed the drag threshold yet. Reported to the parent
-  // so it can be applied to the Stage container, matching how `#40`'s pan
-  // cursor is set on `GridCanvas`.
-  const cursor: 'grab' | 'grabbing' | null =
-    state.kind === 'moving'
-      ? 'grabbing'
-      : state.kind === 'pending' && state.hitShapeId !== null
-        ? 'grab'
-        : null;
+  // Cursor feedback for the move gesture (spec §6.1, issue #43) and the
+  // resize gesture (spec §6.2, issue #44): `grabbing` once the drag is
+  // moving a shape, `grab` while the pointer is down on a shape but hasn't
+  // crossed the drag threshold yet, and the matching `*-resize` axis cursor
+  // while a resize handle is grabbed or merely hovered (so "移動と伸縮の境界を
+  // カーソルだけで理解できる" — ui-principles §8 — before any drag starts).
+  // Reported to the parent so it can be applied to the Stage container,
+  // matching how `#40`'s pan cursor is set on `GridCanvas`.
+  const cursor: EditorInteractionCursor | null =
+    state.kind === 'resizing'
+      ? RESIZE_CURSOR[resizeCursorForHandle(state.handle)]
+      : state.kind === 'moving'
+        ? 'grabbing'
+        : state.kind === 'pending' && state.hitShapeId !== null
+          ? 'grab'
+          : hoveredHandle !== null
+            ? RESIZE_CURSOR[resizeCursorForHandle(hoveredHandle)]
+            : null;
 
   useEffect(() => {
     onCursorChange?.(cursor);

@@ -1,25 +1,30 @@
 import type { EditorDocument, GridPoint } from '@gridder/editor-core';
 import {
+  isAxisAlignedRect,
+  polygonBounds,
   rectFromPoints,
+  resizeHandleAtPoint,
+  resizeRectBounds,
   shapeAtPoint,
   shapesWithinRegion,
   type GridRect,
+  type ResizeHandleKind,
 } from './hitTest';
 
 /**
- * Pointer arbitration for the polygon editor's normal state (spec §6.1,
- * issues #42 and #43). One controller decides, from a stream of pointer
+ * Pointer arbitration for the polygon editor's normal state (spec §6.1, §6.2,
+ * issues #42, #43, #44). One controller decides, from a stream of pointer
  * events, whether the gesture is a click-select, a Shift-toggle, a blank-drag
- * rectangle, a Shift-drag marquee, or a shape-drag move — without adding tool
- * modes.
+ * rectangle, a Shift-drag marquee, a shape-drag move, or a handle-drag resize
+ * — without adding tool modes.
  *
  * It is a pure reducer: {@link reduceInteraction} takes the current
- * {@link InteractionState}, one {@link InteractionEvent}, the document, and the
- * live selection, and returns the next state plus at most one
- * {@link InteractionEffect} for the caller to carry out (mutate the document
- * through a Command, change the selection). Panning is not modelled here:
- * while `#40`'s `useViewportPan` reports a pan in progress the caller feeds no
- * events to this controller.
+ * {@link InteractionState}, one {@link InteractionEvent}, the document, the
+ * live selection, and a resize-handle hit radius, and returns the next state
+ * plus at most one {@link InteractionEffect} for the caller to carry out
+ * (mutate the document through a Command, change the selection). Panning is
+ * not modelled here: while `#40`'s `useViewportPan` reports a pan in progress
+ * the caller feeds no events to this controller.
  */
 
 /** A pointer sample in both grid-vertex and grid-unit-float space. */
@@ -62,6 +67,15 @@ export type InteractionState =
       readonly shapeIds: readonly string[];
       /** Live offset in whole grid units, applied to every shape's vertices. */
       readonly delta: GridPoint;
+    }
+  | {
+      readonly kind: 'resizing';
+      readonly shapeId: string;
+      readonly handle: ResizeHandleKind;
+      /** The rectangle's bounds at gesture start — the fixed reference edges. */
+      readonly originBounds: GridRect;
+      /** Live resized bounds, recomputed from the pointer each move. */
+      readonly currentBounds: GridRect;
     };
 
 export type InteractionEvent =
@@ -85,6 +99,12 @@ export type InteractionEffect =
       readonly shapeIds: readonly string[];
       /** Whole-grid-unit offset applied to every vertex of every shape. */
       readonly delta: GridPoint;
+    }
+  | {
+      readonly type: 'resizeShape';
+      readonly shapeId: string;
+      /** Final rectangle bounds (already flip-normalised, min 1 cell). */
+      readonly bounds: GridRect;
     };
 
 export interface InteractionResult {
@@ -101,6 +121,10 @@ const samePoint = (a: GridPoint, b: GridPoint): boolean => a.x === b.x && a.y ==
 
 const movedEnough = (from: GridPoint, to: GridPoint): boolean =>
   Math.hypot(to.x - from.x, to.y - from.y) >= DRAG_THRESHOLD_CELLS;
+
+/** Structural equality for two {@link GridRect} bounds (issue #44 resize). */
+const boundsEqual = (a: GridRect, b: GridRect): boolean =>
+  a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
 
 /** Whole-grid-unit offset from `origin` to `current` (issue #43 move delta). */
 const gridDelta = (origin: GridPoint, current: GridPoint): GridPoint => ({
@@ -132,7 +156,15 @@ export const reduceInteraction = (
    * unselected shape moves only that shape (after selecting it); a drag that
    * starts on an already-selected shape moves the whole selection together.
    */
-  selectedIds: readonly string[] = []
+  selectedIds: readonly string[] = [],
+  /**
+   * Resize-handle hit radius, in grid units (issue #44). The caller derives
+   * this from a fixed on-screen pixel radius and the current zoom, so the
+   * handle stays equally easy to grab at any scale; a handle hit-test takes
+   * priority over the shape-body hit-test below it, so grabbing a handle
+   * never starts a move instead.
+   */
+  handleHitRadius = 0
 ): InteractionResult => {
   if (event.type === 'pointerCancel') {
     return { state: IDLE_STATE };
@@ -144,6 +176,29 @@ export const reduceInteraction = (
         return { state };
       }
       const { sample } = event;
+
+      // A resize handle only exists for a single selected axis-aligned
+      // rectangle (issue #44) and always wins over the shape body underneath
+      // it — grabbing a handle resizes, it never starts a move.
+      if (selectedIds.length === 1) {
+        const selectedShape = document.shapes[selectedIds[0]];
+        if (selectedShape !== undefined && isAxisAlignedRect(selectedShape.polygon)) {
+          const bounds = polygonBounds(selectedShape.polygon);
+          const handle = resizeHandleAtPoint(bounds, sample.precise, handleHitRadius);
+          if (handle !== null) {
+            return {
+              state: {
+                kind: 'resizing',
+                shapeId: selectedShape.id,
+                handle,
+                originBounds: bounds,
+                currentBounds: bounds,
+              },
+            };
+          }
+        }
+      }
+
       const hit = shapeAtPoint(document, sample.precise);
       return {
         state: {
@@ -284,6 +339,32 @@ export const reduceInteraction = (
       }
       return { state };
     }
+
+    case 'resizing': {
+      if (event.type === 'pointerMove') {
+        const currentBounds = resizeRectBounds(
+          state.originBounds,
+          state.handle,
+          event.sample.vertex
+        );
+        if (boundsEqual(currentBounds, state.currentBounds)) {
+          return { state };
+        }
+        return { state: { ...state, currentBounds } };
+      }
+      if (event.type === 'pointerUp') {
+        const bounds = resizeRectBounds(state.originBounds, state.handle, event.sample.vertex);
+        // No net change (a handle grab with no drag): commit nothing.
+        if (boundsEqual(bounds, state.originBounds)) {
+          return { state: IDLE_STATE };
+        }
+        return {
+          state: IDLE_STATE,
+          effect: { type: 'resizeShape', shapeId: state.shapeId, bounds },
+        };
+      }
+      return { state };
+    }
   }
 };
 
@@ -299,4 +380,18 @@ export const movePreview = (
     return null;
   }
   return { shapeIds: state.shapeIds, delta: state.delta };
+};
+
+/**
+ * Live resized bounds, or `null` when no resize is in progress. The caller
+ * applies this to the resized shape's Konva node only — React document state
+ * stays untouched until pointer-up (spec §14, issue #44).
+ */
+export const resizePreview = (
+  state: InteractionState
+): { readonly shapeId: string; readonly bounds: GridRect } | null => {
+  if (state.kind !== 'resizing') {
+    return null;
+  }
+  return { shapeId: state.shapeId, bounds: state.currentBounds };
 };

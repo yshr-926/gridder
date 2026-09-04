@@ -7,6 +7,25 @@ import {
 import { ShapesLayer } from './ShapesLayer';
 import { createDummyDocument, createConcaveHoleDocument } from './fixtures';
 
+/**
+ * Records the path a `ShapePolygon`'s `sceneFunc` traces, by invoking it with
+ * a stub Konva `Context` that just logs `moveTo` / `lineTo` calls. Used to
+ * confirm the resize preview (issue #44) actually substitutes the drawn
+ * geometry, not just the Konva-only Group's props.
+ */
+const capturedScenePath = (sceneFunc: unknown): readonly number[] => {
+  const points: number[] = [];
+  const stubContext = {
+    beginPath: () => {},
+    moveTo: (x: number, y: number) => points.push(x, y),
+    lineTo: (x: number, y: number) => points.push(x, y),
+    closePath: () => {},
+    fillStrokeShape: () => {},
+  };
+  (sceneFunc as (context: unknown, shape: unknown) => void)(stubContext, {});
+  return points;
+};
+
 vi.mock('react-konva', () => ({
   Group: ({ children, ...props }: { children?: React.ReactNode } & Record<string, unknown>) => (
     <div data-testid="konva-group" {...props}>
@@ -14,7 +33,11 @@ vi.mock('react-konva', () => ({
     </div>
   ),
   Shape: (props: Record<string, unknown>) => (
-    <div data-testid="konva-shape" data-name={String(props.name ?? '')} />
+    <div
+      data-testid="konva-shape"
+      data-name={String(props.name ?? '')}
+      data-points={JSON.stringify(capturedScenePath(props.sceneFunc))}
+    />
   ),
   Text: (props: Record<string, unknown>) => (
     <span
@@ -180,6 +203,57 @@ describe('ShapesLayer', () => {
     );
     expect(movedAnnotationGroup?.getAttribute('x')).toBe('20');
     expect(movedAnnotationGroup?.getAttribute('y')).toBe('-30');
+  });
+
+  it('test_ShapesLayer_resizePreview_substitutesTheDrawnPolygon_forThatShapeOnly', () => {
+    const document = createDummyDocument({ shapeCount: 2, cellsPerShape: 4, withHole: false });
+    const shape0Before = document.shapes[document.zOrder[0]];
+    const shape1Before = document.shapes[document.zOrder[1]];
+
+    const withoutPreview = render(
+      <ShapesLayer document={document} gridSize={10} scale={1} />
+    );
+    const shape0PointsBefore = withoutPreview
+      .getAllByTestId('konva-shape')[0]
+      .getAttribute('data-points');
+    withoutPreview.unmount();
+
+    const newBounds = { minX: 0, minY: 0, maxX: 20, maxY: 30 };
+    const { getAllByTestId } = render(
+      <ShapesLayer
+        document={document}
+        gridSize={10}
+        scale={1}
+        resizePreview={{ shapeId: shape0Before.id, bounds: newBounds }}
+      />
+    );
+    const shapeNodes = getAllByTestId('konva-shape');
+    const shape0PointsAfter = shapeNodes[0].getAttribute('data-points');
+    const shape1Points = shapeNodes[1].getAttribute('data-points');
+
+    // The previewed shape draws the new bounds' rectangle, in pixels.
+    expect(JSON.parse(shape0PointsAfter ?? '[]')).toEqual([
+      newBounds.minX * 10,
+      newBounds.minY * 10,
+      newBounds.maxX * 10,
+      newBounds.minY * 10,
+      newBounds.maxX * 10,
+      newBounds.maxY * 10,
+      newBounds.minX * 10,
+      newBounds.maxY * 10,
+    ]);
+    expect(shape0PointsAfter).not.toBe(shape0PointsBefore);
+
+    // The other shape's geometry is untouched.
+    const untouchedRender = render(
+      <ShapesLayer document={document} gridSize={10} scale={1} />
+    );
+    const shape1PointsWithoutPreview = untouchedRender
+      .getAllByTestId('konva-shape')[1]
+      .getAttribute('data-points');
+    untouchedRender.unmount();
+    expect(shape1Points).toBe(shape1PointsWithoutPreview);
+    expect(shape1Before.id).not.toBe(shape0Before.id);
   });
 
   it('test_ShapesLayer_emptyDocument_rendersNoShapeNodes', () => {
