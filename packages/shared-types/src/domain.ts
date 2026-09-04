@@ -14,23 +14,26 @@ export interface Position {
   y: number;
 }
 
-/** セル座標 (グリッド位置) */
+/** セル座標（グリッド単位） */
 export type CellCoordinate = [number, number];
+
+/** 回転角度 */
+export type Rotation = 0 | 90 | 180 | 270;
 
 // ============================================================
 // グリッドオブジェクト
 // ============================================================
 
-/** オブジェクト装飾情報 */
+/** オブジェクト装飾設定 */
 export interface ObjectDecoration {
-  /** ラベルテキスト */
-  label?: string;
-  /** アイコン識別子 */
-  icon?: string;
-  /** 背景パターン */
-  pattern?: 'solid' | 'striped' | 'dotted';
-  /** 境界線スタイル */
-  borderStyle?: 'solid' | 'dashed' | 'none';
+  /** 枠線を表示するか */
+  showBorder: boolean;
+  /** 枠線の色（省略時はオブジェクト色を使用） */
+  borderColor?: string;
+  /** 枠線の太さ（ピクセル） */
+  borderWidth: number;
+  /** 塗りつぶしの透明度（0.0-1.0） */
+  opacity: number;
 }
 
 /** グリッドオブジェクト */
@@ -42,17 +45,15 @@ export interface GridObject {
   /** グリッド上の位置 */
   position: Position;
   /** 回転角度 (0, 90, 180, 270) */
-  rotation: 0 | 90 | 180 | 270;
+  rotation: Rotation;
   /** 塗りつぶし色 */
   color: string;
-  /** 装飾情報 */
-  decoration?: ObjectDecoration;
-  /** グループ ID */
-  groupId?: string;
-  /** Z-Index (重なり順) */
-  zIndex?: number;
-  /** ロック状態 */
-  locked?: boolean;
+  /** オブジェクト名 */
+  name?: string;
+  /** 説明 */
+  description?: string;
+  /** 装飾設定（未指定値にはアプリケーション既定値を使用） */
+  decoration?: Partial<ObjectDecoration>;
 }
 
 // ============================================================
@@ -60,32 +61,31 @@ export interface GridObject {
 // ============================================================
 
 /** 長さ単位 */
-export type LengthUnit = 'mm' | 'cm' | 'm';
+export type Unit = 'mm' | 'cm' | 'm';
+
+/** @deprecated Unit を使用してください */
+export type LengthUnit = Unit;
 
 /** グリッド設定 */
 export interface GridSettings {
   /** 1セルのサイズ（指定単位） */
   cellSize: number;
   /** 長さ単位 */
-  unit: LengthUnit;
-  /** 表示倍率 */
-  scale?: number;
+  unit: Unit;
+  /** 表示倍率（UIセッション値） */
+  zoom: number;
 }
 
 /** プロジェクトデータ形式 */
 export interface ProjectData {
   /** データ形式バージョン */
   version: string;
-  /** プロジェクト名 */
-  name?: string;
   /** グリッド設定 */
-  gridSettings: GridSettings;
+  gridSettings: Omit<GridSettings, 'zoom'>;
   /** オブジェクト配列 */
   objects: GridObject[];
-  /** メタデータ */
-  metadata?: {
-    createdAt: string;
-    updatedAt: string;
-    author?: string;
-  };
+  /** 作成日時（ISO 8601） */
+  createdAt: string;
+  /** 更新日時（ISO 8601） */
+  updatedAt: string;
 }

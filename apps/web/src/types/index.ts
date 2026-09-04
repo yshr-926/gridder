@@ -1,15 +1,15 @@
-/**
- * グリッド上の座標を表す型
- */
-export interface Position {
-  x: number;
-  y: number;
-}
+import type { ObjectDecoration, Position } from '@gridder/shared-types/domain';
 
-/**
- * グリッドセルの座標（グリッド単位）
- */
-export type CellCoordinate = [number, number];
+export type {
+  CellCoordinate,
+  GridObject,
+  GridSettings,
+  ObjectDecoration,
+  Position,
+  ProjectData,
+  Rotation,
+  Unit,
+} from '@gridder/shared-types/domain';
 
 /**
  * ツールモード
@@ -32,25 +32,6 @@ export type TextPosition = 'center' | 'top' | 'bottom' | 'inside';
  * 寸法表示モード
  */
 export type DimensionDisplayMode = 'none' | 'size' | 'edges' | 'both';
-
-/**
- * 単位
- */
-export type Unit = 'mm' | 'cm' | 'm';
-
-/**
- * オブジェクト装飾設定
- */
-export interface ObjectDecoration {
-  /** 枠線を表示するか */
-  showBorder: boolean;
-  /** 枠線の色（省略時はオブジェクト色を使用） */
-  borderColor?: string;
-  /** 枠線の太さ（ピクセル） */
-  borderWidth: number;
-  /** 塗りつぶしの透明度（0.0-1.0） */
-  opacity: number;
-}
 
 /**
  * デフォルト装飾設定
@@ -107,56 +88,6 @@ export const DEFAULT_DIMENSION_SETTINGS: DimensionSettings = {
 };
 
 /**
- * グリッド設定
- */
-export interface GridSettings {
-  /** 1マスのサイズ（実寸） */
-  cellSize: number;
-  /** 単位 */
-  unit: Unit;
-  /** 表示倍率（ズーム） */
-  zoom: number;
-}
-
-/**
- * グリッドオブジェクト（塗りつぶしで作成された図形）
- */
-export interface GridObject {
-  /** 一意の識別子 */
-  id: string;
-  /** 塗りつぶされたセルの座標配列 */
-  cells: CellCoordinate[];
-  /** オブジェクトの基準位置（グリッド単位） */
-  position: Position;
-  /** 回転角度（0, 90, 180, 270） */
-  rotation: 0 | 90 | 180 | 270;
-  /** 塗りつぶし色 */
-  color: string;
-  /** オブジェクト名（任意） */
-  name?: string;
-  /** 説明（任意） */
-  description?: string;
-  /** 装飾設定（省略時はデフォルト値を使用） */
-  decoration?: Partial<ObjectDecoration>;
-}
-
-/**
- * プロジェクトデータ（JSON エクスポート形式）
- */
-export interface ProjectData {
-  /** データフォーマットバージョン */
-  version: string;
-  /** グリッド設定 */
-  gridSettings: Omit<GridSettings, 'zoom'>;
-  /** 配置されたオブジェクト */
-  objects: GridObject[];
-  /** 作成日時 */
-  createdAt: string;
-  /** 更新日時 */
-  updatedAt: string;
-}
-
-/**
  * キャンバスの状態
  */
 export interface CanvasState {
@@ -169,9 +100,4 @@ export interface CanvasState {
 }
 
 // グループ関連型
-export type {
-  ObjectGroup,
-  RelativePosition,
-  SelectionState,
-  GroupOperationResult,
-} from './group';
+export type { ObjectGroup, RelativePosition, SelectionState, GroupOperationResult } from './group';
