@@ -9,7 +9,7 @@ import { useEraser } from '@/features/eraser';
 import { useSelection } from '@/features/selection';
 import { usePolygonDrawing } from '@/features/polygon';
 import { useSubtractionDrawing } from '@/features/drawing/useSubtractionDrawing';
-import { pixelToCell } from '@/utils/grid';
+import { screenToGrid } from '@/features/viewport';
 import type { CellCoordinate, Position } from '@/types';
 import { PolygonPreview } from './PolygonPreview';
 import { CursorOverlay } from './CursorOverlay';
@@ -23,6 +23,8 @@ interface InteractionLayerProps {
   panPosition: Position;
   /** ズーム */
   zoom: number;
+  /** ビューポート操作が図形操作より優先されているか */
+  isViewportInteracting?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ const SUBTRACTION_PREVIEW_STROKE = '#ef4444';
 export const InteractionLayer = ({
   panPosition,
   zoom,
+  isViewportInteracting = false,
 }: InteractionLayerProps) => {
   // ストアから状態取得
   const { toolMode, drawingCells } = useCanvasStore();
@@ -82,11 +85,9 @@ export const InteractionLayer = ({
       const pointer = stage.getPointerPosition();
       if (!pointer) return null;
 
-      const cell = pixelToCell(
-        {
-          x: (pointer.x - panPosition.x) / zoom,
-          y: (pointer.y - panPosition.y) / zoom,
-        },
+      const cell = screenToGrid(
+        pointer,
+        { scale: zoom, offset: panPosition },
         gridSize
       );
 
@@ -217,6 +218,11 @@ export const InteractionLayer = ({
    */
   const handleMouseDown = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      if (isViewportInteracting) {
+        e.cancelBubble = true;
+        return;
+      }
+
       const stage = e.target.getStage();
       if (!stage) return;
 
@@ -243,7 +249,15 @@ export const InteractionLayer = ({
           break;
       }
     },
-    [toolMode, handleDrawMouseDown, handleEraserMouseDown, handleSelectMouseDown, handlePolygonClick, handleSubtractMouseDown]
+    [
+      isViewportInteracting,
+      toolMode,
+      handleDrawMouseDown,
+      handleEraserMouseDown,
+      handleSelectMouseDown,
+      handlePolygonClick,
+      handleSubtractMouseDown,
+    ]
   );
 
   /**
@@ -528,7 +542,7 @@ export const InteractionLayer = ({
   }, [polygonDrawing]);
 
   return (
-    <Group>
+    <Group listening={!isViewportInteracting}>
       {interactionArea}
       {drawingPreview}
 

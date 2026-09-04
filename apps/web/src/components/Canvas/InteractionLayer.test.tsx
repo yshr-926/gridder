@@ -193,6 +193,20 @@ describe('InteractionLayer', () => {
     expect(store.drawingCells.length).toBe(0);
   });
 
+  it('does not start a document interaction while viewport input has priority', () => {
+    render(<InteractionLayer {...defaultProps} isViewportInteracting={true} />);
+
+    const interactionArea = screen
+      .getAllByTestId('konva-rect')
+      .find((rect) => rect.getAttribute('data-fill') === 'transparent');
+
+    if (interactionArea) {
+      fireEvent.mouseDown(interactionArea);
+    }
+
+    expect(useCanvasStore.getState().drawingCells).toEqual([]);
+  });
+
   it('erases cells in eraser mode', () => {
     // Set up an object with a cell at position that will be erased
     useCanvasStore.setState({

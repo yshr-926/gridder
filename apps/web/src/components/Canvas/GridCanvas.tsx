@@ -2,18 +2,13 @@ import { useRef, useState, useEffect, useCallback, useImperativeHandle, forwardR
 import { Stage, Layer } from 'react-konva';
 import type Konva from 'konva';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
-import { useCanvasStore } from '@/stores/canvasStore';
+import { useViewportStore } from '@/stores/viewportStore';
+import { screenToWorld, useViewportPan } from '@/features/viewport';
+import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { InteractionLayer } from './InteractionLayer';
 import { debounceResize } from '@/utils/performance';
-
-/**
- * ズーム制限定数
- */
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 3;
-const ZOOM_SENSITIVITY = 1.1;
 
 /**
  * GridCanvas の公開メソッド
@@ -51,12 +46,12 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Space キーによるパンモード
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
-
   // ストアから状態取得
-  const { zoom, setZoom, basePixelSize } = useGridSettingsStore();
-  const { panPosition, setPanPosition } = useCanvasStore();
+  const basePixelSize = useGridSettingsStore((state) => state.basePixelSize);
+  const scale = useViewportStore((state) => state.scale);
+  const offset = useViewportStore((state) => state.offset);
+  const { handleZoom } = useCanvasZoom();
+  const viewportPan = useViewportPan();
 
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
@@ -109,83 +104,6 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   }, [debouncedUpdateDimensions]);
 
   /**
-   * Space キーの監視
-   */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
-        setIsSpacePressed(true);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsSpacePressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  /**
-   * マウスホイールによるズーム
-   */
-  const handleWheel = useCallback(
-    (e: Konva.KonvaEventObject<WheelEvent>) => {
-      e.evt.preventDefault();
-
-      const stage = stageRef.current;
-      if (!stage) return;
-
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return;
-
-      // ズーム方向を判定
-      const direction = e.evt.deltaY > 0 ? -1 : 1;
-      const newZoom = direction > 0 ? zoom * ZOOM_SENSITIVITY : zoom / ZOOM_SENSITIVITY;
-
-      // ズーム制限
-      const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
-
-      // マウス位置を中心にズーム
-      const mousePointTo = {
-        x: (pointer.x - panPosition.x) / zoom,
-        y: (pointer.y - panPosition.y) / zoom,
-      };
-
-      const newPanPosition = {
-        x: pointer.x - mousePointTo.x * clampedZoom,
-        y: pointer.y - mousePointTo.y * clampedZoom,
-      };
-
-      setZoom(clampedZoom);
-      setPanPosition(newPanPosition);
-    },
-    [zoom, panPosition, setZoom, setPanPosition]
-  );
-
-  /**
-   * ドラッグ終了時にパン位置を更新
-   */
-  const handleDragEnd = useCallback(
-    (e: Konva.KonvaEventObject<DragEvent>) => {
-      const stage = e.target as Konva.Stage;
-      setPanPosition({
-        x: stage.x(),
-        y: stage.y(),
-      });
-    },
-    [setPanPosition]
-  );
-
-  /**
    * マウス移動時のカーソル位置更新
    * スロットリング済み（60fps）
    */
@@ -197,13 +115,14 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
 
-      // ズームとパンを考慮した実座標
-      const x = (pointer.x - panPosition.x) / zoom;
-      const y = (pointer.y - panPosition.y) / zoom;
+      const worldPoint = screenToWorld(pointer, { scale, offset });
 
-      onCursorPositionChange({ x: Math.round(x), y: Math.round(y) });
+      onCursorPositionChange({
+        x: Math.round(worldPoint.x),
+        y: Math.round(worldPoint.y),
+      });
     },
-    [zoom, panPosition, onCursorPositionChange]
+    [scale, offset, onCursorPositionChange]
   );
 
   /**
@@ -216,20 +135,31 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   return (
     <div
       ref={containerRef}
+      data-testid="grid-canvas-container"
       className="w-full h-full overflow-hidden"
-      style={{ cursor: isSpacePressed ? 'grab' : 'default' }}
+      style={{
+        cursor: viewportPan.isPanning
+          ? 'grabbing'
+          : viewportPan.isSpacePressed
+            ? 'grab'
+            : 'default',
+      }}
+      onPointerDownCapture={viewportPan.handlePointerDownCapture}
+      onPointerMoveCapture={viewportPan.handlePointerMoveCapture}
+      onPointerUpCapture={viewportPan.handlePointerUpCapture}
+      onPointerCancelCapture={viewportPan.handlePointerCancelCapture}
+      onMouseDownCapture={viewportPan.handleMouseDownCapture}
+      onAuxClick={viewportPan.handleAuxClick}
     >
       <Stage
         ref={stageRef}
         width={dimensions.width}
         height={dimensions.height}
-        x={panPosition.x}
-        y={panPosition.y}
-        scaleX={zoom}
-        scaleY={zoom}
-        draggable={isSpacePressed}
-        onWheel={handleWheel}
-        onDragEnd={handleDragEnd}
+        x={offset.x}
+        y={offset.y}
+        scaleX={scale}
+        scaleY={scale}
+        onWheel={(event) => handleZoom(event, stageRef.current)}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
@@ -239,9 +169,9 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             width={dimensions.width}
             height={dimensions.height}
             gridSize={gridSize}
-            panX={panPosition.x}
-            panY={panPosition.y}
-            zoom={zoom}
+            panX={offset.x}
+            panY={offset.y}
+            zoom={scale}
           />
         </Layer>
 
@@ -253,8 +183,9 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
         {/* Interaction Layer */}
         <Layer>
           <InteractionLayer
-            panPosition={panPosition}
-            zoom={zoom}
+            panPosition={offset}
+            zoom={scale}
+            isViewportInteracting={viewportPan.isViewportInteracting}
           />
         </Layer>
       </Stage>

@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import type { Unit } from '../types';
-
-/**
- * ズーム倍率の制限値
- */
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.25;
+import {
+  MAX_VIEWPORT_SCALE,
+  MIN_VIEWPORT_SCALE,
+  VIEWPORT_ZOOM_FACTOR,
+  useViewportStore,
+} from './viewportStore';
 
 /**
  * グリッド設定ストア
@@ -44,18 +43,18 @@ export const useGridSettingsStore = create<GridSettingsState>((set, get) => ({
   unit: 'cm',
   setUnit: (unit) => set({ unit }),
 
-  // ズーム倍率（デフォルト: 1 = 100%）
-  zoom: 1,
-  setZoom: (zoom) => set({ zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom)) }),
+  // TODO(#59): viewportStore への移行完了後に読み取り互換フィールドを削除する。
+  zoom: useViewportStore.getState().scale,
+  setZoom: (zoom) => useViewportStore.getState().setScale(zoom),
   zoomIn: () => {
-    const { zoom } = get();
-    set({ zoom: Math.min(MAX_ZOOM, zoom + ZOOM_STEP) });
+    const { scale, setScale } = useViewportStore.getState();
+    setScale(Math.min(MAX_VIEWPORT_SCALE, scale * VIEWPORT_ZOOM_FACTOR));
   },
   zoomOut: () => {
-    const { zoom } = get();
-    set({ zoom: Math.max(MIN_ZOOM, zoom - ZOOM_STEP) });
+    const { scale, setScale } = useViewportStore.getState();
+    setScale(Math.max(MIN_VIEWPORT_SCALE, scale / VIEWPORT_ZOOM_FACTOR));
   },
-  resetZoom: () => set({ zoom: 1 }),
+  resetZoom: () => useViewportStore.getState().setScale(1),
 
   // グリッド表示用ピクセルサイズ（デフォルト: 20px）
   basePixelSize: 20,
@@ -63,7 +62,14 @@ export const useGridSettingsStore = create<GridSettingsState>((set, get) => ({
 
   // 計算されたピクセルサイズ
   getPixelSize: () => {
-    const { basePixelSize, zoom } = get();
-    return basePixelSize * zoom;
+    const { basePixelSize } = get();
+    return basePixelSize * useViewportStore.getState().scale;
   },
 }));
+
+// TODO(#59): Toolbar/StatusBar の移行後に互換同期を削除する。
+useViewportStore.subscribe((state, previousState) => {
+  if (state.scale !== previousState.scale) {
+    useGridSettingsStore.setState({ zoom: state.scale });
+  }
+});

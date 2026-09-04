@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import { Rect, Line, Group } from 'react-konva';
+import { getVisibleWorldBounds } from '@/features/viewport';
 
 /**
  * GridBackground Props
@@ -42,15 +43,15 @@ export const GridBackground = memo(
      * 表示領域の計算とグリッド線の生成
      */
     const { background, lines } = useMemo(() => {
-      // 表示領域の計算（パン・ズームを考慮）
-      const visibleStartX = Math.floor(-panX / zoom / gridSize) - 1;
-      const visibleStartY = Math.floor(-panY / zoom / gridSize) - 1;
-      const visibleEndX = Math.ceil((width - panX) / zoom / gridSize) + 1;
-      const visibleEndY = Math.ceil((height - panY) / zoom / gridSize) + 1;
-
-      // 背景のサイズ（十分に大きく）
-      const bgSize = 20000;
-      const bgOffset = -10000;
+      const bounds = getVisibleWorldBounds(
+        { scale: zoom, offset: { x: panX, y: panY } },
+        { width, height },
+        gridSize
+      );
+      const visibleStartX = Math.floor(bounds.left / gridSize);
+      const visibleStartY = Math.floor(bounds.top / gridSize);
+      const visibleEndX = Math.ceil(bounds.right / gridSize);
+      const visibleEndY = Math.ceil(bounds.bottom / gridSize);
 
       // グリッド線を生成
       const gridLines: ReactNode[] = [];
@@ -89,10 +90,10 @@ export const GridBackground = memo(
       return {
         background: (
           <Rect
-            x={bgOffset}
-            y={bgOffset}
-            width={bgSize}
-            height={bgSize}
+            x={bounds.left}
+            y={bounds.top}
+            width={bounds.right - bounds.left}
+            height={bounds.bottom - bounds.top}
             fill={BACKGROUND_COLOR}
             listening={false}
           />

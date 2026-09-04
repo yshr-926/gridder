@@ -8,6 +8,7 @@ import {
 } from './importProject';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { useGroupStore } from '@/stores/groupStore';
 import { PROJECT_DATA_VERSION, LEGACY_VERSION } from './types';
@@ -285,6 +286,8 @@ describe('importProject', () => {
         zoom: 2,
       });
       useHistoryStore.getState().pushState([]);
+      useViewportStore.getState().setScale(2);
+      useViewportStore.getState().setOffset({ x: 100, y: 100 });
 
       // 新規プロジェクト作成
       createNewProject();
@@ -300,6 +303,10 @@ describe('importProject', () => {
       expect(gridState.cellSize).toBe(10);
       expect(gridState.unit).toBe('cm');
       expect(gridState.zoom).toBe(1);
+      expect(useViewportStore.getState()).toMatchObject({
+        scale: 1,
+        offset: { x: 0, y: 0 },
+      });
       expect(useHistoryStore.getState().canUndo()).toBe(false);
     });
   });

@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useCanvasKeyboard } from './useCanvasKeyboard';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { useGroupStore } from '@/stores/groupStore';
 import type { GridObject } from '@/types';
 
@@ -16,6 +17,7 @@ describe('useCanvasKeyboard', () => {
   };
 
   beforeEach(() => {
+    useViewportStore.getState().resetViewport();
     // Reset stores
     useGridSettingsStore.setState({
       zoom: 1,

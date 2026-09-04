@@ -1,21 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type Konva from 'konva';
 import { useCanvasZoom, MIN_ZOOM, MAX_ZOOM } from './useCanvasZoom';
-import { useGridSettingsStore } from '@/stores/gridSettingsStore';
-import { useCanvasStore } from '@/stores/canvasStore';
+import { screenToWorld } from '@/features/viewport';
+import { useViewportStore } from '@/stores/viewportStore';
 
 describe('useCanvasZoom', () => {
   beforeEach(() => {
-    // Reset stores
-    useGridSettingsStore.setState({
-      zoom: 1,
-      basePixelSize: 20,
-      cellSize: 10,
-      unit: 'cm',
-    });
-    useCanvasStore.setState({
-      panPosition: { x: 0, y: 0 },
-    });
+    useViewportStore.getState().resetViewport();
   });
 
   it('returns initial zoom value', () => {
@@ -100,9 +92,41 @@ describe('useCanvasZoom', () => {
     });
 
     expect(result.current.zoom).toBe(2);
-    // Pan position should be adjusted based on zoom point
-    const store = useCanvasStore.getState();
-    expect(store.panPosition).not.toEqual({ x: 0, y: 0 });
+    expect(useViewportStore.getState().offset).not.toEqual({ x: 0, y: 0 });
+  });
+
+  it('preserves the world position under the zoom point', () => {
+    useViewportStore.getState().setOffset({ x: 40, y: -20 });
+    const point = { x: 175, y: 90 };
+    const worldBefore = screenToWorld(point, useViewportStore.getState());
+    const { result } = renderHook(() => useCanvasZoom());
+
+    act(() => {
+      result.current.zoomToPoint(point, 2.5);
+    });
+
+    expect(screenToWorld(point, useViewportStore.getState())).toEqual(worldBefore);
+  });
+
+  it('keeps the cursor world position stable for a wheel zoom', () => {
+    useViewportStore.getState().setOffset({ x: -25, y: 30 });
+    const cursor = { x: 260, y: 140 };
+    const worldBefore = screenToWorld(cursor, useViewportStore.getState());
+    const preventDefault = vi.fn();
+    const event = {
+      evt: { deltaY: -1, ctrlKey: false, preventDefault },
+    } as unknown as Konva.KonvaEventObject<WheelEvent>;
+    const stage = {
+      getPointerPosition: () => cursor,
+    } as unknown as Konva.Stage;
+    const { result } = renderHook(() => useCanvasZoom());
+
+    act(() => {
+      result.current.handleZoom(event, stage);
+    });
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(screenToWorld(cursor, useViewportStore.getState())).toEqual(worldBefore);
   });
 
   it('exports zoom constants', () => {

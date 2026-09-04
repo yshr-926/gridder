@@ -113,4 +113,12 @@ describe('GridBackground', () => {
     const group = screen.getByTestId('konva-group');
     expect(group).toBeInTheDocument();
   });
+
+  it('draws the background around the visible region after a distant pan', () => {
+    render(<GridBackground {...defaultProps} panX={-50000} panY={30000} />);
+
+    const background = screen.getAllByTestId('konva-rect')[0];
+    expect(Number(background.getAttribute('x'))).toBeGreaterThan(10000);
+    expect(Number(background.getAttribute('y'))).toBeLessThan(-10000);
+  });
 });

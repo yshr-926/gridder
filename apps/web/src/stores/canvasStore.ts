@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GridObject, ToolMode, Position, CellCoordinate, ObjectDecoration, SelectionState } from '../types';
 import { getNextObjectColor, colorPaletteManager, OBJECT_COLOR_PALETTE } from '../utils/colorPalette';
+import { useViewportStore } from './viewportStore';
 
 interface SetObjectsOptions {
   preserveSelection?: boolean;
@@ -337,9 +338,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     });
   },
 
-  // パン位置
-  panPosition: { x: 0, y: 0 },
-  setPanPosition: (position) => set({ panPosition: position }),
+  // TODO(#59): viewportStore への移行完了後に読み取り互換フィールドを削除する。
+  panPosition: useViewportStore.getState().offset,
+  setPanPosition: (position) => useViewportStore.getState().setOffset(position),
 
   // グローバル装飾設定
   defaultDecoration: {
@@ -352,6 +353,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       defaultDecoration: { ...state.defaultDecoration, ...decoration },
     })),
 }));
+
+// TODO(#59): 旧 canvasStore 利用箇所の移行後に互換同期を削除する。
+useViewportStore.subscribe((state, previousState) => {
+  if (state.offset !== previousState.offset) {
+    useCanvasStore.setState({ panPosition: state.offset });
+  }
+});
 
 // 開発モードでストアを公開（E2Eテスト用）
 if (import.meta.env.DEV) {

@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useGridSettingsStore } from '@/stores/gridSettingsStore';
+import { useViewportStore } from '@/stores/viewportStore';
 import { useGroupStore } from '@/stores/groupStore';
 import { useSelection, useMultiSelection } from '@/features/selection';
 
@@ -76,7 +76,8 @@ const isInputElement = (target: EventTarget | null): boolean => {
 export const useCanvasKeyboard = () => {
   const { toolMode, setToolMode, selectedObjectId, selectAll, selection } = useCanvasStore();
 
-  const { zoomIn, zoomOut } = useGridSettingsStore();
+  const zoomIn = useViewportStore((state) => state.zoomIn);
+  const zoomOut = useViewportStore((state) => state.zoomOut);
 
   const { createGroup, deleteGroup, getGroupByObjectId } = useGroupStore();
 

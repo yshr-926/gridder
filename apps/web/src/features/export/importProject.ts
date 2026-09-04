@@ -4,6 +4,7 @@ import { useCanvasStore } from '@/stores/canvasStore';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { useGroupStore } from '@/stores/groupStore';
+import { useViewportStore } from '@/stores/viewportStore';
 
 /**
  * インポート結果
@@ -172,20 +173,20 @@ export const importAndApplyFromFile = async (file: File): Promise<ImportResult> 
  * 新規プロジェクトを作成（すべての状態をリセット）
  */
 export const createNewProject = (): void => {
+  useViewportStore.getState().resetViewport();
+
   // キャンバス状態をリセット
   useCanvasStore.setState({
     objects: [],
     selectedObjectId: null,
     drawingCells: [],
     toolMode: 'draw',
-    panPosition: { x: 0, y: 0 },
   });
 
   // グリッド設定をデフォルトに
   useGridSettingsStore.setState({
     cellSize: 10,
     unit: 'cm',
-    zoom: 1,
   });
 
   // グループをクリア
