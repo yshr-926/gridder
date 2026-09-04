@@ -2,6 +2,7 @@ import type {
   DrawingBounds,
   EditorDocument,
   GroupId,
+  PhysicalScale,
   ShapeGroup,
   ShapeId,
 } from '../model.js';
@@ -13,6 +14,7 @@ import {
   requireGroup,
   requireShape,
   withDrawingBounds,
+  withPhysicalScale,
   withZOrder,
 } from './document-mutations.js';
 
@@ -71,6 +73,28 @@ export class SetDrawingBoundsCommand implements EditorCommand {
 
   invert(documentBeforeApply: EditorDocument): EditorCommand {
     return new SetDrawingBoundsCommand(documentBeforeApply.drawingBounds);
+  }
+}
+
+/**
+ * Set or clear the sketch's real-world scale (spec §8: `1セル = 数値 +
+ * mm/cm/m`, optional). `undefined` returns the document to plain cell counts.
+ * This is document-level state — a single scale applies to the whole sketch,
+ * not per-shape — so it belongs beside {@link SetDrawingBoundsCommand} rather
+ * than the shape Commands.
+ */
+export class SetPhysicalScaleCommand implements EditorCommand {
+  readonly type = 'set-physical-scale';
+  readonly label = 'Change physical scale';
+
+  constructor(private readonly physicalScale: PhysicalScale | undefined) {}
+
+  apply(document: EditorDocument): EditorDocument {
+    return withPhysicalScale(document, this.physicalScale);
+  }
+
+  invert(documentBeforeApply: EditorDocument): EditorCommand {
+    return new SetPhysicalScaleCommand(documentBeforeApply.physicalScale);
   }
 }
 

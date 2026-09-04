@@ -21,3 +21,4 @@ export { VertexMarker } from './VertexMarker';
 export { PolygonPreview } from './PolygonPreview';
 export { CursorOverlay } from './CursorOverlay';
 export { DrawingRangeLayer } from './DrawingRangeLayer';
+export { DimensionLayer } from './DimensionLayer';

@@ -16,6 +16,7 @@ import { InteractionLayer } from './InteractionLayer';
 import { EditorInteractionLayer, type EditorInteractionCursor } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { DrawingRangeLayer } from './DrawingRangeLayer';
+import { DimensionLayer } from './DimensionLayer';
 import { debounceResize } from '@/utils/performance';
 
 /**
@@ -253,6 +254,8 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             />
           </Layer>
         )}
+
+        {isEditorDocumentMode && <Layer listening={false}><DimensionLayer document={editorDocument} selectedIds={selectedIds} gridSize={gridSize} scale={scale} /></Layer>}
       </Stage>
     </div>
   );

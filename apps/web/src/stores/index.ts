@@ -20,3 +20,4 @@ export {
 } from './selectors';
 export { useMovePreviewStore } from './movePreviewStore';
 export { useResizePreviewStore } from './resizePreviewStore';
+export { useSettingsStore } from './settingsStore';

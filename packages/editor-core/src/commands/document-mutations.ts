@@ -3,6 +3,7 @@ import type {
   EditorDocument,
   EditorShape,
   GridPolygon,
+  PhysicalScale,
   ShapeGroup,
   ShapeId,
   ShapeStyle,
@@ -123,6 +124,19 @@ export const withDrawingBounds = (
   document: EditorDocument,
   drawingBounds: DrawingBounds,
 ): EditorDocument => ({ ...document, drawingBounds });
+
+/** `undefined` clears the real-world scale, returning the sketch to plain cell counts. */
+export const withPhysicalScale = (
+  document: EditorDocument,
+  physicalScale: PhysicalScale | undefined,
+): EditorDocument => {
+  if (physicalScale === undefined) {
+    const next: EditorDocument = { ...document };
+    delete (next as { physicalScale?: PhysicalScale }).physicalScale;
+    return next;
+  }
+  return { ...document, physicalScale };
+};
 
 export const putGroup = (
   document: EditorDocument,

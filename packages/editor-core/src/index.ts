@@ -4,4 +4,6 @@ export * from './boolean/index.js';
 export * from './commands/index.js';
 export * from './history/index.js';
 export * from './drawing-bounds/index.js';
+export * from './dimensions/index.js';
+export * from './serialization/index.js';
 export * from './geometry/index.js';

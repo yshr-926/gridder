@@ -1,5 +1,4 @@
 import { Menu } from '@base-ui/react/menu';
-import { Popover } from '@base-ui/react/popover';
 import {
   ChevronDown,
   FilePlus2,
@@ -10,15 +9,13 @@ import {
   PenTool,
   Redo2,
   Save,
-  Settings2,
   Share2,
   Undo2,
 } from 'lucide-react';
-import type { ChangeEvent, ReactNode } from 'react';
-import { useGridSettingsStore, useUIStore } from '../../stores';
-import type { Unit } from '../../types';
+import type { ReactNode } from 'react';
 import { cn } from '../../utils/cn';
-import { Select, Tooltip, TooltipProvider } from '../ui';
+import { Tooltip, TooltipProvider } from '../ui';
+import { SettingsPanel } from '../SettingsPanel';
 
 interface HeaderProps {
   onNewSketch: () => void;
@@ -87,102 +84,6 @@ const HeaderAction = ({
     </button>
   </Tooltip>
 );
-
-const SettingsPopover = () => {
-  const cellSize = useGridSettingsStore(state => state.cellSize);
-  const setCellSize = useGridSettingsStore(state => state.setCellSize);
-  const unit = useGridSettingsStore(state => state.unit);
-  const setUnit = useGridSettingsStore(state => state.setUnit);
-  const showObjectNames = useUIStore(state => state.showObjectNames);
-  const setShowObjectNames = useUIStore(state => state.setShowObjectNames);
-  const showDimensions = useUIStore(state => state.showDimensions);
-  const setShowDimensions = useUIStore(state => state.setShowDimensions);
-
-  const handleCellSizeChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number.parseInt(event.target.value, 10);
-    if (Number.isFinite(value) && value > 0) {
-      setCellSize(value);
-    }
-  };
-
-  const handleUnitChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setUnit(event.target.value as Unit);
-  };
-
-  return (
-    <Popover.Root>
-      <Tooltip content="設定" position="bottom">
-        <Popover.Trigger className={iconButtonClassName} aria-label="設定">
-          <Settings2 aria-hidden="true" className="size-4" />
-        </Popover.Trigger>
-      </Tooltip>
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align="end" sideOffset={8} className="z-40">
-          <Popover.Popup
-            className={cn(
-              'w-72 origin-[var(--transform-origin)] rounded-panel border border-ui-border bg-surface p-4',
-              'transition-[transform,opacity] duration-fast ease-out',
-              'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-              'data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:ease-in'
-            )}
-          >
-            <Popover.Title className="text-sm font-semibold text-ui">スケッチ設定</Popover.Title>
-            <Popover.Description className="mt-1 text-xs text-ui-muted">
-              寸法の基準とキャンバス上の注釈を設定します。
-            </Popover.Description>
-
-            <div className="mt-4 border-t border-ui-border pt-4">
-              <div className="flex items-center gap-2">
-                <label htmlFor="settings-cell-size" className="shrink-0 text-sm text-ui-muted">
-                  1セル =
-                </label>
-                <input
-                  id="settings-cell-size"
-                  type="number"
-                  min={1}
-                  value={cellSize}
-                  onChange={handleCellSizeChange}
-                  className="h-control w-20 rounded-control border border-ui-border bg-surface px-2 text-sm text-ui"
-                />
-                <Select
-                  aria-label="単位"
-                  selectSize="sm"
-                  value={unit}
-                  onChange={handleUnitChange}
-                  className="h-control w-20 border-ui-border"
-                  options={[
-                    { value: 'mm', label: 'mm' },
-                    { value: 'cm', label: 'cm' },
-                    { value: 'm', label: 'm' },
-                  ]}
-                />
-              </div>
-
-              <label className="mt-4 flex items-center justify-between gap-4 text-sm text-ui">
-                図形名を表示
-                <input
-                  type="checkbox"
-                  checked={showObjectNames}
-                  onChange={event => setShowObjectNames(event.target.checked)}
-                  className="size-4 accent-accent"
-                />
-              </label>
-              <label className="mt-3 flex items-center justify-between gap-4 text-sm text-ui">
-                寸法を表示
-                <input
-                  type="checkbox"
-                  checked={showDimensions}
-                  onChange={event => setShowDimensions(event.target.checked)}
-                  className="size-4 accent-accent"
-                />
-              </label>
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-};
 
 export const Header = ({
   onNewSketch,
@@ -277,7 +178,7 @@ export const Header = ({
             </Menu.Portal>
           </Menu.Root>
 
-          <SettingsPopover />
+          <SettingsPanel />
         </div>
       </nav>
     </header>

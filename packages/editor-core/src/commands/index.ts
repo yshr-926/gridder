@@ -19,6 +19,7 @@ export {
   GroupShapesCommand,
   ReorderShapeCommand,
   SetDrawingBoundsCommand,
+  SetPhysicalScaleCommand,
   UngroupShapesCommand,
 } from './structure-commands.js';
 export { RotateShapesCommand, type RotationDirection } from './rotate-commands.js';
