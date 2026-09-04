@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import type { GridObject, ToolMode, Position, CellCoordinate, ObjectDecoration, SelectionState } from '../types';
 import { getNextObjectColor, colorPaletteManager, OBJECT_COLOR_PALETTE } from '../utils/colorPalette';
-import type { SetObjectsOptions } from '../features/sync/types';
+
+interface SetObjectsOptions {
+  preserveSelection?: boolean;
+}
 
 /**
  * 選択状態と selectedObjectId を同時に更新するヘルパー
@@ -28,7 +31,7 @@ interface CanvasState {
   updateObject: (id: string, updates: Partial<GridObject>) => void;
   duplicateObject: (id: string) => void;
   clearObjects: () => void;
-  setObjects: (objects: GridObject[], options?: SetObjectsOptions & { preserveSelection?: boolean }) => void;
+  setObjects: (objects: GridObject[], options?: SetObjectsOptions) => void;
 
   // 選択状態（複数選択対応）
   selection: SelectionState;
@@ -171,21 +174,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     });
   },
   /**
-   * setObjects: インポート/同期時にオブジェクトリストを置換
+   * setObjects: インポートや履歴移動でオブジェクトリストを置換
    *
    * @param objects - 新しいオブジェクトリスト
    * @param options - オプション
    *   - preserveSelection: 選択状態を維持するか（デフォルト: false）
-   *   - source: 呼び出し元（'local' | 'sync' | 'initial'）
    */
   setObjects: (objects, options) => {
-    const { preserveSelection = false, source } = options ?? {};
+    const { preserveSelection = false } = options ?? {};
 
-    // 同期元の場合はカラーパレットの再構築をスキップ
-    // （リモートユーザーが使用中のカラーを解放しない）
-    if (source !== 'sync') {
-      colorPaletteManager.initializeFromObjects(objects);
-    }
+    colorPaletteManager.initializeFromObjects(objects);
 
     if (preserveSelection) {
       // 選択状態を維持（存在するオブジェクトのみ）

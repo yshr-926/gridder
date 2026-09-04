@@ -7,6 +7,3 @@ export { InteractionLayer } from './InteractionLayer';
 export { VertexMarker } from './VertexMarker';
 export { PolygonPreview } from './PolygonPreview';
 export { CursorOverlay } from './CursorOverlay';
-export { RemoteCursor } from './RemoteCursor';
-export { RemoteCursors } from './RemoteCursors';
-export { RemoteSelection } from './RemoteSelection';

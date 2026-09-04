@@ -13,4 +13,3 @@ export {
 export type { PerfMarker } from './usePerformanceMetrics';
 export { useCommandExecutor } from './useCommandExecutor';
 export { useSuggestionKeyboard } from './useSuggestionKeyboard';
-export { useRoomCreation } from './useRoomCreation';

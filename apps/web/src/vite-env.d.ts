@@ -19,14 +19,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string;
 
   // ===========================================
-  // Rust バックエンド接続設定
-  // ===========================================
-  /** WebSocket 接続 URL（オプション、デフォルト: ws://localhost:3001/ws） */
-  readonly VITE_WS_URL?: string;
-  /** REST API 接続 URL（オプション、デフォルト: http://localhost:3001） */
-  readonly VITE_API_URL?: string;
-
-  // ===========================================
   // Sentry エラー追跡
   // ===========================================
   /** Sentry プロジェクトの DSN（オプション） */

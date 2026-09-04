@@ -12,14 +12,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "import": "./dist/api.js"
-    },
-    "./websocket": {
-      "types": "./dist/websocket.d.ts",
-      "import": "./dist/websocket.js"
-    },
     "./domain": {
       "types": "./dist/domain.d.ts",
       "import": "./dist/domain.js"

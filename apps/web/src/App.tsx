@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Toolbar } from './components/Toolbar';
 import { PropertyPanel } from './components/PropertyPanel';
@@ -11,19 +11,11 @@ import { ToastContainer } from './components/Toast';
 import { PerformanceOverlay } from './components/PerformanceOverlay';
 import { CommandPalette } from './components/CommandPalette';
 import {
-  DisplayNameDialog,
-  ShareDialog,
-  CollaborationPanel,
-  OfflineNotice,
-} from './components/Collaboration';
-import {
   useCanvasKeyboard,
   useKeyboardShortcutsHelp,
   useToastStore,
   useSentryContext,
 } from './hooks';
-import { useRoomCreation } from './hooks/useRoomCreation';
-import { useCollaborationStore } from './stores/collaborationStore';
 import {
   exportProjectAsJSON,
   exportAsPNG,
@@ -151,82 +143,6 @@ export const App = () => {
     setIsImportDialogOpen(false);
   }, []);
 
-  // ========================================
-  // 共同編集関連
-  // ========================================
-  // 初期化時にURLからルームIDを取得
-  const initialRoomId = useMemo(() => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
-    return match ? match[1] : null;
-  }, []);
-
-  // pendingRoomId を ref で管理して、useCallback の中で常に最新の値を参照
-  const pendingRoomIdRef = useRef<string | null>(initialRoomId);
-
-  // URLからルームIDが見つかった場合は初期状態でダイアログを開く
-  const [isDisplayNameDialogOpen, setIsDisplayNameDialogOpen] = useState(
-    () => initialRoomId !== null
-  );
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-
-  const { createRoom } = useRoomCreation();
-  const { connectionState, connect } = useCollaborationStore();
-  const isConnected = connectionState === 'connected';
-
-  // 共有ボタンクリック時のハンドラ
-  const handleShare = useCallback(() => {
-    if (isConnected) {
-      // 既に接続中の場合は共有ダイアログを表示
-      setIsShareDialogOpen(true);
-    } else {
-      // 未接続の場合は表示名入力ダイアログを表示
-      setIsDisplayNameDialogOpen(true);
-    }
-  }, [isConnected]);
-
-  // 表示名入力後のルーム作成または参加
-  const handleDisplayNameSubmit = useCallback(
-    async (displayName: string) => {
-      const pendingRoomId = pendingRoomIdRef.current;
-      setIsDisplayNameDialogOpen(false);
-      try {
-        if (pendingRoomId) {
-          // URLからのルームIDがある場合は既存ルームに参加
-          await connect(pendingRoomId, displayName);
-          pendingRoomIdRef.current = null;
-          // 注: URLはそのまま維持（リロード時に再接続できるように）
-        } else {
-          // 新規ルーム作成
-          const roomId = await createRoom(displayName);
-          // URLをルームURLに更新（リロード時に再接続できるように）
-          window.history.replaceState({}, '', `/room/${roomId}`);
-          // ルーム作成後に共有ダイアログを表示
-          setIsShareDialogOpen(true);
-        }
-      } catch (error) {
-        console.error('Failed to create/join room:', error);
-        pendingRoomIdRef.current = null;
-      }
-    },
-    [createRoom, connect]
-  );
-
-  // 表示名ダイアログのキャンセル
-  const handleDisplayNameCancel = useCallback(() => {
-    setIsDisplayNameDialogOpen(false);
-    pendingRoomIdRef.current = null;
-    // URLにルームIDがある場合はクリーンアップ
-    if (window.location.pathname.startsWith('/room/')) {
-      window.history.replaceState({}, '', '/');
-    }
-  }, []);
-
-  // 共有ダイアログを閉じる
-  const handleCloseShareDialog = useCallback(() => {
-    setIsShareDialogOpen(false);
-  }, []);
-
   return (
     <div className="h-screen flex flex-col bg-white">
       {/* Header */}
@@ -234,7 +150,6 @@ export const App = () => {
         onNewProject={handleNewProject}
         onOpenProject={handleOpenProject}
         onSaveProject={handleSaveProject}
-        onShare={handleShare}
       />
 
       {/* Main Area */}
@@ -252,8 +167,6 @@ export const App = () => {
             ref={canvasRef}
             onCursorPositionChange={handleCursorPositionChange}
           />
-          {/* 共同編集パネル（キャンバス領域内に配置） */}
-          {isConnected && <CollaborationPanel />}
         </main>
 
         {/* PropertyPanel (Right) */}
@@ -289,25 +202,6 @@ export const App = () => {
       {/* Performance Overlay (Development only, toggle with Ctrl+Shift+D) */}
       <PerformanceOverlay />
 
-      {/* ========================================
-          共同編集関連のUI
-          ======================================== */}
-
-      {/* 表示名入力ダイアログ */}
-      <DisplayNameDialog
-        isOpen={isDisplayNameDialogOpen}
-        onSubmit={handleDisplayNameSubmit}
-        onCancel={handleDisplayNameCancel}
-      />
-
-      {/* 共有ダイアログ */}
-      <ShareDialog
-        isOpen={isShareDialogOpen}
-        onClose={handleCloseShareDialog}
-      />
-
-      {/* オフライン通知（共同編集中のみ表示） */}
-      <OfflineNotice />
     </div>
   );
 };

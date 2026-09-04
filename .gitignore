@@ -29,7 +29,6 @@ coverage
 .env.*.local
 # .env.example は含める（テンプレートとして必要）
 !.env.example
-!.env.prod.example
 .env.prod
 
 # Editor directories and files
@@ -61,15 +60,6 @@ docs/review/
 
 # Codex
 AGENTS.md
-
-# Server
-server/node_modules
-server/dist
-server/.env
-!server/.env.example
-server/nginx/ssl/*.pem
-server/nginx/ssl/*.key
-server/nginx/ssl/*.crt
 
 # Packages build outputs
 packages/*/dist/

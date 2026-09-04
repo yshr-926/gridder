@@ -1,20 +1,13 @@
 import { Button } from '../ui';
-import { PlusIcon, FolderOpenIcon, SaveIcon, ShareIcon, UsersIcon } from '../icons';
-import { useCollaborationStore } from '@/stores/collaborationStore';
-import { SyncIndicator } from '../Collaboration/SyncIndicator';
+import { PlusIcon, FolderOpenIcon, SaveIcon } from '../icons';
 
 interface HeaderProps {
   onNewProject: () => void;
   onOpenProject: () => void;
   onSaveProject: () => void;
-  onShare: () => void;
 }
 
-export const Header = ({ onNewProject, onOpenProject, onSaveProject, onShare }: HeaderProps) => {
-  const { room, collaborators, connectionState } = useCollaborationStore();
-  const isConnected = connectionState === 'connected';
-  const participantCount = collaborators.length + (room ? 1 : 0); // 自分 + 他の参加者
-
+export const Header = ({ onNewProject, onOpenProject, onSaveProject }: HeaderProps) => {
   return (
     <header className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-white">
       {/* Logo / Title */}
@@ -36,31 +29,6 @@ export const Header = ({ onNewProject, onOpenProject, onSaveProject, onShare }: 
           <SaveIcon className="w-4 h-4 mr-1" />
           保存
         </Button>
-
-        {/* 共有ボタン */}
-        <div className="ml-2 pl-2 border-l border-gray-200 flex items-center gap-3">
-          {/* 同期状態インジケーター（接続中のみ表示） */}
-          {isConnected && <SyncIndicator compact />}
-
-          <Button
-            variant={isConnected ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={onShare}
-            aria-label="共同編集"
-          >
-            {isConnected ? (
-              <>
-                <UsersIcon className="w-4 h-4 mr-1" />
-                {participantCount}人で編集中
-              </>
-            ) : (
-              <>
-                <ShareIcon className="w-4 h-4 mr-1" />
-                共有
-              </>
-            )}
-          </Button>
-        </div>
       </nav>
     </header>
   );
