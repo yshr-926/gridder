@@ -1,4 +1,9 @@
-import { difference, union } from 'polygon-clipping';
+// `polygon-clipping` 0.15.7 ships only a default export (its ESM build has no
+// named exports), so a bundler like Rollup rejects `import { union } from …`.
+// Take the default and destructure the operations we use.
+import polygonClipping from 'polygon-clipping';
+
+const { difference, union } = polygonClipping;
 import type { GridPolygon, GridRing } from '../model.js';
 import type { PolygonBooleanEngine } from './engine.js';
 import {
