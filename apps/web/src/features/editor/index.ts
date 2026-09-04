@@ -32,3 +32,11 @@ export {
 } from './interactionController';
 export { applyInteractionEffect } from './applyInteractionEffect';
 export { useEditorInteraction } from './useEditorInteraction';
+export { useSelectedShapes, type SelectedShapesView } from './useSelectedShapes';
+export { shapeCellSize, formatDimension, type ShapeCellSize } from './shapeDimensions';
+export {
+  renameShape,
+  setShapesFill,
+  setShapesOpacity,
+  setShapesBorderVisible,
+} from './inspectorCommands';

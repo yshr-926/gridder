@@ -1,40 +1,40 @@
-import { Copy, RotateCw, Trash2 } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { IconButton } from '../ui';
-import { useCanvasStore } from '../../stores';
-import { DecorationSettings } from './DecorationSettings';
-import { ObjectNameEditor } from './ObjectNameEditor';
-import { TextDisplaySettings } from './TextDisplaySettings';
-import { DimensionDisplaySettings } from './DimensionDisplaySettings';
-import { GroupPanel } from './GroupPanel';
+import { useSelectedShapes } from '@/features/editor';
+import { ShapeAppearance } from './ShapeAppearance';
+import { ShapeDimensions } from './ShapeDimensions';
+import { ShapeNameField } from './ShapeNameField';
 
+/**
+ * Right-hand contextual inspector (issue #45, spec §12 / ui-principles §7).
+ *
+ * Reads the polygon document through {@link useSelectedShapes} — the retired
+ * `canvasStore` is no longer involved. It renders only when something is
+ * selected; a single selection gets name, dimensions and appearance, a
+ * multi-selection gets the common appearance controls only. Every edit goes
+ * through an editor-core Command so each change is a single Undo step.
+ *
+ * The panel is an overlay-free fixed-width column so digit / label changes never
+ * move the canvas. Its entrance transition is `animate-inspector-in`
+ * (150ms ease-out); `prefers-reduced-motion` disables it via the global rule in
+ * `index.css`.
+ */
 export const PropertyPanel = () => {
-  const selectedObjectId = useCanvasStore(state => state.selectedObjectId);
-  const objects = useCanvasStore(state => state.objects);
-  const updateObject = useCanvasStore(state => state.updateObject);
-  const removeObject = useCanvasStore(state => state.removeObject);
-  const duplicateObject = useCanvasStore(state => state.duplicateObject);
+  const { shapes, primaryShape, physicalScale } = useSelectedShapes();
 
-  const selectedObject = selectedObjectId ? objects.find(obj => obj.id === selectedObjectId) : null;
-
-  const handleRotate = () => {
-    if (!selectedObject) return;
-    const newRotation = ((selectedObject.rotation + 90) % 360) as 0 | 90 | 180 | 270;
-    updateObject(selectedObject.id, { rotation: newRotation });
-  };
-
-  const handleDuplicate = () => {
-    if (!selectedObjectId) return;
-    duplicateObject(selectedObjectId);
-  };
-
-  const handleDelete = () => {
-    if (!selectedObjectId) return;
-    removeObject(selectedObjectId);
-  };
-
-  if (!selectedObject) {
+  if (shapes.length === 0) {
     return null;
   }
+
+  const isSingle = shapes.length === 1;
+  const singleShape = isSingle ? (primaryShape ?? shapes[0]) : null;
+
+  // Rotation (spec §6.2). Wired to features/editor/rotate.ts once worker C (#47)
+  // lands `rotateSelection`; until then it is a disabled placeholder.
+  const canRotate = false;
+  const handleRotate = () => {
+    /* placeholder — see #47 */
+  };
 
   return (
     <aside
@@ -42,51 +42,27 @@ export const PropertyPanel = () => {
       role="complementary"
       aria-label="図形インスペクター"
     >
-      <div className="border-b border-ui-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-ui">選択中の図形</h2>
+      <div className="flex items-center justify-between border-b border-ui-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-ui">
+          {isSingle ? '選択中の図形' : `${shapes.length} 図形を選択中`}
+        </h2>
+        <IconButton
+          icon={<RotateCw aria-hidden="true" className="size-4" />}
+          label="90度回転"
+          size="sm"
+          onClick={handleRotate}
+          disabled={!canRotate}
+        />
       </div>
 
       <div className="flex-1">
-        <ObjectNameEditor selectedObjectId={selectedObjectId} />
-        <DecorationSettings selectedObjectId={selectedObjectId} />
-
-        <div className="border-b border-ui-border p-4">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-ui-muted">図形</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-ui-muted">セル数</span>
-              <span className="tabular-nums text-ui">{selectedObject.cells.length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-ui-muted">回転</span>
-              <span className="tabular-nums text-ui">{selectedObject.rotation}°</span>
-            </div>
-          </div>
-          <div className="mt-3 flex gap-1">
-            <IconButton
-              icon={<RotateCw aria-hidden="true" className="size-4" />}
-              label="90度回転"
-              size="sm"
-              onClick={handleRotate}
-            />
-            <IconButton
-              icon={<Copy aria-hidden="true" className="size-4" />}
-              label="複製"
-              size="sm"
-              onClick={handleDuplicate}
-            />
-            <IconButton
-              icon={<Trash2 aria-hidden="true" className="size-4" />}
-              label="削除"
-              size="sm"
-              onClick={handleDelete}
-            />
-          </div>
-        </div>
-
-        <TextDisplaySettings />
-        <DimensionDisplaySettings />
-        <GroupPanel />
+        {singleShape !== null && (
+          <>
+            <ShapeNameField shape={singleShape} />
+            <ShapeDimensions shape={singleShape} physicalScale={physicalScale} />
+          </>
+        )}
+        <ShapeAppearance shapes={shapes} />
       </div>
     </aside>
   );

@@ -9,10 +9,14 @@ import { EditorSession } from './editorSession';
  */
 export const editorSession = new EditorSession();
 
-// Exposed for tooling and the issue #42 Playwright workflow. The editor has no
-// inspector wired to it yet (#38 / #44), so the browser test has no other way to
-// read document / history state. Guarded for non-browser (SSR / test) contexts.
-if (typeof window !== 'undefined') {
+// Exposed for tooling and the issue #42 Playwright workflow so the browser test
+// can read document / history state. Restricted to dev builds and the Playwright
+// build (VITE_E2E=true) so it is never present in a production bundle. Guarded
+// for non-browser (SSR / test) contexts.
+const isEditorDebugExposed =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
+
+if (isEditorDebugExposed && typeof window !== 'undefined') {
   (window as unknown as { __GRIDDER_EDITOR_SESSION__: EditorSession }).__GRIDDER_EDITOR_SESSION__ =
     editorSession;
 }

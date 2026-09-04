@@ -17,6 +17,11 @@ interface ImportMetaEnv {
   readonly VITE_DEBUG: string;
   /** アプリケーションバージョン */
   readonly VITE_APP_VERSION: string;
+  /**
+   * Playwright ビルド時のみ 'true'。開発ツール用の `window.__GRIDDER_*` を
+   * 本番バンドルへ含めず E2E ビルドでだけ公開するためのフラグ（#45）。
+   */
+  readonly VITE_E2E?: string;
 
   // ===========================================
   // Sentry エラー追跡

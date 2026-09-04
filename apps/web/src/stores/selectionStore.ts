@@ -58,9 +58,13 @@ export const useSelectionStore = create<SelectionState>((set) => ({
   clear: () => set({ selectedIds: [], primaryId: null }),
 }));
 
-// Exposed for tooling and the issue #42 Playwright workflow (the editor has no
-// inspector bound to it yet). Guarded for non-browser contexts.
-if (typeof window !== 'undefined') {
+// Exposed for tooling and the issue #42 Playwright workflow. Restricted to dev
+// builds and the Playwright build (VITE_E2E=true) so it is never present in a
+// production bundle. Guarded for non-browser contexts.
+const isSelectionDebugExposed =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
+
+if (isSelectionDebugExposed && typeof window !== 'undefined') {
   (window as unknown as { __GRIDDER_SELECTION_STORE__: typeof useSelectionStore }).__GRIDDER_SELECTION_STORE__ =
     useSelectionStore;
 }
