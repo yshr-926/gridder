@@ -1,6 +1,6 @@
-import { RotateCw } from 'lucide-react';
-import { IconButton } from '../ui';
-import { useSelectedShapes } from '@/features/editor';
+import { RotateCcw, RotateCw } from 'lucide-react';
+import { IconButton, Tooltip, TooltipProvider } from '../ui';
+import { rotateSelection, useSelectedShapes } from '@/features/editor';
 import { ShapeAppearance } from './ShapeAppearance';
 import { ShapeDimensions } from './ShapeDimensions';
 import { ShapeNameField } from './ShapeNameField';
@@ -30,13 +30,6 @@ export const PropertyPanel = () => {
   const isSingle = shapes.length === 1;
   const singleShape = isSingle ? (primaryShape ?? shapes[0]) : null;
 
-  // Rotation (spec §6.2). Wired to features/editor/rotate.ts once worker C (#47)
-  // lands `rotateSelection`; until then it is a disabled placeholder.
-  const canRotate = false;
-  const handleRotate = () => {
-    /* placeholder — see #47 */
-  };
-
   return (
     <aside
       className="flex w-inspector shrink-0 animate-inspector-in flex-col overflow-y-auto border-l border-ui-border bg-surface"
@@ -47,13 +40,29 @@ export const PropertyPanel = () => {
         <h2 className="text-sm font-semibold text-ui">
           {isSingle ? '選択中の図形' : `${shapes.length} 図形を選択中`}
         </h2>
-        <IconButton
-          icon={<RotateCw aria-hidden="true" className="size-4" />}
-          label="90度回転"
-          size="sm"
-          onClick={handleRotate}
-          disabled={!canRotate}
-        />
+        {/* Rotation (issue #47, spec §6.2 / §7): pivots on the whole
+            selection's bounding box, so single and multi-selections both get
+            the same two buttons. */}
+        <TooltipProvider>
+          <div className="flex gap-1" role="group" aria-label="回転">
+            <Tooltip content="反時計回りに90度回転 (Shift+R)">
+              <IconButton
+                icon={<RotateCcw aria-hidden="true" className="size-4" />}
+                label="反時計回りに90度回転"
+                size="sm"
+                onClick={() => rotateSelection('ccw')}
+              />
+            </Tooltip>
+            <Tooltip content="時計回りに90度回転 (R)">
+              <IconButton
+                icon={<RotateCw aria-hidden="true" className="size-4" />}
+                label="時計回りに90度回転"
+                size="sm"
+                onClick={() => rotateSelection('cw')}
+              />
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
 
       <div className="flex-1">

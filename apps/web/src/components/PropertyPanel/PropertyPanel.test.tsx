@@ -138,13 +138,57 @@ describe('PropertyPanel', () => {
     expect(editorSession.getDocument().shapes['shape-1'].style.isBorderVisible).toBe(true);
   });
 
-  it('test_PropertyPanel_rotateButton_isDisabledPlaceholder_untilIssue47', () => {
+  it('test_PropertyPanel_rotateCwButton_dispatchesRotateCommand_singleSelection', async () => {
+    const user = userEvent.setup();
     editorSession.dispatch(new CreateShapeCommand(makeRect('shape-1', 4)));
     useSelectionStore.getState().selectOnly('shape-1');
 
     render(<PropertyPanel />);
+    await user.click(screen.getByRole('button', { name: '時計回りに90度回転' }));
 
-    expect(screen.getByRole('button', { name: '90度回転' })).toBeDisabled();
+    expect(editorSession.getDocument().shapes['shape-1'].polygon.outerRing).toEqual([
+      { x: 2, y: 0 },
+      { x: 2, y: 4 },
+      { x: 0, y: 4 },
+      { x: 0, y: 0 },
+    ]);
+
+    act(() => {
+      editorSession.undo();
+    });
+    expect(editorSession.getDocument().shapes['shape-1'].polygon.outerRing).toEqual([
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 0, y: 2 },
+    ]);
+  });
+
+  it('test_PropertyPanel_rotateCcwButton_dispatchesRotateCommand_multiSelection', async () => {
+    const user = userEvent.setup();
+    editorSession.dispatch(new CreateShapeCommand(makeRect('shape-1', 4)));
+    editorSession.dispatch(new CreateShapeCommand(makeRect('shape-2', 6)));
+    useSelectionStore.getState().setSelection(['shape-1', 'shape-2']);
+
+    render(<PropertyPanel />);
+    await user.click(screen.getByRole('button', { name: '反時計回りに90度回転' }));
+
+    // One Command for the whole selection -> one Undo step reverts both.
+    act(() => {
+      editorSession.undo();
+    });
+    expect(editorSession.getDocument().shapes['shape-1'].polygon.outerRing).toEqual([
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 0, y: 2 },
+    ]);
+    expect(editorSession.getDocument().shapes['shape-2'].polygon.outerRing).toEqual([
+      { x: 0, y: 0 },
+      { x: 6, y: 0 },
+      { x: 6, y: 2 },
+      { x: 0, y: 2 },
+    ]);
   });
 
   it('test_PropertyPanel_dropsSelectedIdsWithNoMatchingShape', () => {
