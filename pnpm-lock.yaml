@@ -23,9 +23,6 @@ importers:
       '@gridder/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
-      '@gridder/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -202,15 +199,6 @@ importers:
       typescript-eslint:
         specifier: ^8.46.4
         version: 8.50.0(eslint@9.39.2)(typescript@5.9.3)
-
-  packages/shared-types:
-    devDependencies:
-      '@gridder/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
 
   packages/typescript-config: {}
 

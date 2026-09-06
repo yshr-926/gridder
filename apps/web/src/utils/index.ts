@@ -1,6 +1,5 @@
 export { cn } from './cn';
 export { generateId } from './id';
-export { snapToGrid, pixelToCell, cellToPixel } from './grid';
 export {
   throttle,
   throttleMouseMove,

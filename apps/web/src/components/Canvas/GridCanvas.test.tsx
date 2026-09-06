@@ -43,10 +43,7 @@ describe('GridCanvas', () => {
   beforeEach(() => {
     useViewportStore.getState().resetViewport();
     useGridSettingsStore.setState({
-      zoom: 1,
       basePixelSize: 20,
-      cellSize: 10,
-      unit: 'cm',
     });
     useSelectionStore.setState({ selectedIds: [], primaryId: null, activeGroupId: null });
     drainSession();
