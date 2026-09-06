@@ -3,6 +3,7 @@ import type { EditorDocument } from '@gridder/editor-core';
 import { EditorSession } from './editorSession';
 import { useEditShortcuts } from './useEditShortcuts';
 import { useRotateShortcut } from './useRotateShortcut';
+import { loadBenchmarkFromQuery } from '../benchmark';
 
 /**
  * Process-wide editor session. The first release has one open sketch, so a
@@ -10,6 +11,15 @@ import { useRotateShortcut } from './useRotateShortcut';
  * React context instead. Exposed on `window` in dev for Playwright.
  */
 export const editorSession = new EditorSession();
+
+// Dev-only `?benchmark=500` fixture loading (issue #57, spec §14). A no-op
+// outside `import.meta.env.DEV` and outside the browser, so this never runs
+// in a production build or in Vitest's Node environment. Kept out of
+// `App.tsx` entirely — the session is reset here, before any component reads
+// it, so the very first render already shows the benchmark document.
+if (typeof window !== 'undefined') {
+  loadBenchmarkFromQuery(editorSession);
+}
 
 // Exposed for tooling and the issue #42 Playwright workflow so the browser test
 // can read document / history state. Restricted to dev builds and the Playwright
