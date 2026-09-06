@@ -9,6 +9,7 @@ import {
   sendBackward,
   sendToBack,
 } from './editCommands';
+import { groupSelection, ungroupSelection } from './groupCommands';
 
 /**
  * Keyboard shortcuts for multi-shape editing (issue #51, spec §7):
@@ -17,6 +18,7 @@ import {
  * - `Delete` / `Backspace` delete selection
  * - `Cmd/Ctrl+]` / `Cmd/Ctrl+[` bring forward / send backward
  * - `Cmd/Ctrl+Shift+]` / `Cmd/Ctrl+Shift+[` bring to front / send to back
+ * - `Cmd/Ctrl+G` group / `Cmd/Ctrl+Shift+G` ungroup (issue #52, spec §7)
  *
  * Disabled while an editable element (input, textarea, select, contentEditable
  * — e.g. the inspector's name field) has focus, so typing "c", "v", "d" or
@@ -76,6 +78,15 @@ export const useEditShortcuts = (): void => {
             sendToBack();
           } else {
             sendBackward();
+          }
+          break;
+        case 'g':
+        case 'G':
+          event.preventDefault();
+          if (event.shiftKey) {
+            ungroupSelection();
+          } else {
+            groupSelection();
           }
           break;
         default:

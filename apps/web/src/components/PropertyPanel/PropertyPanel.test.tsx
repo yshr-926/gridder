@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { editorSession } from '@/features/editor';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { PropertyPanel } from './PropertyPanel';
@@ -79,6 +79,19 @@ describe('PropertyPanel', () => {
     // Single-only controls are gone.
     expect(screen.queryByLabelText('名前')).not.toBeInTheDocument();
     expect(screen.queryByText('寸法')).not.toBeInTheDocument();
+  });
+
+  it('test_PropertyPanel_wholeGroupSelected_showsGroupHeading_andCommonAppearanceOnly', () => {
+    editorSession.dispatch(new CreateShapeCommand(makeRect('shape-1', 4)));
+    editorSession.dispatch(new CreateShapeCommand(makeRect('shape-2', 6)));
+    editorSession.dispatch(new GroupShapesCommand('group-1', ['shape-1', 'shape-2']));
+    useSelectionStore.getState().setSelection(['shape-1', 'shape-2']);
+
+    render(<PropertyPanel />);
+
+    expect(screen.getByText('グループを選択中')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '塗り色' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('名前')).not.toBeInTheDocument();
   });
 
   it('test_PropertyPanel_renameOnEnter_dispatchesCommand_andIsUndoable', async () => {

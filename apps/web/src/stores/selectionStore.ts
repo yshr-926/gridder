@@ -13,15 +13,33 @@ interface SelectionState {
   readonly selectedIds: readonly string[];
   /** The most recently added / clicked shape, or `null` when nothing is selected. */
   readonly primaryId: string | null;
+  /**
+   * The group currently "entered" for individual selection (issue #52, spec
+   * §7's "ダブルクリックで構成図形を個別選択できる"), or `null` when no group is
+   * entered. While set, a click that resolves to a member of this group
+   * selects that member alone instead of the whole group; a click anywhere
+   * else exits group mode. The mode-transition rules live in
+   * `features/editor`'s selection-resolution logic, not here — this store
+   * only holds the flag and the plain setters below.
+   */
+  readonly activeGroupId: string | null;
 
-  /** Replace the selection with exactly this shape. */
+  /** Replace the selection with exactly this shape. Exits group mode. */
   selectOnly: (shapeId: string) => void;
-  /** Replace the selection with exactly these shapes (order preserved). */
+  /** Replace the selection with exactly these shapes (order preserved). Exits group mode. */
   setSelection: (shapeIds: readonly string[]) => void;
-  /** Add the shape if absent, remove it if present (Shift+click). */
+  /** Add the shape if absent, remove it if present (Shift+click). Exits group mode. */
   toggle: (shapeId: string) => void;
-  /** Clear the selection. */
+  /** Clear the selection. Exits group mode. */
   clear: () => void;
+  /**
+   * Enter group mode for `groupId` and select exactly `shapeIds` within it
+   * (issue #52: double-clicking a group enters it with the clicked member
+   * selected individually).
+   */
+  enterGroup: (groupId: string, shapeIds: readonly string[]) => void;
+  /** Exit group mode without changing the current selection. */
+  exitGroup: () => void;
 }
 
 const withPrimary = (
@@ -40,11 +58,16 @@ const withPrimary = (
 export const useSelectionStore = create<SelectionState>((set) => ({
   selectedIds: [],
   primaryId: null,
+  activeGroupId: null,
 
-  selectOnly: (shapeId) => set({ selectedIds: [shapeId], primaryId: shapeId }),
+  selectOnly: (shapeId) =>
+    set({ selectedIds: [shapeId], primaryId: shapeId, activeGroupId: null }),
 
   setSelection: (shapeIds) =>
-    set(() => withPrimary([...shapeIds], shapeIds[shapeIds.length - 1] ?? null)),
+    set(() => ({
+      ...withPrimary([...shapeIds], shapeIds[shapeIds.length - 1] ?? null),
+      activeGroupId: null,
+    })),
 
   toggle: (shapeId) =>
     set((state) => {
@@ -52,10 +75,18 @@ export const useSelectionStore = create<SelectionState>((set) => ({
       const selectedIds = isSelected
         ? state.selectedIds.filter((id) => id !== shapeId)
         : [...state.selectedIds, shapeId];
-      return withPrimary(selectedIds, isSelected ? null : shapeId);
+      return { ...withPrimary(selectedIds, isSelected ? null : shapeId), activeGroupId: null };
     }),
 
-  clear: () => set({ selectedIds: [], primaryId: null }),
+  clear: () => set({ selectedIds: [], primaryId: null, activeGroupId: null }),
+
+  enterGroup: (groupId, shapeIds) =>
+    set(() => ({
+      ...withPrimary([...shapeIds], shapeIds[shapeIds.length - 1] ?? null),
+      activeGroupId: groupId,
+    })),
+
+  exitGroup: () => set({ activeGroupId: null }),
 }));
 
 // Exposed for tooling and the issue #42 Playwright workflow. Restricted to dev

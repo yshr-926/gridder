@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { clearClipboardForTests, readClipboard } from './clipboard';
 import {
@@ -246,6 +246,67 @@ describe('editCommands', () => {
       bringForward();
       // Reorder to the same slot still dispatches, but zOrder is unchanged.
       expect(editorSession.getDocument().zOrder).toEqual(before.zOrder);
+    });
+  });
+
+  describe('group operations (issue #52)', () => {
+    const setupGroup = () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('c')));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+    };
+
+    it('test_duplicateSelection_oneGroupMemberSelected_duplicatesWholeGroup', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']); // a click already expands to the group
+
+      duplicateSelection();
+
+      expect(editorSession.getDocument().zOrder).toHaveLength(5);
+      expect(useSelectionStore.getState().selectedIds).toHaveLength(2);
+    });
+
+    it('test_deleteSelection_wholeGroupSelected_deletesEveryMember_oneUndoStep', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      deleteSelection();
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']).toBeUndefined();
+      expect(document.shapes['b']).toBeUndefined();
+      expect(document.shapes['c']).toBeDefined();
+
+      editorSession.undo();
+      const restored = editorSession.getDocument();
+      expect(restored.shapes['a']).toBeDefined();
+      expect(restored.shapes['b']).toBeDefined();
+      expect(restored.groups['group-1']?.shapeIds).toEqual(['a', 'b']);
+    });
+
+    it('test_deleteSelection_ungroupedMemberOnly_selectedIdsHeldJustOneShape_stillExpandsToGroup', () => {
+      setupGroup();
+      // Even if selectedIds somehow held just one member (not expanded), the
+      // group must still be deleted as a whole.
+      useSelectionStore.setState({ selectedIds: ['a'], primaryId: 'a', activeGroupId: null });
+
+      deleteSelection();
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']).toBeUndefined();
+      expect(document.shapes['b']).toBeUndefined();
+    });
+
+    it('test_deleteSelection_memberOfEnteredGroup_deletesOnlyThatMember', () => {
+      setupGroup();
+      useSelectionStore.getState().enterGroup('group-1', ['a']);
+
+      deleteSelection();
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']).toBeUndefined();
+      expect(document.shapes['b']).toBeDefined();
     });
   });
 });

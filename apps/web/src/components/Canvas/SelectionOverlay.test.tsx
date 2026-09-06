@@ -41,11 +41,16 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
   style: { fill: '#3b82f6', opacity: 0.8, isBorderVisible: true },
 });
 
-const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
+const documentOf = (
+  shapes: readonly EditorShape[],
+  groups: Record<string, readonly string[]> = {},
+): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
-  groups: {},
+  groups: Object.fromEntries(
+    Object.entries(groups).map(([groupId, shapeIds]) => [groupId, { id: groupId, shapeIds }]),
+  ),
   drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 100, y: 100 } },
 });
 
@@ -266,6 +271,95 @@ describe('SelectionOverlay', () => {
       // World-space handle size is inversely proportional to scale, so the
       // on-screen size (width * scale) stays constant.
       expect(widthAt4x * 4).toBeCloseTo(widthAt1x * 1);
+    });
+  });
+
+  describe('group bounding frame (issue #52)', () => {
+    it('test_SelectionOverlay_wholeGroupSelected_drawsGroupFrame', () => {
+      const document = documentOf(
+        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
+        { 'group-1': ['a', 'b'] },
+      );
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+      );
+      const groupFrame = container.querySelector('[data-name="selection-group-frame"]');
+      expect(groupFrame).not.toBeNull();
+      // Spans from shape a's left edge to shape b's right edge.
+      expect(Number(groupFrame?.getAttribute('data-width'))).toBeGreaterThan(140);
+    });
+
+    it('test_SelectionOverlay_singleShapeSelected_noGroupFrame', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
+      );
+      expect(container.querySelector('[data-name="selection-group-frame"]')).toBeNull();
+    });
+
+    it('test_SelectionOverlay_ungroupedMultiSelection_noGroupFrame', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)]);
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+      );
+      expect(container.querySelector('[data-name="selection-group-frame"]')).toBeNull();
+    });
+
+    it('test_SelectionOverlay_partialGroupSelection_noGroupFrame', () => {
+      const document = documentOf(
+        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4), rectShape('c', 20, 0, 4, 4)],
+        { 'group-1': ['a', 'b', 'c'] },
+      );
+      // Only two of the group's three members are selected.
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+      );
+      expect(container.querySelector('[data-name="selection-group-frame"]')).toBeNull();
+    });
+
+    it('test_SelectionOverlay_groupFrame_isDashed_andZoomInvariant', () => {
+      const document = documentOf(
+        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
+        { 'group-1': ['a', 'b'] },
+      );
+      const { container } = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={2.5} />
+      );
+      const groupFrame = container.querySelector('[data-name="selection-group-frame"]');
+      expect(groupFrame?.getAttribute('data-stroke-scale-enabled')).toBe('false');
+    });
+
+    it('test_SelectionOverlay_groupFrame_followsMovePreview', () => {
+      const document = documentOf(
+        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
+        { 'group-1': ['a', 'b'] },
+      );
+      const withoutPreview = render(
+        <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
+      );
+      const xBefore = Number(
+        withoutPreview.container
+          .querySelector('[data-name="selection-group-frame"]')
+          ?.getAttribute('data-x'),
+      );
+      withoutPreview.unmount();
+
+      const withPreview = render(
+        <SelectionOverlay
+          document={document}
+          selectedIds={['a', 'b']}
+          gridSize={10}
+          scale={1}
+          movePreview={{ shapeIds: ['a', 'b'], delta: { x: 3, y: 0 } }}
+        />
+      );
+      const xAfter = Number(
+        withPreview.container
+          .querySelector('[data-name="selection-group-frame"]')
+          ?.getAttribute('data-x'),
+      );
+
+      expect(xAfter).toBeCloseTo(xBefore + 30);
     });
   });
 });

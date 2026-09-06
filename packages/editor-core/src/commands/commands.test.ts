@@ -226,14 +226,30 @@ describe('GroupShapesCommand / UngroupShapesCommand', () => {
     expectRoundTrip(grouped, new UngroupShapesCommand('group-1'));
   });
 
-  it('test_GroupShapesCommand_shapeAlreadyGrouped_throws', () => {
+  it('test_GroupShapesCommand_shapeAlreadyGrouped_dissolvesExistingGroup', () => {
+    // Nested groups are impossible by construction (spec §7): re-grouping a
+    // shape that already belongs to one dissolves that group rather than
+    // throwing (issue #52's chosen rule — see the class doc comment).
     const grouped = new GroupShapesCommand('group-1', [
       'shape-a',
       'shape-b',
     ]).apply(baseDocument());
-    expect(() =>
-      new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(grouped),
-    ).toThrow();
+    const regrouped = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(
+      grouped,
+    );
+    expect(regrouped.groups['group-1']).toBeUndefined();
+    expect(regrouped.groups['group-2']?.shapeIds).toEqual(['shape-a', 'shape-b']);
+    expect(isDocumentValid(regrouped)).toBe(true);
+  });
+
+  it('test_GroupShapesCommand_shapeAlreadyGrouped_invert_restoresDissolvedGroup', () => {
+    const grouped = new GroupShapesCommand('group-1', [
+      'shape-a',
+      'shape-b',
+    ]).apply(baseDocument());
+    const command = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']);
+    const { applied } = expectRoundTrip(grouped, command);
+    expect(applied.groups['group-2']?.shapeIds).toEqual(['shape-a', 'shape-b']);
   });
 
   it('test_GroupShapesCommand_fewerThanTwoShapes_throws', () => {

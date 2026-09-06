@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { rotateSelection } from './rotate';
 import { editorSession } from './useEditorSession';
@@ -83,5 +83,49 @@ describe('rotateSelection', () => {
     rotateSelection('cw');
 
     expect(editorSession.getDocument()).toEqual(start);
+  });
+
+  describe('group rotation (issue #52)', () => {
+    it('test_rotateSelection_oneGroupMemberSelected_rotatesWholeGroup_oneUndoStep', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a', 0, 4, 2)));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b', 6, 2, 4)));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+      // Simulate selectedIds holding just one member (a click already expands
+      // it in practice — this proves rotateSelection stays correct even if
+      // it doesn't).
+      useSelectionStore.setState({ selectedIds: ['a'], primaryId: 'a', activeGroupId: null });
+      const beforeRotate = editorSession.getDocument();
+
+      rotateSelection('cw');
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']?.polygon.outerRing).not.toEqual(
+        beforeRotate.shapes['a']?.polygon.outerRing,
+      );
+      expect(document.shapes['b']?.polygon.outerRing).not.toEqual(
+        beforeRotate.shapes['b']?.polygon.outerRing,
+      );
+
+      editorSession.undo();
+      expect(editorSession.getDocument()).toEqual(beforeRotate);
+    });
+
+    it('test_rotateSelection_memberOfEnteredGroup_rotatesOnlyThatMember', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a', 0, 4, 2)));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b', 6, 2, 4)));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+      useSelectionStore.getState().enterGroup('group-1', ['a']);
+      const beforeRotate = editorSession.getDocument();
+
+      rotateSelection('cw');
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']?.polygon.outerRing).not.toEqual(
+        beforeRotate.shapes['a']?.polygon.outerRing,
+      );
+      expect(document.shapes['b']?.polygon.outerRing).toEqual(
+        beforeRotate.shapes['b']?.polygon.outerRing,
+      );
+    });
   });
 });

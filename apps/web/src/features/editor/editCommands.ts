@@ -3,6 +3,7 @@ import {
   CreateShapeCommand,
   DeleteShapeCommand,
   ReorderShapeCommand,
+  UngroupShapesCommand,
   type EditorCommand,
   type EditorDocument,
   type EditorShape,
@@ -15,6 +16,7 @@ import { generateId } from '@/utils/id';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { copyToClipboard, notePasted, readClipboard } from './clipboard';
 import { editorSession } from './useEditorSession';
+import { expandSelectionForGroups, groupContaining } from './groupSelection';
 
 /**
  * Multi-shape edit operations for issue #51: copy / paste / duplicate / delete
@@ -35,12 +37,19 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
   innerRings: polygon.innerRings.map((ring) => translateRing(ring, delta)),
 });
 
-/** Selected shapes resolved against the live document, in selection order. */
+/**
+ * Selected shapes resolved against the live document, in selection order.
+ * Expanded to whole groups (issue #52, spec §7: copy/duplicate/delete act on
+ * a group as a unit) — normally a no-op, since a click already expands the
+ * selection to the whole group (see `applyInteractionEffect`'s `selectOnly`),
+ * but this stays correct even if `selectedIds` ever holds just one member of
+ * a not-currently-entered group.
+ */
 const selectedShapes = (): readonly EditorShape[] => {
   const document = editorSession.getDocument();
-  return useSelectionStore
-    .getState()
-    .selectedIds.map((id) => document.shapes[id])
+  const { selectedIds, activeGroupId } = useSelectionStore.getState();
+  return expandSelectionForGroups(document, selectedIds, activeGroupId)
+    .map((id) => document.shapes[id])
     .filter((shape): shape is EditorShape => shape !== undefined);
 };
 
@@ -115,16 +124,44 @@ export const duplicateSelection = (): void => {
   useSelectionStore.getState().setSelection(duplicated.map((shape) => shape.id));
 };
 
-/** Delete every selected shape, no confirmation, one Undo step (ui-principles §5). */
+/** A group can never have fewer than two members (spec §7's "一階層だけ" minimum). */
+const MIN_GROUP_SIZE = 2;
+
+/**
+ * Delete every selected shape, no confirmation, one Undo step (ui-principles
+ * §5, spec §7: a group deletes as a unit). Any group left with fewer than two
+ * members by the deletion — whether every member is deleted (group mode off)
+ * or just enough are (deleting one member while inside group mode) — is
+ * explicitly ungrouped first, in the same Command: `DeleteShapeCommand` itself
+ * never restores group membership on undo (see its doc comment; the
+ * document-mutation layer drops an under-sized group as a side effect of
+ * removing a shape), so without this the group would vanish permanently even
+ * after an Undo brought its shapes back.
+ */
 export const deleteSelection = (): void => {
   const shapes = selectedShapes();
   if (shapes.length === 0) {
     return;
   }
-  dispatchAll(
-    shapes.map((shape) => new DeleteShapeCommand(shape.id)),
-    'Delete',
-  );
+  const document = editorSession.getDocument();
+  const deletedIds = new Set(shapes.map((shape) => shape.id));
+  const dissolvedGroupIds = new Set<string>();
+  for (const shape of shapes) {
+    const group = groupContaining(document, shape.id);
+    if (group === null) {
+      continue;
+    }
+    const remaining = group.shapeIds.filter((id) => !deletedIds.has(id));
+    if (remaining.length < MIN_GROUP_SIZE) {
+      dissolvedGroupIds.add(group.id);
+    }
+  }
+
+  const commands: EditorCommand[] = [
+    ...[...dissolvedGroupIds].map((groupId) => new UngroupShapesCommand(groupId)),
+    ...shapes.map((shape) => new DeleteShapeCommand(shape.id)),
+  ];
+  dispatchAll(commands, 'Delete');
   useSelectionStore.getState().clear();
 };
 

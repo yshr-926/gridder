@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { editorSession } from './useEditorSession';
 import { useSelectedShapes } from './useSelectedShapes';
@@ -62,5 +62,60 @@ describe('useSelectedShapes', () => {
   it('test_useSelectedShapes_noPhysicalScale_returnsUndefined', () => {
     const { result } = renderHook(() => useSelectedShapes());
     expect(result.current.physicalScale).toBeUndefined();
+  });
+
+  describe('isGroupSelection (issue #52)', () => {
+    it('test_isGroupSelection_wholeGroupSelected_isTrue', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      const { result } = renderHook(() => useSelectedShapes());
+
+      expect(result.current.isGroupSelection).toBe(true);
+    });
+
+    it('test_isGroupSelection_ungroupedMultiSelection_isFalse', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      const { result } = renderHook(() => useSelectedShapes());
+
+      expect(result.current.isGroupSelection).toBe(false);
+    });
+
+    it('test_isGroupSelection_singleShape_isFalse', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      useSelectionStore.getState().selectOnly('a');
+
+      const { result } = renderHook(() => useSelectedShapes());
+
+      expect(result.current.isGroupSelection).toBe(false);
+    });
+
+    it('test_isGroupSelection_insideGroupMode_isFalse', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+      useSelectionStore.getState().enterGroup('group-1', ['a']);
+
+      const { result } = renderHook(() => useSelectedShapes());
+
+      expect(result.current.isGroupSelection).toBe(false);
+    });
+
+    it('test_isGroupSelection_partialGroupSelection_isFalse', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('c')));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b', 'c']));
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      const { result } = renderHook(() => useSelectedShapes());
+
+      expect(result.current.isGroupSelection).toBe(false);
+    });
   });
 });

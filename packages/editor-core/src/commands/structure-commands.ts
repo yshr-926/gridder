@@ -7,6 +7,7 @@ import type {
   ShapeId,
 } from '../model.js';
 import type { EditorCommand } from './command.js';
+import { CompositeCommand } from './composite-command.js';
 import {
   dropGroup,
   indexInZOrder,
@@ -98,6 +99,17 @@ export class SetPhysicalScaleCommand implements EditorCommand {
   }
 }
 
+/**
+ * Group shapes into a new one-level group (spec §7, issue #52). Nested groups
+ * are impossible by construction: when a shape in the selection already
+ * belongs to a group, that whole existing group is dissolved and folded into
+ * the new one rather than rejected — grouping a fresh selection that partly
+ * overlaps an existing group is a normal editing move (e.g. "add this shape to
+ * that group" via a re-selection + re-group), and refusing it would force a
+ * manual ungroup first for no benefit. A shape can be dissolved out of at most
+ * one existing group per `apply`, since a shape belongs to at most one group
+ * at a time.
+ */
 export class GroupShapesCommand implements EditorCommand {
   readonly type = 'group-shapes';
   readonly label = 'Group shapes';
@@ -121,18 +133,49 @@ export class GroupShapesCommand implements EditorCommand {
         throw new Error(`Shape "${shapeId}" is listed twice for the group.`);
       }
       seen.add(shapeId);
+    }
+
+    const dissolvedGroupIds = new Set<GroupId>();
+    for (const shapeId of this.shapeIds) {
       for (const group of Object.values(document.groups)) {
         if (group.shapeIds.includes(shapeId)) {
-          throw new Error(`Shape "${shapeId}" already belongs to a group.`);
+          dissolvedGroupIds.add(group.id);
         }
       }
     }
+
+    let next = document;
+    for (const dissolvedGroupId of dissolvedGroupIds) {
+      next = dropGroup(next, dissolvedGroupId);
+    }
     const group: ShapeGroup = { id: this.groupId, shapeIds: [...this.shapeIds] };
-    return putGroup(document, group);
+    return putGroup(next, group);
   }
 
-  invert(): EditorCommand {
-    return new UngroupShapesCommand(this.groupId);
+  invert(documentBeforeApply: EditorDocument): EditorCommand {
+    const dissolvedGroups: ShapeGroup[] = [];
+    for (const shapeId of this.shapeIds) {
+      for (const group of Object.values(documentBeforeApply.groups)) {
+        if (group.shapeIds.includes(shapeId) && !dissolvedGroups.includes(group)) {
+          dissolvedGroups.push(group);
+        }
+      }
+    }
+    if (dissolvedGroups.length === 0) {
+      return new UngroupShapesCommand(this.groupId);
+    }
+    // Undo must both remove the new group and restore every group it
+    // dissolved — one Command per concern, wrapped so the whole thing is
+    // still a single history entry when this is itself the inverse of a redo.
+    return new CompositeCommand(
+      [
+        new UngroupShapesCommand(this.groupId),
+        ...dissolvedGroups.map(
+          (group) => new GroupShapesCommand(group.id, group.shapeIds),
+        ),
+      ],
+      'Undo group shapes',
+    );
   }
 }
 

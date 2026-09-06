@@ -12,8 +12,9 @@ import { ShapeStructureActions } from './ShapeStructureActions';
  * Reads the polygon document through {@link useSelectedShapes} — the retired
  * `canvasStore` is no longer involved. It renders only when something is
  * selected; a single selection gets name, dimensions and appearance, a
- * multi-selection gets the common appearance controls only. Every edit goes
- * through an editor-core Command so each change is a single Undo step.
+ * multi-selection or a group (issue #52, spec §7 / ui-principles §7) gets the
+ * common appearance controls only. Every edit goes through an editor-core
+ * Command so each change is a single Undo step.
  *
  * The panel is an overlay-free fixed-width column so digit / label changes never
  * move the canvas. Its entrance transition is `animate-inspector-in`
@@ -21,7 +22,7 @@ import { ShapeStructureActions } from './ShapeStructureActions';
  * `index.css`.
  */
 export const PropertyPanel = () => {
-  const { shapes, primaryShape, physicalScale } = useSelectedShapes();
+  const { shapes, primaryShape, physicalScale, isGroupSelection } = useSelectedShapes();
 
   if (shapes.length === 0) {
     return null;
@@ -29,6 +30,11 @@ export const PropertyPanel = () => {
 
   const isSingle = shapes.length === 1;
   const singleShape = isSingle ? (primaryShape ?? shapes[0]) : null;
+  const heading = isSingle
+    ? '選択中の図形'
+    : isGroupSelection
+      ? 'グループを選択中'
+      : `${shapes.length} 図形を選択中`;
 
   return (
     <aside
@@ -37,9 +43,7 @@ export const PropertyPanel = () => {
       aria-label="図形インスペクター"
     >
       <div className="flex items-center justify-between border-b border-ui-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-ui">
-          {isSingle ? '選択中の図形' : `${shapes.length} 図形を選択中`}
-        </h2>
+        <h2 className="text-sm font-semibold text-ui">{heading}</h2>
         {/* Rotation (issue #47, spec §6.2 / §7): pivots on the whole
             selection's bounding box, so single and multi-selections both get
             the same two buttons. */}

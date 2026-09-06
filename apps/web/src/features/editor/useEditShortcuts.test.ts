@@ -148,4 +148,51 @@ describe('useEditShortcuts', () => {
     expect(editorSession.getDocument().zOrder).toEqual(['a']);
     document.body.removeChild(textarea);
   });
+
+  it('test_ctrlG_groupsSelection', () => {
+    editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+    editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+    useSelectionStore.getState().setSelection(['a', 'b']);
+    renderHook(() => useEditShortcuts());
+
+    act(() => {
+      dispatchKey({ key: 'g', ctrlKey: true });
+    });
+
+    expect(Object.keys(editorSession.getDocument().groups)).toHaveLength(1);
+  });
+
+  it('test_ctrlShiftG_ungroupsSelection', () => {
+    editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+    editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+    useSelectionStore.getState().setSelection(['a', 'b']);
+    renderHook(() => useEditShortcuts());
+
+    act(() => {
+      dispatchKey({ key: 'g', ctrlKey: true });
+    });
+    act(() => {
+      dispatchKey({ key: 'G', ctrlKey: true, shiftKey: true });
+    });
+
+    expect(Object.keys(editorSession.getDocument().groups)).toHaveLength(0);
+  });
+
+  it('test_ctrlG_whileInputFocused_isIgnored', () => {
+    editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+    editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+    useSelectionStore.getState().setSelection(['a', 'b']);
+    renderHook(() => useEditShortcuts());
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    act(() => {
+      dispatchKey({ key: 'g', ctrlKey: true }, input);
+    });
+
+    expect(Object.keys(editorSession.getDocument().groups)).toHaveLength(0);
+    document.body.removeChild(input);
+  });
 });
