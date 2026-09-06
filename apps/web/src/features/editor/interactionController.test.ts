@@ -831,10 +831,11 @@ describe('reduceInteraction — shape cell editing (issue #49)', () => {
       { type: 'doubleClickShape', shapeId: 'a' },
       { type: 'pointerDown', sample: cellSample(0.5, 0.5) },
     ]).state;
-    const afterMove = reduceInteraction(afterDown, {
-      type: 'pointerMove',
-      sample: cellSample(0.9, 0.9),
-    }).state;
+    const afterMove = reduceInteraction(
+      afterDown,
+      { type: 'pointerMove', sample: cellSample(0.9, 0.9) },
+      document
+    ).state;
     // Still inside cell (0,0): the state reference should be unchanged.
     expect(afterMove).toBe(afterDown);
   });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useToastStore } from '@/hooks/useToast';
 import { EditorSession } from './editorSession';
@@ -22,7 +22,7 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 
 describe('applyInteractionEffect', () => {
   beforeEach(() => {
-    useSelectionStore.setState({ selectedIds: [], primaryId: null });
+    useSelectionStore.setState({ selectedIds: [], primaryId: null, activeGroupId: null });
     useToastStore.setState({ toasts: [] });
   });
 
@@ -308,6 +308,301 @@ describe('applyInteractionEffect', () => {
       expect(document.shapes[newShapeId as string].style.fill).not.toBe(
         document.shapes['existing'].style.fill
       );
+    });
+  });
+
+  describe('group selection and movement (issue #52)', () => {
+    const groupedSession = (): EditorSession => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 2, 2)));
+      session.dispatch(new CreateShapeCommand(rectShape('b', 5, 0, 2, 2)));
+      session.dispatch(new CreateShapeCommand(rectShape('c', 10, 0, 2, 2)));
+      session.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
+      return session;
+    };
+
+    it('test_selectOnly_groupedShape_selectsWholeGroup', () => {
+      const session = groupedSession();
+      applyInteractionEffect(session, { type: 'selectOnly', shapeId: 'a' });
+      expect(useSelectionStore.getState().selectedIds.sort()).toEqual(['a', 'b']);
+      expect(useSelectionStore.getState().activeGroupId).toBeNull();
+    });
+
+    it('test_selectOnly_ungroupedShape_selectsItAlone', () => {
+      const session = groupedSession();
+      applyInteractionEffect(session, { type: 'selectOnly', shapeId: 'c' });
+      expect(useSelectionStore.getState().selectedIds).toEqual(['c']);
+    });
+
+    it('test_selectOnly_memberOfEnteredGroup_selectsItAlone_staysInGroupMode', () => {
+      const session = groupedSession();
+      useSelectionStore.getState().enterGroup('group-1', ['a', 'b']);
+      applyInteractionEffect(session, { type: 'selectOnly', shapeId: 'b' });
+      expect(useSelectionStore.getState().selectedIds).toEqual(['b']);
+      expect(useSelectionStore.getState().activeGroupId).toBe('group-1');
+    });
+
+    it('test_moveShapes_dragStartedOnOneGroupMember_movesWholeGroup_oneUndoStep', () => {
+      const session = groupedSession();
+      // Simulate the interactionController only knowing the hit shape at
+      // drag-start (it can't see group membership) — shapeIds is just ['a'].
+      applyInteractionEffect(session, {
+        type: 'moveShapes',
+        shapeIds: ['a'],
+        delta: { x: 3, y: 1 },
+      });
+
+      const document = session.getDocument();
+      expect(document.shapes['a'].polygon.outerRing[0]).toEqual({ x: 3, y: 1 });
+      expect(document.shapes['b'].polygon.outerRing[0]).toEqual({ x: 8, y: 1 });
+      // Ungrouped shape 'c' is untouched.
+      expect(document.shapes['c'].polygon.outerRing[0]).toEqual({ x: 10, y: 0 });
+
+      // One undo reverts both group members together.
+      session.undo();
+      const reverted = session.getDocument();
+      expect(reverted.shapes['a'].polygon.outerRing[0]).toEqual({ x: 0, y: 0 });
+      expect(reverted.shapes['b'].polygon.outerRing[0]).toEqual({ x: 5, y: 0 });
+    });
+
+    it('test_moveShapes_memberOfEnteredGroup_movesOnlyThatMember', () => {
+      const session = groupedSession();
+      useSelectionStore.getState().enterGroup('group-1', ['a']);
+      applyInteractionEffect(session, {
+        type: 'moveShapes',
+        shapeIds: ['a'],
+        delta: { x: 1, y: 1 },
+      });
+      const document = session.getDocument();
+      expect(document.shapes['a'].polygon.outerRing[0]).toEqual({ x: 1, y: 1 });
+      // 'b' — the other group member — is untouched while inside group mode.
+      expect(document.shapes['b'].polygon.outerRing[0]).toEqual({ x: 5, y: 0 });
+    });
+  });
+
+  describe('commitShapeEdit (issue #49)', () => {
+    it('test_commitShapeEdit_oneResultPolygon_replacesTheShapeInPlace_oneUndoStep', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 2, 2)));
+      const original = session.getDocument().shapes['a'].polygon;
+      const grown: EditorShape['polygon'] = {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 3, y: 0 },
+          { x: 3, y: 1 },
+          { x: 2, y: 1 },
+          { x: 2, y: 2 },
+          { x: 0, y: 2 },
+        ],
+        innerRings: [],
+      };
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [grown],
+      });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toEqual(['a']);
+      expect(document.shapes['a'].polygon).toEqual(grown);
+      expect(useSelectionStore.getState().selectedIds).toEqual(['a']);
+
+      // One undo restores the original 1-shape geometry exactly.
+      session.undo();
+      expect(session.getDocument().shapes['a'].polygon).toEqual(original);
+      expect(session.getDocument().zOrder).toEqual(['a']);
+    });
+
+    it('test_commitShapeEdit_holePreserved_keepsOneShape_withInnerRing', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 3, 3)));
+      const original = session.getDocument().shapes['a'].polygon;
+      const withHole: EditorShape['polygon'] = {
+        outerRing: original.outerRing,
+        innerRings: [
+          [
+            { x: 1, y: 2 },
+            { x: 2, y: 2 },
+            { x: 2, y: 1 },
+            { x: 1, y: 1 },
+          ],
+        ],
+      };
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [withHole],
+      });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toEqual(['a']);
+      expect(document.shapes['a'].polygon.innerRings).toHaveLength(1);
+
+      session.undo();
+      expect(session.getDocument().shapes['a'].polygon).toEqual(original);
+    });
+
+    it('test_commitShapeEdit_zeroResultPolygons_deletesTheShape_undoRestoresIt', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 1, 1)));
+      const original = session.getDocument().shapes['a'].polygon;
+      useSelectionStore.getState().selectOnly('a');
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [],
+      });
+
+      expect(session.getDocument().zOrder).toEqual([]);
+      expect(useSelectionStore.getState().selectedIds).toEqual([]);
+
+      session.undo();
+      const restored = session.getDocument();
+      expect(restored.zOrder).toEqual(['a']);
+      expect(restored.shapes['a'].polygon).toEqual(original);
+    });
+
+    it('test_commitShapeEdit_twoResultPolygons_splitsIntoTwoShapes_inheritingNameAndStyle_oneUndoStep', () => {
+      const session = new EditorSession(createEmptyDocument());
+      const named: EditorShape = { ...rectShape('a', 0, 0, 3, 1), name: 'My Shape' };
+      session.dispatch(new CreateShapeCommand(named));
+      const original = session.getDocument().shapes['a'].polygon;
+
+      const left: EditorShape['polygon'] = {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+          { x: 1, y: 1 },
+          { x: 0, y: 1 },
+        ],
+        innerRings: [],
+      };
+      const right: EditorShape['polygon'] = {
+        outerRing: [
+          { x: 2, y: 0 },
+          { x: 3, y: 0 },
+          { x: 3, y: 1 },
+          { x: 2, y: 1 },
+        ],
+        innerRings: [],
+      };
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [left, right],
+      });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toHaveLength(2);
+      expect(document.zOrder[0]).toBe('a');
+      const newId = document.zOrder[1];
+      expect(newId).not.toBe('a');
+
+      expect(document.shapes['a'].polygon).toEqual(left);
+      expect(document.shapes[newId].polygon).toEqual(right);
+      // Both pieces inherit the original name and style, under their own ids.
+      expect(document.shapes['a'].name).toBe('My Shape');
+      expect(document.shapes[newId].name).toBe('My Shape');
+      expect(document.shapes[newId].style).toEqual(named.style);
+      expect(useSelectionStore.getState().selectedIds).toEqual(['a', newId]);
+
+      // One undo reverts the whole split back to the single original shape.
+      session.undo();
+      const reverted = session.getDocument();
+      expect(reverted.zOrder).toEqual(['a']);
+      expect(reverted.shapes['a'].polygon).toEqual(original);
+      expect(reverted.shapes['a'].name).toBe('My Shape');
+    });
+
+    it('test_commitShapeEdit_threeResultPolygons_createsTwoNewShapes_allWithFreshIds', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 5, 1)));
+      const original = session.getDocument().shapes['a'].polygon;
+      const piece = (x: number): EditorShape['polygon'] => ({
+        outerRing: [
+          { x, y: 0 },
+          { x: x + 1, y: 0 },
+          { x: x + 1, y: 1 },
+          { x, y: 1 },
+        ],
+        innerRings: [],
+      });
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [piece(0), piece(2), piece(4)],
+      });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toHaveLength(3);
+      const ids = new Set(document.zOrder);
+      expect(ids.size).toBe(3);
+      expect(document.zOrder[0]).toBe('a');
+
+      session.undo();
+      expect(session.getDocument().zOrder).toEqual(['a']);
+    });
+
+    it('test_commitShapeEdit_unknownShapeId_isNoOp', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 2, 2)));
+      const before = session.getDocument();
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'missing',
+        originalPolygon: rectShape('missing', 0, 0, 1, 1).polygon,
+        resultPolygons: [rectShape('missing', 0, 0, 2, 2).polygon],
+      });
+
+      expect(session.getDocument()).toBe(before);
+    });
+
+    it('test_commitShapeEdit_splitShapes_insertRightAboveTheOriginalInZOrder', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('below', 20, 20, 1, 1)));
+      session.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 3, 1)));
+      session.dispatch(new CreateShapeCommand(rectShape('above', 30, 30, 1, 1)));
+      const original = session.getDocument().shapes['a'].polygon;
+
+      const left: EditorShape['polygon'] = {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+          { x: 1, y: 1 },
+          { x: 0, y: 1 },
+        ],
+        innerRings: [],
+      };
+      const right: EditorShape['polygon'] = {
+        outerRing: [
+          { x: 2, y: 0 },
+          { x: 3, y: 0 },
+          { x: 3, y: 1 },
+          { x: 2, y: 1 },
+        ],
+        innerRings: [],
+      };
+
+      applyInteractionEffect(session, {
+        type: 'commitShapeEdit',
+        shapeId: 'a',
+        originalPolygon: original,
+        resultPolygons: [left, right],
+      });
+
+      const zOrder = session.getDocument().zOrder;
+      expect(zOrder).toEqual(['below', 'a', zOrder[2], 'above']);
     });
   });
 });

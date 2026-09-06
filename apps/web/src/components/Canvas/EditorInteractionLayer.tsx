@@ -3,11 +3,17 @@ import { Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Position } from '@/types';
 import {
+  editorSession,
+  groupContaining,
   polygonDraftPreview,
   previewRegion,
   resizeCursorForHandle,
+  resolveDoubleClickTarget,
+  shapeAtPoint,
   useEditorInteraction,
 } from '@/features/editor';
+import { screenToGrid } from '@/features/viewport';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { PolygonDraftLayer } from './PolygonDraftLayer';
 
 /** Cursor values this layer can report (issues #43, #44, #48). */
@@ -97,6 +103,7 @@ export const EditorInteractionLayer = forwardRef<
     onPointerUp,
     onPointerCancel,
     startPolygon,
+    enterShapeEdit,
   } = useEditorInteraction({
     scale: zoom,
     offset: panPosition,
@@ -119,7 +126,7 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerDown(point, event.evt.shiftKey);
+        onPointerDown(point, event.evt.shiftKey, event.evt.altKey);
       }
     },
     [pointerFromEvent, onPointerDown]
@@ -129,7 +136,7 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerMove(point, event.evt.shiftKey);
+        onPointerMove(point, event.evt.shiftKey, event.evt.altKey);
       }
     },
     [pointerFromEvent, onPointerMove]
@@ -139,24 +146,63 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerUp(point, event.evt.shiftKey);
+        onPointerUp(point, event.evt.shiftKey, event.evt.altKey);
       }
     },
     [pointerFromEvent, onPointerUp]
   );
 
+  /**
+   * A double-click resolves through `resolveDoubleClickTarget` (issue #52 /
+   * #49, split by agreement): `'enter-group'` — the shape belongs to a group
+   * not currently entered — puts that group into individual-selection mode
+   * with the double-clicked shape selected alone (spec §7 "ダブルクリックで
+   * 構成図形を個別選択できる"). `'edit-shape'` (an ungrouped shape, or one
+   * already inside its entered group) is issue #49's cell-editing double-click
+   * (spec §6.3 "図形をダブルクリックすると一時的な図形編集状態へ入る"). `'none'` is
+   * currently unreachable.
+   */
+  const handleDoubleClick = useCallback(
+    (event: KonvaEventObject<MouseEvent>) => {
+      const point = pointerFromEvent(event);
+      if (point === null) {
+        return;
+      }
+      const gridPoint = screenToGrid(point, { scale: zoom, offset: panPosition }, gridSize);
+      const document = editorSession.getDocument();
+      const shape = shapeAtPoint(document, gridPoint);
+      if (shape === null) {
+        return;
+      }
+      const activeGroupId = useSelectionStore.getState().activeGroupId;
+      const target = resolveDoubleClickTarget(document, activeGroupId, shape.id);
+      if (target === 'enter-group') {
+        const group = groupContaining(document, shape.id);
+        if (group !== null) {
+          useSelectionStore.getState().enterGroup(group.id, [shape.id]);
+        }
+        return;
+      }
+      if (target === 'edit-shape') {
+        enterShapeEdit(shape.id);
+      }
+    },
+    [pointerFromEvent, zoom, panPosition, gridSize, enterShapeEdit]
+  );
+
   // Cursor feedback for the move gesture (spec §6.1, issue #43), the resize
   // gesture (spec §6.2, issue #44), and polygon creation (spec §6.3,
-  // issue #48): `grabbing` once the drag is moving a shape, `grab` while the
-  // pointer is down on a shape but hasn't crossed the drag threshold yet,
-  // the matching `*-resize` axis cursor while a resize handle is grabbed or
-  // merely hovered, and `crosshair` for the whole polygon-creation gesture
-  // (so "移動と伸縮の境界をカーソルだけで理解できる" — ui-principles §8 — extends to
-  // telling direct manipulation apart from the modal creation gesture).
+  // issue #48), and cell editing (spec §6.3, issue #49): `grabbing` once the
+  // drag is moving a shape, `grab` while the pointer is down on a shape but
+  // hasn't crossed the drag threshold yet, the matching `*-resize` axis
+  // cursor while a resize handle is grabbed or merely hovered, and
+  // `crosshair` for the whole polygon-creation or shape-editing gesture (so
+  // "移動と伸縮の境界をカーソルだけで理解できる" — ui-principles §8 — extends to
+  // telling direct manipulation apart from these modal gestures).
   // Reported to the parent so it can be applied to the Stage container,
   // matching how `#40`'s pan cursor is set on `GridCanvas`.
   const cursor: EditorInteractionCursor | null =
-    state.kind === 'creatingPolygon'
+    state.kind === 'creatingPolygon' || state.kind === 'editingShape'
       ? 'crosshair'
       : state.kind === 'resizing'
         ? RESIZE_CURSOR[resizeCursorForHandle(state.handle)]
@@ -218,6 +264,7 @@ export const EditorInteractionLayer = forwardRef<
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={onPointerCancel}
+        onDblClick={handleDoubleClick}
       />
       {preview}
       {polygonDraft !== null && (
