@@ -13,10 +13,14 @@ import {
 
 /**
  * Pointer arbitration for the polygon editor's normal state (spec §6.1, §6.2,
- * issues #42, #43, #44). One controller decides, from a stream of pointer
- * events, whether the gesture is a click-select, a Shift-toggle, a blank-drag
- * rectangle, a Shift-drag marquee, a shape-drag move, or a handle-drag resize
- * — without adding tool modes.
+ * §6.3, issues #42, #43, #44, #48). One controller decides, from a stream of
+ * pointer and keyboard events, whether the gesture is a click-select, a
+ * Shift-toggle, a blank-drag rectangle, a Shift-drag marquee, a shape-drag
+ * move, a handle-drag resize, or a click-by-click polygon creation — without
+ * adding tool modes for the direct-manipulation gestures. Polygon creation
+ * (spec §6.3 "一時的なポリゴン作成") is the one true modal exception ui-principles
+ * §2 allows, entered explicitly via `P` / the top-bar button and exited via
+ * confirm or `Esc`.
  *
  * It is a pure reducer: {@link reduceInteraction} takes the current
  * {@link InteractionState}, one {@link InteractionEvent}, the document, the
@@ -76,13 +80,30 @@ export type InteractionState =
       readonly originBounds: GridRect;
       /** Live resized bounds, recomputed from the pointer each move. */
       readonly currentBounds: GridRect;
+    }
+  | {
+      readonly kind: 'creatingPolygon';
+      /** Grid vertices placed so far, in click order. */
+      readonly vertices: readonly GridPoint[];
+      /** Live pointer position (grid vertex), for the rubber-band preview edge. */
+      readonly cursorVertex: GridPoint | null;
     };
 
 export type InteractionEvent =
   | { readonly type: 'pointerDown'; readonly sample: PointerSample }
   | { readonly type: 'pointerMove'; readonly sample: PointerSample }
   | { readonly type: 'pointerUp'; readonly sample: PointerSample }
-  | { readonly type: 'pointerCancel' };
+  | { readonly type: 'pointerCancel' }
+  /**
+   * `P` or the top-bar button (issue #48, spec §6.3): enter polygon
+   * creation. Only takes effect from `idle` — it never interrupts a drag
+   * already in progress.
+   */
+  | { readonly type: 'startPolygon' }
+  /** `Enter`, only meaningful while `creatingPolygon`. */
+  | { readonly type: 'confirmPolygon' }
+  /** `Esc`, only meaningful while `creatingPolygon`. */
+  | { readonly type: 'cancelPolygon' };
 
 export type InteractionEffect =
   | { readonly type: 'selectOnly'; readonly shapeId: string }
@@ -105,6 +126,11 @@ export type InteractionEffect =
       readonly shapeId: string;
       /** Final rectangle bounds (already flip-normalised, min 1 cell). */
       readonly bounds: GridRect;
+    }
+  | {
+      readonly type: 'createPolygon';
+      /** Confirmed grid vertices, in click order (at least 3). */
+      readonly vertices: readonly GridPoint[];
     };
 
 export interface InteractionResult {
@@ -114,6 +140,14 @@ export interface InteractionResult {
 
 /** Grid-vertex distance past which a pending pointer becomes a drag gesture. */
 const DRAG_THRESHOLD_CELLS = 0.35;
+/**
+ * Grid-vertex distance within which a click during polygon creation
+ * (issue #48) counts as clicking the start vertex again, closing the shape,
+ * rather than placing a new vertex on top of it.
+ */
+const CLOSE_VERTEX_THRESHOLD_CELLS = 0.35;
+/** Minimum vertex count spec §5/§48 requires before a polygon can confirm. */
+const MIN_POLYGON_VERTICES = 3;
 
 export const IDLE_STATE: InteractionState = { kind: 'idle' };
 
@@ -166,8 +200,38 @@ export const reduceInteraction = (
    */
   handleHitRadius = 0
 ): InteractionResult => {
-  if (event.type === 'pointerCancel') {
+  // A stray pointer-cancel (e.g. losing capture mid-drag) resets any active
+  // drag gesture, but never interrupts polygon creation (issue #48) — that
+  // mode has no pointer capture of its own to lose, and only `Esc` /
+  // `cancelPolygon` should discard it.
+  if (event.type === 'pointerCancel' && state.kind !== 'creatingPolygon') {
     return { state: IDLE_STATE };
+  }
+
+  // `startPolygon` / `confirmPolygon` / `cancelPolygon` are keyboard-driven
+  // (issue #48) and handled once, up front, rather than per-state below:
+  // entry only takes effect from `idle`, and confirm / cancel only while
+  // already `creatingPolygon`.
+  if (event.type === 'startPolygon') {
+    if (state.kind !== 'idle') {
+      return { state };
+    }
+    return { state: { kind: 'creatingPolygon', vertices: [], cursorVertex: null } };
+  }
+  if (event.type === 'cancelPolygon') {
+    if (state.kind !== 'creatingPolygon') {
+      return { state };
+    }
+    return { state: IDLE_STATE };
+  }
+  if (event.type === 'confirmPolygon') {
+    if (state.kind !== 'creatingPolygon') {
+      return { state };
+    }
+    if (state.vertices.length < MIN_POLYGON_VERTICES) {
+      return { state };
+    }
+    return { state: IDLE_STATE, effect: { type: 'createPolygon', vertices: state.vertices } };
   }
 
   switch (state.kind) {
@@ -365,6 +429,45 @@ export const reduceInteraction = (
       }
       return { state };
     }
+
+    case 'creatingPolygon': {
+      if (event.type === 'pointerMove') {
+        const cursorVertex = event.sample.vertex;
+        if (state.cursorVertex !== null && samePoint(state.cursorVertex, cursorVertex)) {
+          return { state };
+        }
+        return { state: { ...state, cursorVertex } };
+      }
+      if (event.type === 'pointerDown') {
+        const clicked = event.sample.vertex;
+        const first = state.vertices[0];
+        // Clicking the start vertex again closes the polygon — but only once
+        // there are enough vertices to form one (spec §48 "3頂点未満では確定
+        // 不可"); before that, clicking on top of it just re-places vertex 0
+        // (a no-op placement, since dropping a duplicate point is harmless
+        // and keeps the gesture predictable).
+        if (
+          first !== undefined &&
+          state.vertices.length >= MIN_POLYGON_VERTICES &&
+          Math.hypot(clicked.x - first.x, clicked.y - first.y) <= CLOSE_VERTEX_THRESHOLD_CELLS
+        ) {
+          return {
+            state: IDLE_STATE,
+            effect: { type: 'createPolygon', vertices: state.vertices },
+          };
+        }
+        // A duplicate consecutive vertex (clicking the same spot twice) is a
+        // no-op click, not a new edge.
+        const last = state.vertices[state.vertices.length - 1];
+        if (last !== undefined && samePoint(last, clicked)) {
+          return { state };
+        }
+        return {
+          state: { ...state, vertices: [...state.vertices, clicked], cursorVertex: clicked },
+        };
+      }
+      return { state };
+    }
   }
 };
 
@@ -394,4 +497,27 @@ export const resizePreview = (
     return null;
   }
   return { shapeId: state.shapeId, bounds: state.currentBounds };
+};
+
+/**
+ * Live polygon-creation state, or `null` when not creating one (issue #48).
+ * The caller draws the placed vertices, the rubber-band edge to the pointer,
+ * and — once there are enough vertices — a closing-edge hint back to the
+ * start; none of it touches React document state until confirm.
+ */
+export const polygonDraftPreview = (
+  state: InteractionState
+): {
+  readonly vertices: readonly GridPoint[];
+  readonly cursorVertex: GridPoint | null;
+  readonly canClose: boolean;
+} | null => {
+  if (state.kind !== 'creatingPolygon') {
+    return null;
+  }
+  return {
+    vertices: state.vertices,
+    cursorVertex: state.cursorVertex,
+    canClose: state.vertices.length >= MIN_POLYGON_VERTICES,
+  };
 };

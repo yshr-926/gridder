@@ -6,6 +6,7 @@ import { editorSession } from '@/features/editor';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
+import { useToastStore } from '@/hooks/useToast';
 
 /**
  * Mock react-konva so the transparent surface is a real DOM node whose pointer
@@ -73,6 +74,15 @@ vi.mock('react-konva', () => ({
       />
     );
   },
+  // Konva-only nodes drawn by PolygonDraftLayer (issue #48): no pointer
+  // handlers to wire up, just enough of a stub for it to render inside this
+  // layer's tree without throwing.
+  Line: (props: Record<string, unknown>) => (
+    <div data-testid="konva-line" data-name={String(props.name ?? '')} />
+  ),
+  Circle: (props: Record<string, unknown>) => (
+    <div data-testid="konva-circle" data-name={String(props.name ?? '')} />
+  ),
 }));
 
 const surface = (container: HTMLElement): HTMLElement => {
@@ -107,6 +117,7 @@ describe('EditorInteractionLayer', () => {
     useSelectionStore.setState({ selectedIds: [], primaryId: null });
     useMovePreviewStore.setState({ preview: null });
     useResizePreviewStore.setState({ preview: null });
+    useToastStore.setState({ toasts: [] });
   });
 
   it('test_EditorInteractionLayer_blankDrag_createsRectViaOneCommand_andSelectsIt', () => {
@@ -570,6 +581,175 @@ describe('EditorInteractionLayer', () => {
       expect(onCursorChange).toHaveBeenLastCalledWith('nwse-resize');
 
       fireEvent.pointerUp(node, { clientX: -20, clientY: -20 });
+    });
+  });
+
+  describe('polygon creation (issue #48)', () => {
+    it('test_pKey_startsPolygonCreation_andSetsCrosshairCursor', () => {
+      const onCursorChange = vi.fn();
+      render(<EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />);
+
+      fireEvent.keyDown(window, { key: 'p' });
+
+      expect(onCursorChange).toHaveBeenLastCalledWith('crosshair');
+    });
+
+    it('test_pKey_whileInputFocused_isIgnored', () => {
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.focus();
+
+      const onCursorChange = vi.fn();
+      render(<EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />);
+
+      fireEvent.keyDown(input, { key: 'p' });
+
+      expect(onCursorChange).not.toHaveBeenCalledWith('crosshair');
+      document.body.removeChild(input);
+    });
+
+    it('test_clickThreeVertices_thenEnter_confirmsTriangle_asOneCommand_andSelectsIt', () => {
+      const shapesBefore = editorSession.shapeCount;
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.keyDown(window, { key: 'p' });
+      // Grid (0,0), (4,0), (2,4) at gridSize 20 => px (0,0), (80,0), (40,80).
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 80 });
+      fireEvent.keyDown(window, { key: 'Enter' });
+
+      expect(editorSession.shapeCount).toBe(shapesBefore + 1);
+      const newId = useSelectionStore.getState().selectedIds[0];
+      expect(newId).toBeDefined();
+      expect(editorSession.getDocument().shapes[newId].polygon.outerRing).toEqual([
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 2, y: 4 },
+      ]);
+
+      // One undo removes the whole gesture.
+      editorSession.undo();
+      expect(editorSession.shapeCount).toBe(shapesBefore);
+    });
+
+    it('test_clickOnStartVertexAgain_closesAConcaveShape_asOneCommand', () => {
+      const shapesBefore = editorSession.shapeCount;
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.keyDown(window, { key: 'p' });
+      // An L-shape (concave), grid units -> px at gridSize 20.
+      const gridVertices: Array<[number, number]> = [
+        [0, 0],
+        [4, 0],
+        [4, 2],
+        [2, 2],
+        [2, 4],
+        [0, 4],
+      ];
+      for (const [x, y] of gridVertices) {
+        fireEvent.pointerDown(node, { clientX: x * 20, clientY: y * 20 });
+      }
+      // Click back on the start vertex (0,0) to close.
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+
+      expect(editorSession.shapeCount).toBe(shapesBefore + 1);
+      const newId = useSelectionStore.getState().selectedIds[0];
+      expect(editorSession.getDocument().shapes[newId].polygon.outerRing).toEqual(
+        gridVertices.map(([x, y]) => ({ x, y }))
+      );
+    });
+
+    it('test_selfIntersectingPolygon_isRejected_noShapeCreated_documentUnchanged', () => {
+      const shapesBefore = editorSession.shapeCount;
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.keyDown(window, { key: 'p' });
+      // A bow-tie: (0,0), (4,4), (4,0), (0,4) — the two diagonals cross.
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 80 });
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 80 });
+      fireEvent.keyDown(window, { key: 'Enter' });
+
+      expect(editorSession.shapeCount).toBe(shapesBefore);
+      expect(editorSession.canUndo).toBe(false);
+      expect(useToastStore.getState().toasts).toHaveLength(1);
+      expect(useToastStore.getState().toasts[0].type).toBe('error');
+    });
+
+    it('test_escapeKey_discardsTheDraft_noShapeCreated', () => {
+      const shapesBefore = editorSession.shapeCount;
+      const onCursorChange = vi.fn();
+      const { container } = render(
+        <EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />
+      );
+      const node = surface(container);
+
+      fireEvent.keyDown(window, { key: 'p' });
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 0 });
+      expect(container.querySelector('[data-name="polygon-draft-edges"]')).not.toBeNull();
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      expect(editorSession.shapeCount).toBe(shapesBefore);
+      expect(editorSession.canUndo).toBe(false);
+      expect(container.querySelector('[data-name="polygon-draft-edges"]')).toBeNull();
+      expect(onCursorChange).toHaveBeenLastCalledWith(null);
+    });
+
+    it('test_enterWithFewerThanThreeVertices_doesNotConfirm_stillCreating', () => {
+      const shapesBefore = editorSession.shapeCount;
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.keyDown(window, { key: 'p' });
+      fireEvent.pointerDown(node, { clientX: 0, clientY: 0 });
+      fireEvent.pointerDown(node, { clientX: 80, clientY: 0 });
+      fireEvent.keyDown(window, { key: 'Enter' });
+
+      expect(editorSession.shapeCount).toBe(shapesBefore);
+      // Still in creation mode: a further click adds a third vertex normally.
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 80 });
+      fireEvent.keyDown(window, { key: 'Enter' });
+      expect(editorSession.shapeCount).toBe(shapesBefore + 1);
+    });
+
+    it('test_pKey_whileDraggingAShape_doesNotInterruptTheDrag', () => {
+      const shape = {
+        id: 'move-during-p',
+        polygon: {
+          outerRing: [
+            { x: 1, y: 1 },
+            { x: 3, y: 1 },
+            { x: 3, y: 3 },
+            { x: 1, y: 3 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      editorSession.dispatch(new CreateShapeCommand(shape));
+
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 40 });
+      fireEvent.pointerMove(node, { clientX: 80, clientY: 80 });
+      fireEvent.keyDown(window, { key: 'p' });
+      fireEvent.pointerUp(node, { clientX: 80, clientY: 80 });
+
+      // The move committed normally; polygon creation never started.
+      expect(editorSession.getDocument().shapes['move-during-p'].polygon.outerRing).toEqual([
+        { x: 3, y: 3 },
+        { x: 5, y: 3 },
+        { x: 5, y: 5 },
+        { x: 3, y: 5 },
+      ]);
     });
   });
 });

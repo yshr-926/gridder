@@ -13,7 +13,11 @@ import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
 import { InteractionLayer } from './InteractionLayer';
-import { EditorInteractionLayer, type EditorInteractionCursor } from './EditorInteractionLayer';
+import {
+  EditorInteractionLayer,
+  type EditorInteractionCursor,
+  type EditorInteractionLayerHandle,
+} from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { DrawingRangeLayer } from './DrawingRangeLayer';
 import { DimensionLayer } from './DimensionLayer';
@@ -25,6 +29,11 @@ import { debounceResize } from '@/utils/performance';
 export interface GridCanvasRef {
   /** Konva Stage への参照を取得 */
   getStage: () => Konva.Stage | null;
+  /**
+   * ポリゴン作成モードへ入る（#48）。`P` ショートカットと上部バーのボタンから
+   * 呼ばれる。通常状態（idle）以外では何もしない。
+   */
+  startPolygonCreation: () => void;
 }
 
 /**
@@ -39,6 +48,8 @@ interface GridCanvasProps {
    * 渡されない場合は既存のセルベース {@link ObjectsLayer} をそのまま使う。
    */
   editorDocument?: EditorDocument;
+  /** ポリゴン作成モード（#48）の入り／切り変化を通知するコールバック。 */
+  onCreatingPolygonChange?: (isCreatingPolygon: boolean) => void;
 }
 
 /**
@@ -46,13 +57,16 @@ interface GridCanvasProps {
  * Konva.js を使用したメインキャンバス
  */
 export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
-  ({ onCursorPositionChange, editorDocument }, ref) => {
+  ({ onCursorPositionChange, editorDocument, onCreatingPolygonChange }, ref) => {
   // Stage への参照
   const stageRef = useRef<Konva.Stage>(null);
+  // ポリゴン作成モード（#48）を開始するための EditorInteractionLayer への参照
+  const interactionLayerRef = useRef<EditorInteractionLayerHandle>(null);
 
   // 親コンポーネントへ公開するメソッド
   useImperativeHandle(ref, () => ({
     getStage: () => stageRef.current,
+    startPolygonCreation: () => interactionLayerRef.current?.startPolygon(),
   }), []);
 
   // キャンバスサイズ
@@ -226,11 +240,13 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
         <Layer>
           {isEditorDocumentMode ? (
             <EditorInteractionLayer
+              ref={interactionLayerRef}
               panPosition={offset}
               zoom={scale}
               gridSize={gridSize}
               isViewportInteracting={viewportPan.isViewportInteracting}
               onCursorChange={setInteractionCursor}
+              onCreatingPolygonChange={onCreatingPolygonChange}
             />
           ) : (
             <InteractionLayer

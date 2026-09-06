@@ -8,6 +8,7 @@ import {
 import {
   IDLE_STATE,
   movePreview,
+  polygonDraftPreview,
   previewRegion,
   reduceInteraction,
   resizePreview,
@@ -482,6 +483,214 @@ describe('reduceInteraction — rectangle handle resize (issue #44)', () => {
     expect(resizePreview(IDLE_STATE)).toBeNull();
     expect(
       resizePreview({ kind: 'moving', originVertex: { x: 0, y: 0 }, shapeIds: ['a'], delta: { x: 1, y: 1 } })
+    ).toBeNull();
+  });
+});
+
+describe('reduceInteraction — polygon creation (issue #48)', () => {
+  it('test_startPolygon_fromIdle_entersCreatingPolygon_withNoVertices', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [{ type: 'startPolygon' }]);
+    expect(state).toEqual({ kind: 'creatingPolygon', vertices: [], cursorVertex: null });
+  });
+
+  it('test_startPolygon_whileAlreadyDragging_isIgnored', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [
+      { type: 'pointerDown', sample: sample(1, 1) },
+      { type: 'pointerMove', sample: sample(5, 4) },
+      { type: 'startPolygon' },
+    ]);
+    // Still creatingRect: startPolygon had no effect mid-drag.
+    expect(state.kind).toBe('creatingRect');
+  });
+
+  it('test_click_placesAVertex_eachTime', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+    ]);
+    expect(state).toMatchObject({
+      kind: 'creatingPolygon',
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+      ],
+    });
+  });
+
+  it('test_pointerMove_updatesCursorVertex_forTheRubberBandPreview', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerMove', sample: sample(5, 3) },
+    ]);
+    expect(polygonDraftPreview(state)).toEqual({
+      vertices: [{ x: 0, y: 0 }],
+      cursorVertex: { x: 5, y: 3 },
+      canClose: false,
+    });
+  });
+
+  it('test_polygonDraftPreview_canClose_becomesTrueAtThreeVertices', () => {
+    const document = documentOf([]);
+    const twoVertexState = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+    ]).state;
+    expect(polygonDraftPreview(twoVertexState)?.canClose).toBe(false);
+
+    const threeVertexState = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'pointerDown', sample: sample(2, 4) },
+    ]).state;
+    expect(polygonDraftPreview(threeVertexState)?.canClose).toBe(true);
+  });
+
+  it('test_clickOnStartVertex_withThreeOrMoreVertices_confirmsAsCreatePolygon', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'pointerDown', sample: sample(2, 4) },
+      { type: 'pointerDown', sample: sample(0.1, 0.1) }, // close to (0,0)
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([
+      {
+        type: 'createPolygon',
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 2, y: 4 },
+        ],
+      },
+    ]);
+  });
+
+  it('test_clickOnStartVertex_withFewerThanThreeVertices_doesNotClose', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(0, 0) }, // clicking start again, only 1 vertex so far
+    ]);
+    // Duplicate click at the same spot is a no-op, not a close or a new vertex.
+    expect(state).toMatchObject({ kind: 'creatingPolygon', vertices: [{ x: 0, y: 0 }] });
+  });
+
+  it('test_confirmPolygon_withThreeOrMoreVertices_emitsCreatePolygon', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'pointerDown', sample: sample(2, 4) },
+      { type: 'confirmPolygon' },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([
+      {
+        type: 'createPolygon',
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 2, y: 4 },
+        ],
+      },
+    ]);
+  });
+
+  it('test_confirmPolygon_withFewerThanThreeVertices_isRefused_stateUnchanged', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'confirmPolygon' },
+    ]);
+    expect(state.kind).toBe('creatingPolygon');
+    expect(effects).toEqual([]);
+  });
+
+  it('test_confirmPolygon_outsideCreatingPolygon_isIgnored', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [{ type: 'confirmPolygon' }]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_cancelPolygon_discardsEverything_backToIdle_noEffect', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'cancelPolygon' },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_cancelPolygon_outsideCreatingPolygon_isIgnored', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [{ type: 'cancelPolygon' }]);
+    expect(state).toEqual(IDLE_STATE);
+  });
+
+  it('test_pointerCancel_doesNotInterruptPolygonCreation', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerCancel' },
+    ]);
+    // Unlike a drag gesture, a stray pointerCancel does not discard the draft.
+    expect(state).toMatchObject({ kind: 'creatingPolygon', vertices: [{ x: 0, y: 0 }] });
+  });
+
+  it('test_concaveShape_confirmsSuccessfully_asCreatePolygon', () => {
+    const document = documentOf([]);
+    const { effects } = run(document, [
+      { type: 'startPolygon' },
+      { type: 'pointerDown', sample: sample(0, 0) },
+      { type: 'pointerDown', sample: sample(4, 0) },
+      { type: 'pointerDown', sample: sample(4, 2) },
+      { type: 'pointerDown', sample: sample(2, 2) },
+      { type: 'pointerDown', sample: sample(2, 4) },
+      { type: 'pointerDown', sample: sample(0, 4) },
+      { type: 'confirmPolygon' },
+    ]);
+    expect(effects).toEqual([
+      {
+        type: 'createPolygon',
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 4, y: 2 },
+          { x: 2, y: 2 },
+          { x: 2, y: 4 },
+          { x: 0, y: 4 },
+        ],
+      },
+    ]);
+  });
+
+  it('test_polygonDraftPreview_isNull_outsideCreatingPolygon', () => {
+    expect(polygonDraftPreview(IDLE_STATE)).toBeNull();
+    expect(
+      polygonDraftPreview({
+        kind: 'creatingRect',
+        originVertex: { x: 0, y: 0 },
+        currentVertex: { x: 1, y: 1 },
+      })
     ).toBeNull();
   });
 });

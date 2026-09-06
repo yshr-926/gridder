@@ -32,6 +32,7 @@ export {
 export {
   IDLE_STATE,
   movePreview,
+  polygonDraftPreview,
   previewRegion,
   reduceInteraction,
   resizePreview,

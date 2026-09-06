@@ -62,6 +62,11 @@ interface UseEditorInteractionResult {
   readonly onPointerMove: (screenPoint: Position, shiftKey: boolean) => void;
   readonly onPointerUp: (screenPoint: Position, shiftKey: boolean) => void;
   readonly onPointerCancel: () => void;
+  /**
+   * Enter polygon creation (issue #48, spec §6.3) — the `P` shortcut and the
+   * top-bar button both call this. A no-op unless the controller is `idle`.
+   */
+  readonly startPolygon: () => void;
 }
 
 /**
@@ -248,5 +253,57 @@ export const useEditorInteraction = ({
     dispatchEvent({ type: 'pointerCancel' });
   }, [dispatchEvent]);
 
-  return { state, hoveredHandle, onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+  const startPolygon = useCallback(() => {
+    dispatchEvent({ type: 'startPolygon' });
+  }, [dispatchEvent]);
+
+  // Polygon-creation keyboard control (issue #48, spec §6.3): `P` enters the
+  // mode (ignored while an editable element has focus, or while any other
+  // gesture is in progress — starting mid-drag makes no sense), `Enter`
+  // confirms, `Esc` discards. All three route through the same reducer as
+  // pointer events so `creatingPolygon` stays the single source of truth.
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT');
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      if ((event.key === 'p' || event.key === 'P') && stateRef.current.kind === 'idle') {
+        event.preventDefault();
+        dispatchEvent({ type: 'startPolygon' });
+        return;
+      }
+      if (event.key === 'Enter' && stateRef.current.kind === 'creatingPolygon') {
+        event.preventDefault();
+        dispatchEvent({ type: 'confirmPolygon' });
+        return;
+      }
+      if (event.key === 'Escape' && stateRef.current.kind === 'creatingPolygon') {
+        event.preventDefault();
+        dispatchEvent({ type: 'cancelPolygon' });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dispatchEvent]);
+
+  return {
+    state,
+    hoveredHandle,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    startPolygon,
+  };
 };

@@ -1,6 +1,7 @@
 import {
   CompositeCommand,
   CreateShapeCommand,
+  isSimplePolygon,
   ReplaceShapeVerticesCommand,
   type EditorCommand,
   type GridPoint,
@@ -9,7 +10,8 @@ import {
 } from '@gridder/editor-core';
 import { generateId } from '@/utils/id';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { createRectShape } from './document';
+import { useToastStore } from '@/hooks/useToast';
+import { createRectShape, defaultShapeStyle } from './document';
 import type { EditorSession } from './editorSession';
 import type { InteractionEffect } from './interactionController';
 import { ringFromRect } from './hitTest';
@@ -36,7 +38,11 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
  * shape — a single undo step for the whole gesture. `resizeShape`
  * (issue #44) replaces the rectangle's four vertices with the ones for its
  * new (already flip-normalised, min-1-cell) bounds, in one
- * {@link ReplaceShapeVerticesCommand}.
+ * {@link ReplaceShapeVerticesCommand}. `createPolygon` (issue #48) validates
+ * the confirmed vertices with {@link isSimplePolygon} — a self-intersecting
+ * ring is refused with a toast rather than committed — then builds and
+ * commits the shape through one {@link CreateShapeCommand}, same as
+ * `createRect`.
  */
 export const applyInteractionEffect = (
   session: EditorSession,
@@ -109,6 +115,23 @@ export const applyInteractionEffect = (
           innerRings: shape.polygon.innerRings,
         })
       );
+      return;
+    }
+    case 'createPolygon': {
+      if (!isSimplePolygon(effect.vertices)) {
+        useToastStore.getState().addToast({
+          type: 'error',
+          message: '辺が交差するポリゴンは作成できません。',
+        });
+        return;
+      }
+      const shape = {
+        id: generateId('shape'),
+        polygon: { outerRing: effect.vertices, innerRings: [] },
+        style: defaultShapeStyle(session.shapeCount),
+      };
+      session.dispatch(new CreateShapeCommand(shape));
+      selection.selectOnly(shape.id);
       return;
     }
   }

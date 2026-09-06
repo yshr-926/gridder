@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { useToastStore } from '@/hooks/useToast';
 import { EditorSession } from './editorSession';
 import { createEmptyDocument } from './document';
 import { applyInteractionEffect } from './applyInteractionEffect';
@@ -22,6 +23,7 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 describe('applyInteractionEffect', () => {
   beforeEach(() => {
     useSelectionStore.setState({ selectedIds: [], primaryId: null });
+    useToastStore.setState({ toasts: [] });
   });
 
   it('test_applyInteractionEffect_selectOnly_updatesSelectionStore', () => {
@@ -223,6 +225,89 @@ describe('applyInteractionEffect', () => {
       });
 
       expect(session.getDocument()).toBe(before);
+    });
+  });
+
+  describe('createPolygon (issue #48)', () => {
+    it('test_createPolygon_triangle_commitsOneShapeInOneCommand_andSelectsIt', () => {
+      const session = new EditorSession(createEmptyDocument());
+      const vertices = [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 2, y: 4 },
+      ];
+
+      applyInteractionEffect(session, { type: 'createPolygon', vertices });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toHaveLength(1);
+      const newId = document.zOrder[0];
+      expect(document.shapes[newId].polygon.outerRing).toEqual(vertices);
+      expect(document.shapes[newId].polygon.innerRings).toEqual([]);
+      expect(useSelectionStore.getState().selectedIds).toEqual([newId]);
+
+      // One undo removes the whole gesture.
+      session.undo();
+      expect(session.getDocument().zOrder).toEqual([]);
+    });
+
+    it('test_createPolygon_concaveShape_commitsSuccessfully', () => {
+      const session = new EditorSession(createEmptyDocument());
+      const vertices = [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 4, y: 2 },
+        { x: 2, y: 2 },
+        { x: 2, y: 4 },
+        { x: 0, y: 4 },
+      ];
+
+      applyInteractionEffect(session, { type: 'createPolygon', vertices });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toHaveLength(1);
+      expect(document.shapes[document.zOrder[0]].polygon.outerRing).toEqual(vertices);
+    });
+
+    it('test_createPolygon_selfIntersecting_isRefused_noShapeCreated_toastShown', () => {
+      const session = new EditorSession(createEmptyDocument());
+      // A bow-tie: self-intersecting.
+      const vertices = [
+        { x: 0, y: 0 },
+        { x: 4, y: 4 },
+        { x: 4, y: 0 },
+        { x: 0, y: 4 },
+      ];
+
+      applyInteractionEffect(session, { type: 'createPolygon', vertices });
+
+      const document = session.getDocument();
+      expect(document.zOrder).toEqual([]);
+      expect(session.canUndo).toBe(false);
+      expect(useSelectionStore.getState().selectedIds).toEqual([]);
+      expect(useToastStore.getState().toasts).toHaveLength(1);
+      expect(useToastStore.getState().toasts[0].type).toBe('error');
+    });
+
+    it('test_createPolygon_everyShapeCount_getsADistinctFillFromThePalette', () => {
+      const session = new EditorSession(createEmptyDocument());
+      session.dispatch(new CreateShapeCommand(rectShape('existing', 10, 10, 2, 2)));
+
+      applyInteractionEffect(session, {
+        type: 'createPolygon',
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 2, y: 4 },
+        ],
+      });
+
+      const document = session.getDocument();
+      const newShapeId = document.zOrder.find((id) => id !== 'existing');
+      expect(newShapeId).toBeDefined();
+      expect(document.shapes[newShapeId as string].style.fill).not.toBe(
+        document.shapes['existing'].style.fill
+      );
     });
   });
 });
