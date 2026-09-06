@@ -193,3 +193,49 @@ git ls-files docs/plan/ docs/design/phase18/ docs/review/   # いずれも 0 件
 ```
 
 `pnpm build && pnpm lint && pnpm type-check && pnpm test` は今回コードを変更していないため実行していない（実装フェーズの各ステップで実行する）。
+
+## 実施結果（実装フェーズ、Issue #58 完了後）
+
+Issue #58（E2E 全面書き換え、commit `e096ac4`）完了を受けて本体の削除を実施した。以下、コミット順に記載する。
+
+1. **A/B（確実に未使用・テストのみ参照）を削除**（`refactor(web): 未使用の旧セルベース実装(A/B)を削除`）
+   - `features/export/*`, `features/index.ts`, `components/{Toolbar,StatusBar,index.ts}`, `PropertyPanel` の旧5セクション（`ObjectNameEditor`/`DecorationSettings`/`TextDisplaySettings`/`DimensionDisplaySettings`/`GroupPanel`）, `components/{FileOperations,HelpText}`, `stores/selectors.ts` を削除。想定通り安全に削除できた。
+
+2. **`GridCanvas.tsx` の `isEditorDocumentMode` 分岐を除去**（`refactor(web): GridCanvas の旧セル経路(C)を除去し editorDocument を必須化`）
+   - `editorDocument` prop を必須化し、`ObjectsLayer`/`InteractionLayer`/`GridObjectShape`/`DimensionLabel`/`ObjectTextLabel`/`PolygonPreview`/`VertexMarker`/`CursorOverlay` と、これらだけが使っていた `features/{drawing,eraser}` を削除。
+   - **計画からの訂正**: `features/polygon/fillPolygon.ts` は `features/commands/commands/fill.ts` から呼ばれている想定だったが、実際には `fill.ts` は同名の独立した flood-fill 実装で `fillPolygon` を import していなかった。`fillPolygon.ts` はどこからも呼ばれていない真の未使用コードだったため、この段階で `features/polygon` 全体を削除した。
+   - `GridCanvas.test.tsx` は旧セル経路（`canvasStore`/`drawingCells` 前提）のテストだったため、`createEmptyDocument()` + `editorSession` を使う新経路前提に書き換えた（パン・カーソル・Space キー等のカバレッジは維持）。
+
+3. **CommandPalette・features/commands・useCanvasKeyboard を削除**（`refactor(web): CommandPalette / features/commands / useCanvasKeyboard を撤去`）
+   - coordinator の方針確定に基づき削除。`App.tsx` から `CommandPalette` の import・state・JSX・Ctrl+Shift+P トグルと、`useCanvasKeyboard()` の呼び出しを除去。
+   - 道連れで `stores/{canvasStore,groupStore,historyStore}`、`features/selection/*` が真に未使用になったため削除。
+   - **計画からの訂正**: `hooks/useUndoRedo.ts` は Command Palette 経由という想定だったが、実際には `hooks/index.ts` からの re-export のみでどこからも呼ばれていない独立した死んだコードだった。
+   - **coordinator 追加承認**: `hooks/usePerformanceMetrics.ts`（`@sentry/react` 依存）に連動して `components/PerformanceOverlay.tsx`（開発用 Ctrl+Shift+D オーバーレイ）も削除。#57 の `features/benchmark` + `docs/performance.md` に計測基盤が移行済みで、spec §12（常設 UI はコンパクトな上部バーのみ）にも沿うため。
+
+4. **Sentry / web-vitals / analytics を削除**（2コミット: `refactor(web): Sentry / web-vitals / analytics 連携を撤去` と、その配線側の追随コミット）
+   - `config/{sentry,webVitals,analytics,googleAnalytics}.ts`、`main.tsx` の初期化コード、`package.json` の `@sentry/react`/`@sentry/vite-plugin`/`web-vitals` を削除。
+   - `components/ErrorBoundary.tsx` を Sentry 非依存の素の React ErrorBoundary に書き換え。
+   - `config/env.ts`/`env.test.ts` から `sentryDsn`/`plausible`/`ga4MeasurementId` を削除し `appEnv`/`debug`/`appVersion` のみに縮小。`config/security.ts` の CSP から Sentry/Plausible 向け許可を削除。`vite.config.ts` から `sentryVitePlugin`/`manualChunks.sentry` を削除。
+
+5. **`packages/shared-types` を削除**（`refactor(web,shared-types): packages/shared-types を撤去し Position のみ移設`）
+   - **計画からの重要な訂正**: 当初の想定（`shared-types` は旧実装と Command Palette 経由でしか使われていない）は誤りだった。実際には `Position`/`CellCoordinate`/`Unit` の3型が `utils/{dimension,outline,cellUtils,grid}.ts` と `stores/gridSettingsStore.ts` から参照されていた。
+   - 調査の結果、これらの利用元ファイル自体が **#53 で editor-core の `dimensions/compute.ts` + `features/editor/shapeDimensions.ts` に置き換え済みで、新経路からの呼び出し元が無い死んだコード**だったことが判明し、型ごと削除できた。
+   - `stores/gridSettingsStore.ts` は TODO(#59) コメント通り、`unit`/`cellSize`/`zoom` 等の旧UI互換フィールドと `viewportStore` への同期処理を削除し、新経路が実際に使う `basePixelSize` のみのストアに縮小。
+   - 残る `Position` 型は `features/viewport`・`stores/viewportStore`・`features/editor/useEditorInteraction`・`EditorInteractionLayer` で画面/ワールド座標として現役。coordinator 確認の上、`editor-core` の `GridPoint`（ドキュメント内のグリッド座標、readonly）とは意味的に別物と判断して統合せず、`apps/web/src/types/index.ts` にローカル定義として移設した。`CellCoordinate`/`Unit` は移設不要（完全に未使用）だったため削除。
+   - `apps/web/src/types/group.ts`（`ObjectGroup` 等、旧グループ機能専用）も未使用と判明し削除。
+   - `packages/shared-types` パッケージ本体（`domain.ts` の `GridObject`/`ProjectData`/`Rotation`/`ObjectDecoration`/`GridSettings`/`LengthUnit` 含む）を削除し、`apps/web/package.json` の依存を除去。
+
+6. **knip 再実行で見つかった追加の死骸を削除**（`refactor(web): shared-types撤去の未コミット差分を反映 + CommandPalette専用の残骸を削除`）
+   - `utils/outputLine.ts`（「コマンドパレットの出力行のユーティリティ」）: `features/commands`/`CommandPalette` 撤去の道連れで未使用化。
+   - `components/icons/index.tsx`（`PencilIcon`/`CursorIcon`/`EraserIcon` 等）: 旧 Toolbar 専用アイコン集。AGENTS.md の方針（新規コントロールは Lucide アイコン）に沿い、新経路では使われていない。Toolbar 撤去の道連れとして削除。
+
+### 最終確認
+
+- `npx knip --include files` 再実行結果: 未使用ファイルは **3件**（`.eslintrc.cjs`, `apps/web/playwright.benchmark.config.ts`, `apps/web/src/components/EmptyState.tsx`）のみ。いずれも旧セルベース実装とは無関係（`.eslintrc.cjs` はレガシー設定、`playwright.benchmark.config.ts` は #57 性能計測関連、`EmptyState.tsx` は汎用UIコンポーネント）で、本 Issue のスコープ外のため未対応。
+- `CONTEXT.md` の Avoid 語（プロジェクト、ドキュメント、キャンバス＝スケッチの意味、CAD 図面、縮尺モード、ページ、アートボード、配置範囲、配置物、図形オブジェクト、ベクター、レイヤー＝グループの入れ子表現、複合図形、入れ子グループ、ピクセル、マス目）をコード上の主要な識別子（型名・コンポーネント名・関数名）として `grep -rn` で確認し、新規の該当は無し。`GridObject`/`ProjectData` はコメント中の過去形言及（削除済みモデルへの参照）のみ残るが、識別子としては存在しない。
+- `pnpm build && pnpm lint && pnpm type-check && pnpm test`（monorepo 全体、`@gridder/editor-core` + `@gridder/web`）が全て通過。`pnpm --filter @gridder/web test:e2e:chromium` も 64 件全て通過。
+
+### 残課題（本 Issue の対象外として次に送る）
+
+- `.eslintrc.cjs`, `apps/web/playwright.benchmark.config.ts`, `apps/web/src/components/EmptyState.tsx` の要否判断（旧セルベース実装とは無関係）。
+- `docs/README.md` の「歴史的文書」節は今回の削除内容と矛盾しないことを確認済み（変更不要）。
