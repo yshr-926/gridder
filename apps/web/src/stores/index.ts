@@ -1,7 +1,4 @@
-export { useCanvasStore } from './canvasStore';
 export { useGridSettingsStore } from './gridSettingsStore';
-export { useHistoryStore } from './historyStore';
-export { useGroupStore } from './groupStore';
 export {
   MAX_VIEWPORT_SCALE,
   MIN_VIEWPORT_SCALE,

@@ -1,19 +1,12 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { PropertyPanel } from './components/PropertyPanel';
 import { GridCanvas } from './components/Canvas';
 import type { GridCanvasRef } from './components/Canvas';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ToastContainer } from './components/Toast';
-import { PerformanceOverlay } from './components/PerformanceOverlay';
-import { CommandPalette } from './components/CommandPalette';
 import { ConfirmDialog } from './components/ui';
-import {
-  useCanvasKeyboard,
-  useKeyboardShortcutsHelp,
-  useToastStore,
-  useSentryContext,
-} from './hooks';
+import { useKeyboardShortcutsHelp, useToastStore } from './hooks';
 import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
 import { useBeforeUnload, useFileMenu } from './features/file';
 import { selectDraftStorage, useDraftAutosave, useDraftRestore, useTrackCleanExit } from './features/draft';
@@ -22,21 +15,12 @@ export const App = () => {
   // Canvas への参照（画像エクスポート用）
   const canvasRef = useRef<GridCanvasRef>(null);
 
-  // コマンドパレットの表示状態
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-
   // キーボードショートカットヘルプダイアログ
   const { isOpen: isHelpOpen, close: closeHelp } = useKeyboardShortcutsHelp();
 
   // トースト通知
   const toasts = useToastStore(state => state.toasts);
   const removeToast = useToastStore(state => state.removeToast);
-
-  // キーボードショートカットを有効化
-  useCanvasKeyboard();
-
-  // Sentry コンテキスト同期（エラー追跡用）
-  useSentryContext();
 
   // 保存ファイルの新規/開く/保存/名前を付けて保存（issue #54, spec §9）と、
   // 未保存の変更があるページ離脱を確認する beforeunload。
@@ -58,19 +42,6 @@ export const App = () => {
   // GridCanvas 内の interaction controller が唯一の情報源で、ここでは
   // 上部バーの pressed 表示のためだけに反映する。
   const [isCreatingPolygon, setIsCreatingPolygon] = useState(false);
-
-  // Ctrl+Shift+P でコマンドパレットを開閉
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toUpperCase() === 'P') {
-        e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleAddPolygon = useCallback(() => {
     canvasRef.current?.startPolygonCreation();
@@ -147,14 +118,6 @@ export const App = () => {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-
-      {/* Command Palette (Ctrl+Shift+P) */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-      />
-
-      <PerformanceOverlay />
     </div>
   );
 };
