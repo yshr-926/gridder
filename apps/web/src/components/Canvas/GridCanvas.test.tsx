@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GridCanvas } from './GridCanvas';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
-import { useCanvasStore } from '@/stores/canvasStore';
 import { useViewportStore } from '@/stores/viewportStore';
+import { useSelectionStore } from '@/stores/selectionStore';
+import { createEmptyDocument, editorSession } from '@/features/editor';
 
 // Mock Konva
 vi.mock('react-konva', () => ({
@@ -31,39 +32,44 @@ class MockResizeObserver {
 
 vi.stubGlobal('ResizeObserver', MockResizeObserver);
 
+/** Undo everything currently on the session so each test starts empty. */
+const drainSession = () => {
+  while (editorSession.canUndo) {
+    editorSession.undo();
+  }
+};
+
 describe('GridCanvas', () => {
   beforeEach(() => {
     useViewportStore.getState().resetViewport();
-    // Reset stores
     useGridSettingsStore.setState({
       zoom: 1,
       basePixelSize: 20,
       cellSize: 10,
       unit: 'cm',
     });
-    useCanvasStore.setState({
-      panPosition: { x: 0, y: 0 },
-      toolMode: 'draw',
-      objects: [],
-      selectedObjectId: null,
-      drawingCells: [],
-    });
+    useSelectionStore.setState({ selectedIds: [], primaryId: null, activeGroupId: null });
+    drainSession();
   });
 
   it('renders the canvas container', () => {
-    render(<GridCanvas />);
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     expect(screen.getByTestId('konva-stage')).toBeInTheDocument();
   });
 
-  it('renders three layers (Grid, Objects, Interaction)', () => {
-    render(<GridCanvas />);
+  it('renders the editor-core document layers', () => {
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     const layers = screen.getAllByTestId('konva-layer');
-    expect(layers).toHaveLength(3);
+    // Grid background, drawing range, shapes, interaction, selection overlay,
+    // vertex edit overlay, dimension layer.
+    expect(layers.length).toBeGreaterThanOrEqual(7);
   });
 
   it('calls onCursorPositionChange when mouse leaves', () => {
     const mockCallback = vi.fn();
-    render(<GridCanvas onCursorPositionChange={mockCallback} />);
+    render(
+      <GridCanvas editorDocument={createEmptyDocument()} onCursorPositionChange={mockCallback} />
+    );
 
     const stage = screen.getByTestId('konva-stage');
     fireEvent.mouseLeave(stage);
@@ -72,7 +78,7 @@ describe('GridCanvas', () => {
   });
 
   it('changes cursor to grab when Space key is pressed', () => {
-    render(<GridCanvas />);
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
 
     // Initially cursor should be default
     const container = screen.getByTestId('konva-stage').parentElement;
@@ -92,7 +98,7 @@ describe('GridCanvas', () => {
   });
 
   it('does not trigger pan mode on Space key repeat', () => {
-    render(<GridCanvas />);
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
 
     const container = screen.getByTestId('konva-stage').parentElement;
 
@@ -110,9 +116,9 @@ describe('GridCanvas', () => {
     expect(container).toHaveStyle({ cursor: 'default' });
   });
 
-  it('pans with a middle-button drag without changing document objects', () => {
-    const objectsBefore = useCanvasStore.getState().objects;
-    render(<GridCanvas />);
+  it('pans with a middle-button drag without changing the document', () => {
+    const shapesBefore = editorSession.getDocument().shapes;
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     const container = screen.getByTestId('grid-canvas-container');
     const setPointerCapture = vi.fn();
     Object.defineProperty(container, 'setPointerCapture', {
@@ -139,11 +145,11 @@ describe('GridCanvas', () => {
 
     expect(setPointerCapture).toHaveBeenCalledWith(7);
     expect(useViewportStore.getState().offset).toEqual({ x: 35, y: -20 });
-    expect(useCanvasStore.getState().objects).toBe(objectsBefore);
+    expect(editorSession.getDocument().shapes).toBe(shapesBefore);
   });
 
   it('pans with Space and the left button', () => {
-    render(<GridCanvas />);
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     const container = screen.getByTestId('grid-canvas-container');
 
     fireEvent.keyDown(window, { code: 'Space' });
@@ -164,22 +170,22 @@ describe('GridCanvas', () => {
     expect(useViewportStore.getState().offset).toEqual({ x: 30, y: 40 });
   });
 
-  it('blocks document creation when Space pan input begins', () => {
-    render(<GridCanvas />);
+  it('blocks shape creation when Space pan input begins', () => {
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     const interactionArea = screen
       .getAllByTestId('konva-rect')
-      .find(rect => rect.getAttribute('fill') === 'transparent');
+      .find((rect) => rect.getAttribute('name') === 'editor-interaction-surface');
 
     fireEvent.keyDown(window, { code: 'Space' });
     if (interactionArea) {
       fireEvent.mouseDown(interactionArea, { button: 0 });
     }
 
-    expect(useCanvasStore.getState().drawingCells).toEqual([]);
+    expect(Object.keys(editorSession.getDocument().shapes)).toEqual([]);
   });
 
   it('does not enter Space pan mode while editing text', () => {
-    render(<GridCanvas />);
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
     const input = document.createElement('input');
     document.body.appendChild(input);
 

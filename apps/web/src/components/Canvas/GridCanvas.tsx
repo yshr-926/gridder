@@ -12,9 +12,7 @@ import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
 import { useShapeEditPreviewStore } from '@/stores/shapeEditPreviewStore';
 import { GridBackground } from './GridBackground';
-import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
-import { InteractionLayer } from './InteractionLayer';
 import {
   EditorInteractionLayer,
   type EditorInteractionCursor,
@@ -46,12 +44,8 @@ export interface GridCanvasRef {
 interface GridCanvasProps {
   /** カーソル位置変更時のコールバック */
   onCursorPositionChange?: (position: { x: number; y: number } | null) => void;
-  /**
-   * editor-core の文書スナップショット。
-   * 渡された場合はポリゴンレンダラー Adapter（{@link ShapesLayer}）で描画し、
-   * 渡されない場合は既存のセルベース {@link ObjectsLayer} をそのまま使う。
-   */
-  editorDocument?: EditorDocument;
+  /** editor-core の文書スナップショット。ポリゴンレンダラー Adapter（{@link ShapesLayer}）で描画する。 */
+  editorDocument: EditorDocument;
   /** ポリゴン作成モード（#48）の入り／切り変化を通知するコールバック。 */
   onCreatingPolygonChange?: (isCreatingPolygon: boolean) => void;
 }
@@ -104,8 +98,6 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
 
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
-
-  const isEditorDocumentMode = editorDocument !== undefined;
 
   /**
    * デバウンスされたリサイズハンドラ
@@ -226,27 +218,23 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           />
         </Layer>
 
-        {isEditorDocumentMode && <Layer><DrawingRangeLayer gridSize={gridSize} scale={scale} offset={offset} /></Layer>}
+        <Layer><DrawingRangeLayer gridSize={gridSize} scale={scale} offset={offset} /></Layer>
 
-        {/* Objects Layer: 文書が渡されたら新しいポリゴンレンダラー、なければ従来のセルレンダラー */}
+        {/* Objects Layer: editor-core の文書をポリゴンレンダラーで描画する */}
         <Layer>
-          {isEditorDocumentMode ? (
-            <ShapesLayer
-              document={editorDocument}
-              gridSize={gridSize}
-              scale={scale}
-              movePreview={movePreview}
-              resizePreview={resizePreview}
-              vertexPreview={vertexPreview}
-            />
-          ) : (
-            <ObjectsLayer />
-          )}
+          <ShapesLayer
+            document={editorDocument}
+            gridSize={gridSize}
+            scale={scale}
+            movePreview={movePreview}
+            resizePreview={resizePreview}
+            vertexPreview={vertexPreview}
+          />
         </Layer>
 
         {/* Shape Edit Layer: セル編集中は編集対象以外を薄く表示し、編集対象のセル
             境界を示す（#49）。document 上の他図形の描画は変更せず、上から重ねる */}
-        {isEditorDocumentMode && shapeEditPreview !== undefined && (
+        {shapeEditPreview !== undefined && (
           <Layer listening={false}>
             <ShapeEditLayer
               document={editorDocument}
@@ -257,57 +245,44 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
           </Layer>
         )}
 
-        {/* Interaction Layer: 文書経路は新しい interaction controller（#42）、
-            旧経路はセルベースの InteractionLayer（削除は #59） */}
+        {/* Interaction Layer: editor-core の interaction controller（#42） */}
         <Layer>
-          {isEditorDocumentMode ? (
-            <EditorInteractionLayer
-              ref={interactionLayerRef}
-              panPosition={offset}
-              zoom={scale}
-              gridSize={gridSize}
-              isViewportInteracting={viewportPan.isViewportInteracting}
-              onCursorChange={setInteractionCursor}
-              onCreatingPolygonChange={onCreatingPolygonChange}
-            />
-          ) : (
-            <InteractionLayer
-              panPosition={offset}
-              zoom={scale}
-              isViewportInteracting={viewportPan.isViewportInteracting}
-            />
-          )}
+          <EditorInteractionLayer
+            ref={interactionLayerRef}
+            panPosition={offset}
+            zoom={scale}
+            gridSize={gridSize}
+            isViewportInteracting={viewportPan.isViewportInteracting}
+            onCursorChange={setInteractionCursor}
+            onCreatingPolygonChange={onCreatingPolygonChange}
+          />
         </Layer>
 
         {/* Selection Overlay: 選択枠と矩形の伸縮ハンドル（#44）。ズームに依らず画面上のサイズを保つ */}
-        {isEditorDocumentMode && (
-          <Layer listening={false}>
-            <SelectionOverlay
-              document={editorDocument}
-              selectedIds={selectedIds}
-              gridSize={gridSize}
-              scale={scale}
-              movePreview={movePreview}
-              resizePreview={resizePreview}
-            />
-          </Layer>
-        )}
+        <Layer listening={false}>
+          <SelectionOverlay
+            document={editorDocument}
+            selectedIds={selectedIds}
+            gridSize={gridSize}
+            scale={scale}
+            movePreview={movePreview}
+            resizePreview={resizePreview}
+          />
+        </Layer>
 
         {/* Vertex Edit Overlay: 矩形以外の単一選択図形の頂点マーカーと辺の hit 領域（#50）。
             矩形のバウンディングボックスハンドルとは棲み分ける */}
-        {isEditorDocumentMode && (
-          <Layer listening={false}>
-            <VertexEditOverlay
-              document={editorDocument}
-              selectedIds={selectedIds}
-              gridSize={gridSize}
-              scale={scale}
-              vertexPreview={vertexPreview}
-            />
-          </Layer>
-        )}
+        <Layer listening={false}>
+          <VertexEditOverlay
+            document={editorDocument}
+            selectedIds={selectedIds}
+            gridSize={gridSize}
+            scale={scale}
+            vertexPreview={vertexPreview}
+          />
+        </Layer>
 
-        {isEditorDocumentMode && <Layer listening={false}><DimensionLayer document={editorDocument} selectedIds={selectedIds} gridSize={gridSize} scale={scale} /></Layer>}
+        <Layer listening={false}><DimensionLayer document={editorDocument} selectedIds={selectedIds} gridSize={gridSize} scale={scale} /></Layer>
       </Stage>
     </div>
   );
