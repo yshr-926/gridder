@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PropertyPanel } from './components/PropertyPanel';
 import { GridCanvas } from './components/Canvas';
@@ -16,6 +16,7 @@ import {
 } from './hooks';
 import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
 import { useBeforeUnload, useFileMenu } from './features/file';
+import { selectDraftStorage, useDraftAutosave, useDraftRestore, useTrackCleanExit } from './features/draft';
 
 export const App = () => {
   // Canvas への参照（画像エクスポート用）
@@ -41,6 +42,13 @@ export const App = () => {
   // 未保存の変更があるページ離脱を確認する beforeunload。
   const fileMenu = useFileMenu();
   useBeforeUnload();
+
+  // クラッシュ復元用ドラフト（issue #55, spec §9）: 正常終了フラグの記録、
+  // 変更のデバウンス自動保存、起動時の復元確認。
+  const draftStorage = useMemo(() => selectDraftStorage(), []);
+  useTrackCleanExit();
+  useDraftAutosave(draftStorage);
+  const draftRestore = useDraftRestore();
 
   // ポリゴン文書（editor-core）とその Undo/Redo 履歴（#42）
   const editorDocument = useEditorDocument();
@@ -117,6 +125,21 @@ export const App = () => {
         confirmLabel="破棄して続ける"
         destructive
         onConfirm={fileMenu.confirmDiscard}
+      />
+
+      {/* クラッシュ復元用ドラフトの復元確認（issue #55, spec §9） */}
+      <ConfirmDialog
+        open={draftRestore.isPromptOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            draftRestore.discard();
+          }
+        }}
+        title="保存されていないスケッチがあります"
+        description="前回、保存せずに終了したスケッチが見つかりました。復元しますか？"
+        confirmLabel="復元する"
+        cancelLabel="破棄する"
+        onConfirm={draftRestore.restore}
       />
 
       {/* Keyboard Shortcuts Help Dialog */}

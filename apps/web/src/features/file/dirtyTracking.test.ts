@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
 import { createEmptyDocument, editorSession } from '@/features/editor';
-import { isDirty, markSaved, resetDirtyTrackingForTests, useIsDirty } from './dirtyTracking';
+import { isDirty, markDirty, markSaved, resetDirtyTrackingForTests, useIsDirty } from './dirtyTracking';
 
 const rectShape = (id: string): EditorShape => ({
   id,
@@ -103,5 +103,29 @@ describe('dirty tracking', () => {
       markSaved();
     });
     expect(result.current).toBe(false);
+  });
+
+  it('test_markDirty_afterReset_isDirty_evenThoughUndoDepthIsZeroAgain', () => {
+    // issue #55: restoring a crash-recovery draft resets history back to
+    // depth 0 — the same depth a fresh session starts at — so `markDirty`
+    // must force dirty regardless of the depth coincidence.
+    act(() => {
+      editorSession.reset(createEmptyDocument());
+      markDirty();
+    });
+    expect(isDirty()).toBe(true);
+  });
+
+  it('test_markDirty_thenMarkSaved_becomesFalseAgain', () => {
+    act(() => {
+      editorSession.reset(createEmptyDocument());
+      markDirty();
+    });
+    expect(isDirty()).toBe(true);
+
+    act(() => {
+      markSaved();
+    });
+    expect(isDirty()).toBe(false);
   });
 });

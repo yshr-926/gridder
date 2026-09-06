@@ -43,6 +43,20 @@ export const markSaved = (): void => {
   recompute();
 };
 
+/**
+ * Force the document to read as dirty regardless of its current
+ * `undoDepth` (issue #55: a restored crash-recovery draft is unsaved by
+ * definition, but `editorSession.reset` clears history back to depth 0 —
+ * the same depth a fresh, never-edited session starts at — so comparing
+ * depths alone can't tell the two apart). Setting `savedAtDepth` to a value
+ * `undoDepth` can never equal keeps `recompute` reporting dirty until the
+ * next real save, without needing a sentinel `isDirty` flag of its own.
+ */
+export const markDirty = (): void => {
+  savedAtDepth = editorSession.undoDepth - 1;
+  recompute();
+};
+
 /** Subscribe a component to whether the document has unsaved changes. */
 export const useIsDirty = (): boolean => useDirtyStore((state) => state.isDirty);
 
