@@ -3,36 +3,24 @@ import { Header } from './components/Header';
 import { PropertyPanel } from './components/PropertyPanel';
 import { GridCanvas } from './components/Canvas';
 import type { GridCanvasRef } from './components/Canvas';
-import { ImportDialog } from './components/FileOperations';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ToastContainer } from './components/Toast';
 import { PerformanceOverlay } from './components/PerformanceOverlay';
 import { CommandPalette } from './components/CommandPalette';
+import { ConfirmDialog } from './components/ui';
 import {
   useCanvasKeyboard,
   useKeyboardShortcutsHelp,
   useToastStore,
   useSentryContext,
 } from './hooks';
-import { useCanvasStore } from './stores';
 import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
-import {
-  exportProjectAsJSON,
-  exportAsPNG,
-  exportAsJPEG,
-  createNewProject,
-  useAutoSave,
-  hasAutoSavedData,
-  restoreFromLocalStorage,
-  clearLocalStorage,
-} from './features/export';
+import { exportAsPNG, exportAsJPEG } from './features/export';
+import { useBeforeUnload, useFileMenu } from './features/file';
 
 export const App = () => {
   // Canvas への参照（画像エクスポート用）
   const canvasRef = useRef<GridCanvasRef>(null);
-
-  // インポートダイアログの表示状態
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // コマンドパレットの表示状態
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -47,17 +35,22 @@ export const App = () => {
   // キーボードショートカットを有効化
   useCanvasKeyboard();
 
-  // 自動保存を有効化
-  useAutoSave(true);
-
   // Sentry コンテキスト同期（エラー追跡用）
   useSentryContext();
+
+  // 保存ファイルの新規/開く/保存/名前を付けて保存（issue #54, spec §9）と、
+  // 未保存の変更があるページ離脱を確認する beforeunload。
+  const fileMenu = useFileMenu();
+  useBeforeUnload();
 
   // ポリゴン文書（editor-core）とその Undo/Redo 履歴（#42）
   const editorDocument = useEditorDocument();
   const { undo: handleUndo, redo: handleRedo, canUndo, canRedo } = useEditorHistory();
-  const toolMode = useCanvasStore(state => state.toolMode);
-  const setToolMode = useCanvasStore(state => state.setToolMode);
+
+  // ポリゴン作成モード（editor-core の creatingPolygon 状態、#48）。
+  // GridCanvas 内の interaction controller が唯一の情報源で、ここでは
+  // 上部バーの pressed 表示のためだけに反映する。
+  const [isCreatingPolygon, setIsCreatingPolygon] = useState(false);
 
   // Ctrl+Shift+P でコマンドパレットを開閉
   useEffect(() => {
@@ -70,39 +63,6 @@ export const App = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // 起動時の復元確認
-  useEffect(() => {
-    if (hasAutoSavedData()) {
-      const shouldRestore = window.confirm('前回の作業データがあります。復元しますか？');
-      if (shouldRestore) {
-        restoreFromLocalStorage();
-      } else {
-        clearLocalStorage();
-      }
-    }
-  }, []);
-
-  // 新規スケッチ作成
-  const handleNewSketch = useCallback(() => {
-    const shouldCreate = window.confirm(
-      '新しいスケッチを作成しますか？現在の作業内容は失われます。'
-    );
-    if (shouldCreate) {
-      createNewProject();
-      clearLocalStorage();
-    }
-  }, []);
-
-  // スケッチを開く（インポートダイアログを表示）
-  const handleOpenSketch = useCallback(() => {
-    setIsImportDialogOpen(true);
-  }, []);
-
-  // スケッチ保存（JSON エクスポート）
-  const handleSaveSketch = useCallback(() => {
-    exportProjectAsJSON();
   }, []);
 
   // PNG エクスポート
@@ -122,31 +82,22 @@ export const App = () => {
   }, []);
 
   const handleAddPolygon = useCallback(() => {
-    setToolMode('polygon');
-  }, [setToolMode]);
-
-  // インポート成功時のコールバック
-  const handleImportSuccess = useCallback(() => {
-    console.log('Project imported successfully');
-  }, []);
-
-  // インポートダイアログを閉じる
-  const handleCloseImportDialog = useCallback(() => {
-    setIsImportDialogOpen(false);
+    canvasRef.current?.startPolygonCreation();
   }, []);
 
   return (
     <div className="flex h-screen flex-col bg-canvas text-ui">
       <Header
-        onNewSketch={handleNewSketch}
-        onOpenSketch={handleOpenSketch}
-        onSaveSketch={handleSaveSketch}
+        onNewSketch={fileMenu.requestNew}
+        onOpenSketch={fileMenu.requestOpen}
+        onSaveSketch={fileMenu.save}
+        onSaveSketchAs={fileMenu.saveAs}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
         onAddPolygon={handleAddPolygon}
-        isAddingPolygon={toolMode === 'polygon'}
+        isAddingPolygon={isCreatingPolygon}
         onSharePNG={handleExportPNG}
         onShareJPEG={handleExportJPEG}
         onFitDrawingBoundsToContent={fitDrawingBoundsToContent}
@@ -158,17 +109,33 @@ export const App = () => {
           role="application"
           aria-label="作図キャンバス"
         >
-          <GridCanvas ref={canvasRef} editorDocument={editorDocument} />
+          <GridCanvas
+            ref={canvasRef}
+            editorDocument={editorDocument}
+            onCreatingPolygonChange={setIsCreatingPolygon}
+          />
         </main>
 
         <PropertyPanel />
       </div>
 
-      {/* Import Dialog */}
-      <ImportDialog
-        isOpen={isImportDialogOpen}
-        onClose={handleCloseImportDialog}
-        onImportSuccess={handleImportSuccess}
+      {/* 保存されていない変更を破棄する確認（issue #54, spec §9） */}
+      <ConfirmDialog
+        open={fileMenu.pendingConfirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            fileMenu.cancelDiscard();
+          }
+        }}
+        title="保存されていない変更があります"
+        description={
+          fileMenu.pendingConfirmAction === 'open'
+            ? 'このまま別のファイルを開くと、現在の変更は失われます。'
+            : 'このまま新しいスケッチを作成すると、現在の変更は失われます。'
+        }
+        confirmLabel="破棄して続ける"
+        destructive
+        onConfirm={fileMenu.confirmDiscard}
       />
 
       {/* Keyboard Shortcuts Help Dialog */}

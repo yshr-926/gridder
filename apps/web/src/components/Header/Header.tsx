@@ -9,6 +9,7 @@ import {
   PenTool,
   Redo2,
   Save,
+  SaveAll,
   Share2,
   Undo2,
 } from 'lucide-react';
@@ -21,6 +22,8 @@ interface HeaderProps {
   onNewSketch: () => void;
   onOpenSketch: () => void;
   onSaveSketch: () => void;
+  /** "名前を付けて保存" (issue #54, spec §12): always prompts for a destination. */
+  onSaveSketchAs: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -89,6 +92,7 @@ export const Header = ({
   onNewSketch,
   onOpenSketch,
   onSaveSketch,
+  onSaveSketchAs,
   onUndo,
   onRedo,
   canUndo,
@@ -126,6 +130,10 @@ export const Header = ({
                 <Menu.Item className={menuItemClassName} onClick={onSaveSketch}>
                   <Save aria-hidden="true" className="size-4" />
                   保存
+                </Menu.Item>
+                <Menu.Item className={menuItemClassName} onClick={onSaveSketchAs}>
+                  <SaveAll aria-hidden="true" className="size-4" />
+                  名前を付けて保存
                 </Menu.Item>
               </Menu.Popup>
             </Menu.Positioner>

@@ -68,4 +68,33 @@ describe('EditorSession', () => {
     session.dispatch(new CreateShapeCommand(rectShape('s1')));
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('test_EditorSession_undoDepth_tracksStackSize_andResetsOnUndo', () => {
+    const session = new EditorSession(createEmptyDocument());
+    expect(session.undoDepth).toBe(0);
+
+    session.dispatch(new CreateShapeCommand(rectShape('s1')));
+    session.dispatch(new CreateShapeCommand(rectShape('s2')));
+    expect(session.undoDepth).toBe(2);
+
+    session.undo();
+    expect(session.undoDepth).toBe(1);
+  });
+
+  it('test_EditorSession_reset_replacesDocument_andDropsHistory', () => {
+    const session = new EditorSession(createEmptyDocument());
+    session.dispatch(new CreateShapeCommand(rectShape('s1')));
+    const listener = vi.fn();
+    session.subscribe(listener);
+
+    const loaded = createEmptyDocument();
+    const result = session.reset(loaded);
+
+    expect(result).toBe(loaded);
+    expect(session.getDocument()).toBe(loaded);
+    expect(session.undoDepth).toBe(0);
+    expect(session.canUndo).toBe(false);
+    expect(session.canRedo).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });

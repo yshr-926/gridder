@@ -4,3 +4,4 @@ export { Input } from './Input';
 export { Select } from './Select';
 export { Divider } from './Divider';
 export { Tooltip, TooltipProvider } from './Tooltip';
+export { ConfirmDialog } from './Dialog';

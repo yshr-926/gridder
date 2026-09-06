@@ -8,6 +8,7 @@ describe('Header', () => {
     onNewSketch: vi.fn(),
     onOpenSketch: vi.fn(),
     onSaveSketch: vi.fn(),
+    onSaveSketchAs: vi.fn(),
     onUndo: vi.fn(),
     onRedo: vi.fn(),
     canUndo: true,
@@ -63,6 +64,19 @@ describe('Header', () => {
     await user.click(await screen.findByRole('menuitem', { name: '新規スケッチ' }));
 
     expect(props.onNewSketch).toHaveBeenCalledOnce();
+  });
+
+  it('invokes save and save-as from the file menu', async () => {
+    const user = userEvent.setup();
+    render(<Header {...props} />);
+
+    await user.click(screen.getByRole('button', { name: 'ファイル' }));
+    await user.click(await screen.findByRole('menuitem', { name: '保存' }));
+    expect(props.onSaveSketch).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('button', { name: 'ファイル' }));
+    await user.click(await screen.findByRole('menuitem', { name: '名前を付けて保存' }));
+    expect(props.onSaveSketchAs).toHaveBeenCalledOnce();
   });
 
   it('delegates top-bar tooltips to Base UI', () => {

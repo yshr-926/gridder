@@ -49,12 +49,28 @@ export class EditorSession {
   undo = (): EditorDocument => this.history.undo();
   redo = (): EditorDocument => this.history.redo();
 
+  /**
+   * Replace the document and drop all history (issue #54: opening a file or
+   * starting a new sketch). Notifies subscribers like any other mutation.
+   */
+  reset = (document: EditorDocument): EditorDocument => this.history.reset(document);
+
   get canUndo(): boolean {
     return this.history.canUndo;
   }
 
   get canRedo(): boolean {
     return this.history.canRedo;
+  }
+
+  /**
+   * How many undoable Commands are on the stack. Issue #54's dirty tracking
+   * compares this against the depth recorded at the last save, entirely from
+   * outside this class via {@link subscribe} — this getter is the only surface
+   * that tracking needs.
+   */
+  get undoDepth(): number {
+    return this.history.undoDepth;
   }
 
   /** Number of shapes currently in the document. */
