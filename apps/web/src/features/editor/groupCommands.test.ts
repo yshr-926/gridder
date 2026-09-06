@@ -39,8 +39,8 @@ describe('groupSelection', () => {
     const document = editorSession.getDocument();
     const groups = Object.values(document.groups);
     expect(groups).toHaveLength(1);
-    expect(groups[0].shapeIds.sort()).toEqual(['a', 'b']);
-    expect(useSelectionStore.getState().selectedIds.sort()).toEqual(['a', 'b']);
+    expect([...groups[0].shapeIds].sort()).toEqual(['a', 'b']);
+    expect([...useSelectionStore.getState().selectedIds].sort()).toEqual(['a', 'b']);
   });
 
   it('test_groupSelection_isUndoable', () => {
@@ -85,7 +85,7 @@ describe('groupSelection', () => {
     expect(document.groups[firstGroupId]).toBeUndefined();
     const groups = Object.values(document.groups);
     expect(groups).toHaveLength(1);
-    expect(groups[0].shapeIds.sort()).toEqual(['b', 'c']);
+    expect([...groups[0].shapeIds].sort()).toEqual(['b', 'c']);
   });
 });
 
@@ -102,7 +102,7 @@ describe('ungroupSelection', () => {
     ungroupSelection();
 
     expect(Object.keys(editorSession.getDocument().groups)).toEqual([]);
-    expect(useSelectionStore.getState().selectedIds.sort()).toEqual(['a', 'b']);
+    expect([...useSelectionStore.getState().selectedIds].sort()).toEqual(['a', 'b']);
   });
 
   it('test_ungroupSelection_isUndoable', () => {
@@ -145,6 +145,6 @@ describe('ungroupSelection', () => {
     ungroupSelection();
 
     expect(Object.keys(editorSession.getDocument().groups)).toEqual([]);
-    expect(useSelectionStore.getState().selectedIds.sort()).toEqual(['a', 'b']);
+    expect([...useSelectionStore.getState().selectedIds].sort()).toEqual(['a', 'b']);
   });
 });

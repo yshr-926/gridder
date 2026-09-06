@@ -45,7 +45,12 @@ export const useViewportStore = create<ViewportState>(set => ({
   resetViewport: () => set({ scale: 1, offset: { x: 0, y: 0 } }),
 }));
 
-if (import.meta.env.DEV) {
+// Exposed for tooling and the issue #58 Playwright workflow so E2E helpers can
+// read the live scale/offset for zoom-independent screen->grid conversion.
+// Restricted to dev builds and the Playwright build (VITE_E2E=true), matching
+// `selectionStore.ts`'s condition, so it is never present in a production
+// bundle.
+if (import.meta.env.DEV || import.meta.env.VITE_E2E === 'true') {
   (
     window as unknown as {
       __GRIDDER_VIEWPORT_STORE__: typeof useViewportStore;

@@ -324,7 +324,7 @@ describe('applyInteractionEffect', () => {
     it('test_selectOnly_groupedShape_selectsWholeGroup', () => {
       const session = groupedSession();
       applyInteractionEffect(session, { type: 'selectOnly', shapeId: 'a' });
-      expect(useSelectionStore.getState().selectedIds.sort()).toEqual(['a', 'b']);
+      expect([...useSelectionStore.getState().selectedIds].sort()).toEqual(['a', 'b']);
       expect(useSelectionStore.getState().activeGroupId).toBeNull();
     });
 

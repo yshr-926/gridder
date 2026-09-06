@@ -1,299 +1,110 @@
 # Gridder E2E Test Helpers
 
-このディレクトリには、E2Eテストを簡潔に書くためのヘルパー関数、カスタムフィクスチャ、アサーションが含まれています。
+多角形ドキュメント UI（issue #58）向けの E2E ヘルパー。旧セルベース UI 前提の
+ツールモード / トグルバーは存在しない — すべてキャンバス上の直接操作。
 
 ## ディレクトリ構成
 
 ```
 e2e/helpers/
 ├── index.ts          # すべてのヘルパーを再エクスポート
-├── canvas.ts         # CanvasHelper クラスと Canvas 操作関数
-├── setup.ts          # カスタムテストフィクスチャ
-├── assertions.ts     # カスタムアサーション
-└── README.md         # このドキュメント
+├── canvas.ts          # CanvasHelper: グリッド座標 <-> スクリーン座標変換とジェスチャー
+├── editorState.ts      # editor-core ランタイム（window.__GRIDDER_*）の読み取り
+├── setup.ts            # カスタムテストフィクスチャ（page / canvasHelper）
+├── assertions.ts        # 汎用アサーションヘルパー
+└── README.md            # このドキュメント
 ```
 
-## 使い方
-
-### 基本的なインポート
+## 基本的なインポート
 
 ```typescript
-import { test, expect, customExpect } from '../helpers';
+import { test, expect, readDocument, readSelection } from '../helpers';
 ```
 
-### カスタムフィクスチャの使用
+## `canvasHelper` フィクスチャ（`CanvasHelper`）
+
+グリッド頂点 <-> スクリーン座標の変換は、ズームとパンの度に変わる
+`window.__GRIDDER_VIEWPORT_STORE__`（`scale` / `offset`）を都度読んで計算する。
+そのため、ズームしていてもテストコード側はグリッド座標だけを指定すればよい。
 
 ```typescript
-test('example test', async ({ app, canvasHelper }) => {
-  // app: AppPage インスタンス（Page Object Model）
-  // canvasHelper: CanvasHelper インスタンス（グリッド操作）
-
-  await app.switchToDrawMode();
-  await canvasHelper.clickGrid(5, 5);
+test('example', async ({ canvasHelper }) => {
+  await canvasHelper.dragGrid(2, 2, 7, 6); // 空白ドラッグで矩形作成
+  await canvasHelper.clickGrid(4, 4); // グリッド頂点をクリック
+  await canvasHelper.doubleClickGrid(4, 4); // グループ内モード / セル編集へ
+  await canvasHelper.wheelAtGrid(4, 4, -100); // カーソル中心ズーム
+  await canvasHelper.middleDragPan(200, 200, 80, 40); // 中ボタンパン
 });
 ```
 
-## カスタムフィクスチャ
-
-### `app` フィクスチャ
-
-Page Object Model を提供する `AppPage` インスタンス。ローカルストレージのクリアとページのリロードが自動で行われます。
-
-```typescript
-test('using app fixture', async ({ app }) => {
-  await app.switchToDrawMode();
-  await app.clickCanvas(100, 100);
-  await app.switchToSelectMode();
-});
-```
-
-### `canvasHelper` フィクスチャ
-
-Canvas のグリッド座標操作を提供する `CanvasHelper` インスタンス。
-
-```typescript
-test('using canvasHelper', async ({ canvasHelper }) => {
-  // グリッド座標でクリック
-  await canvasHelper.clickGrid(5, 5);
-
-  // グリッド座標でドラッグ
-  await canvasHelper.dragGrid(2, 2, 8, 8);
-
-  // 座標変換
-  const pixel = await canvasHelper.gridToPixel(3, 3);
-  const grid = await canvasHelper.pixelToGrid(pixel.x, pixel.y);
-});
-```
-
-## CanvasHelper クラス
-
-### メソッド一覧
+主なメソッド:
 
 | メソッド | 説明 |
 |---------|------|
-| `getGridSize()` | グリッドサイズを取得 |
-| `gridToPixel(gridX, gridY)` | グリッド座標をピクセル座標に変換 |
-| `pixelToGrid(pixelX, pixelY)` | ピクセル座標をグリッド座標に変換 |
-| `clickGrid(gridX, gridY)` | 指定グリッド座標をクリック |
-| `doubleClickGrid(gridX, gridY)` | 指定グリッド座標をダブルクリック |
-| `dragGrid(startX, startY, endX, endY)` | グリッド座標間でドラッグ |
-| `hoverGrid(gridX, gridY)` | 指定グリッド座標にホバー |
-| `screenshot()` | Canvas のスクリーンショットを取得 |
-| `getBoundingBox()` | Canvas の境界ボックスを取得 |
-| `waitForRender(timeout)` | レンダリング完了を待機 |
+| `gridToScreen(x, y)` / `screenToGrid(x, y)` | 座標変換（テスト内で独自計算が必要な場合） |
+| `clickGrid(x, y, { modifiers })` | グリッド頂点をクリック（Shift 等の修飾キー対応） |
+| `doubleClickGrid(x, y)` | ダブルクリック（グループ内モード / セル編集） |
+| `dragGrid(x1, y1, x2, y2, { shiftKey, altKey, steps })` | ドラッグ（範囲選択・セル編集の Alt 削除に対応） |
+| `hoverGrid(x, y)` | ホバーのみ |
+| `wheelAtCenter(deltaY)` / `wheelAtGrid(x, y, deltaY)` | ホイールズーム |
+| `middleDragPan(x, y, dx, dy)` | 中ボタンドラッグパン |
+| `getViewport()` | 現在の `{ scale, offset }` |
 | `waitForCanvas()` | Canvas 要素の準備を待機 |
-| `getLocator()` | Canvas の Locator を取得 |
-| `wheel(deltaX, deltaY)` | マウスホイール操作 |
-| `ctrlWheel(deltaY)` | Ctrl + ホイール（ズーム）操作 |
 
-### 使用例
+**ダブルクリック誤判定への対策**: `clickGrid` / `dragGrid` はジェスチャー完了後に
+約500msの待機を内蔵している。ブラウザは離れた座標同士の `mousedown`/`mouseup`
+であっても短い間隔で連続すると `dblclick` と判定することがあり、このアプリの
+キャンバスはダブルクリックを「グループ内モードへ入る」「セル編集へ入る」と
+解釈するため、対策なしでは次のテスト操作がセル編集モードに迷い込む。
+
+## `editorState.ts`: editor-core ランタイムの読み取り
+
+`VITE_E2E=true` ビルドでのみ `window.__GRIDDER_EDITOR_SESSION__` /
+`__GRIDDER_SELECTION_STORE__` / `__GRIDDER_VIEWPORT_STORE__` が公開される
+（`useEditorSession.ts` / `selectionStore.ts` / `viewportStore.ts`）。
 
 ```typescript
-import { test } from '../helpers';
+import { readDocument, readSelection } from '../helpers';
 
-test('canvas helper example', async ({ app, canvasHelper }) => {
-  await app.switchToDrawMode();
+test('example', async ({ page, canvasHelper }) => {
+  await canvasHelper.dragGrid(2, 2, 7, 6);
 
-  // グリッド座標 (5, 5) をクリックして描画
-  await canvasHelper.clickGrid(5, 5);
+  const document = await readDocument(page);
+  // document.shapeCount / document.shapes（z-order順）/ document.zOrder
+  // document.canUndo / document.canRedo / document.groupCount
 
-  // (2, 2) から (8, 8) までドラッグ描画
-  await canvasHelper.dragGrid(2, 2, 8, 8);
-
-  // レンダリング完了を待機
-  await canvasHelper.waitForRender(500);
-
-  // Canvas のスクリーンショットを取得
-  const screenshot = await canvasHelper.screenshot();
+  const selection = await readSelection(page);
+  // selection.selectedIds / selection.primaryId / selection.activeGroupId
 });
 ```
 
-## カスタムアサーション
-
-### customExpect オブジェクト
-
-Gridder 固有のアサーションを提供するオブジェクト。
-
-```typescript
-import { customExpect } from '../helpers';
-
-test('custom assertions', async ({ app }) => {
-  // オブジェクト数の確認
-  await customExpect.toHaveObjectCount(app.page, 1);
-
-  // ツールモードの確認
-  await customExpect.toBeInToolMode(app.page, 'draw');
-
-  // 選択状態の確認
-  await customExpect.toHaveSelectedObject(app.page);
-  await customExpect.toHaveNoSelectedObject(app.page);
-
-  // エラーがないことを確認
-  await customExpect.toHaveNoErrors(app.page);
-
-  // ズームレベルの確認
-  await customExpect.toHaveZoomLevel(app.page, 100);
-
-  // ステータスバーのテキスト確認
-  await customExpect.toHaveStatusText(app.page, '100%');
-
-  // Canvas の可視性確認
-  await customExpect.toHaveVisibleCanvas(app.page);
-
-  // プロジェクト保存の確認
-  await customExpect.toHaveSavedProject(app.page);
-});
-```
-
-### 独立したアサーション関数
+## アサーション（`assertions.ts`）
 
 | 関数 | 説明 |
 |------|------|
-| `expectCanvasHasContent(page)` | Canvas にコンテンツがあることを確認 |
-| `expectCanvasIsEmpty(page)` | Canvas が空であることを確認 |
-| `expectLocalStorageHasProject(page)` | LocalStorage にプロジェクトがあることを確認 |
-| `expectDownload(page, action, filename)` | ダウンロードがトリガーされることを確認 |
-| `expectElementFocused(page, selector)` | 要素がフォーカスされていることを確認 |
-| `expectTabNavigation(page, selectors)` | Tab ナビゲーションの順序を確認 |
-| `expectObjectCount(page, count)` | オブジェクト数を確認 |
-| `expectToolbarVisible(page)` | ツールバーが表示されていることを確認 |
-| `expectPropertyPanelVisible(page)` | プロパティパネルが表示されていることを確認 |
-| `expectStatusBarVisible(page)` | ステータスバーが表示されていることを確認 |
-| `expectNoConsoleErrors(page, action)` | コンソールエラーがないことを確認 |
-| `expectModalVisible(page, titlePattern)` | モーダルが表示されていることを確認 |
-| `expectNoModal(page)` | モーダルがないことを確認 |
-
-### 使用例
-
-```typescript
-import { expectDownload, expectToolbarVisible } from '../helpers';
-
-test('download assertion', async ({ app }) => {
-  await expectToolbarVisible(app.page);
-
-  const filename = await expectDownload(
-    app.page,
-    async () => {
-      await app.exportJSONButton.click();
-    },
-    /gridder.*\.json/
-  );
-});
-```
-
-## ユーティリティ関数
-
-### waitFor
-
-指定ミリ秒待機します。
-
-```typescript
-import { waitFor } from '../helpers';
-
-await waitFor(500); // 500ms 待機
-```
-
-### retryUntil
-
-条件が満たされるまで関数を再試行します。
-
-```typescript
-import { retryUntil } from '../helpers';
-
-const result = await retryUntil(
-  async () => await app.getObjectCount(),
-  (count) => count > 0,
-  { timeout: 5000, interval: 100 }
-);
-```
-
-### TIMEOUTS 定数
-
-よく使うタイムアウト値の定数。
-
-```typescript
-import { TIMEOUTS } from '../helpers';
-
-await canvasHelper.waitForRender(TIMEOUTS.short);   // 100ms
-await canvasHelper.waitForRender(TIMEOUTS.medium);  // 500ms
-await canvasHelper.waitForRender(TIMEOUTS.long);    // 1000ms
-await canvasHelper.waitForRender(TIMEOUTS.extended); // 5000ms
-```
-
-### TEST_DATA 定数
-
-テストで使用するデータ定数。
-
-```typescript
-import { TEST_DATA } from '../helpers';
-
-// TEST_DATA.defaultCellSize = 10
-// TEST_DATA.defaultUnit = 'cm'
-// TEST_DATA.testColor = '#333333'
-// TEST_DATA.alternateColor = '#555555'
-// TEST_DATA.defaultGridSize = 20
-```
-
-## グローバルセットアップ
-
-`e2e/global-setup.ts` は全テスト実行前に1度だけ実行されます。
-
-- 開発サーバーの起動確認
-- アプリケーションの読み込み確認
-- Canvas 要素の存在確認
-- ページ構造（header, toolbar, footer）の確認
+| `expectModalVisible(page, titlePattern?)` | ダイアログが表示されていることを確認 |
+| `expectNoModal(page)` | ダイアログがないことを確認 |
+| `expectNoConsoleErrors(page, action)` | 操作中に想定外の console エラーが出ないことを確認 |
 
 ## ベストプラクティス
 
-### 1. フィクスチャを活用する
+- 座標は必ず `CanvasHelper` 経由のグリッド座標で指定する（ハードコードした
+  ピクセル座標や `page.mouse` の直接呼び出しは避ける） — ズーム率に依存しない。
+- 図形の中心が水平/垂直方向で 1 セルしかない（辺との距離がちょうど
+  `handleHitRadius` に一致する）座標でのクリックは、伸縮ハンドルの当たり判定と
+  衝突しうるので避ける。
+- `readDocument` / `readSelection` で状態を確認する。`expect.poll` と組み合わせ、
+  `waitForTimeout` によるポーリングは避ける。
+- Undo/Redo のショートカットは `<input>` にフォーカスがある間は無効（名前欄で
+  Ctrl+Z を打っても発火しない）。チェックボックスなど `<input>` にフォーカスが
+  残ったままの操作の後は `element.evaluate(el => el.blur())` 等で明示的に外す。
 
-```typescript
-// 良い例
-test('using fixtures', async ({ app, canvasHelper }) => {
-  await canvasHelper.clickGrid(5, 5);
-});
+## グローバルセットアップ
 
-// 避けるべき例
-test('manual setup', async ({ page }) => {
-  const app = new AppPage(page);
-  await app.goto();
-  // ...
-});
-```
-
-### 2. カスタムアサーションを使用する
-
-```typescript
-// 良い例
-await customExpect.toBeInToolMode(app.page, 'draw');
-
-// 避けるべき例
-const button = app.page.getByRole('radio', { name: /描画ツール/i });
-await expect(button).toHaveAttribute('aria-checked', 'true');
-```
-
-### 3. グリッド座標を使用する
-
-```typescript
-// 良い例
-await canvasHelper.clickGrid(5, 5);
-
-// 避けるべき例（ハードコードされたピクセル座標）
-await app.clickCanvas(110, 110);
-```
-
-### 4. 適切な待機を行う
-
-```typescript
-// 良い例
-await canvasHelper.waitForRender(TIMEOUTS.medium);
-
-// 避けるべき例
-await page.waitForTimeout(500);
-```
+`e2e/global-setup.ts` は全テスト実行前に1度だけ実行され、開発/プレビュー
+サーバーの起動とページ読み込みを確認する。
 
 ## 関連ドキュメント
 
 - [Playwright Test Fixtures](https://playwright.dev/docs/test-fixtures)
 - [Playwright Assertions](https://playwright.dev/docs/test-assertions)
-- [Page Object Model](https://playwright.dev/docs/pom)

@@ -6,6 +6,12 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // issue #57's frame-time smoke needs the Vite dev server (its `?benchmark`
+  // fixture loader is `import.meta.env.DEV`-only, a no-op against this
+  // config's production preview build) and runs only through its own
+  // `playwright.benchmark.config.ts` — excluded here so the main suite
+  // never picks it up and blocks on its `DEV`-only fixture.
+  testIgnore: '**/performance-benchmark.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -27,6 +33,9 @@ export default defineConfig({
     navigationTimeout: 30000,
   },
 
+  // 第一リリースの必須環境は Chromium 系デスクトップブラウザ（spec §2）。
+  // Firefox / WebKit は後続対応（issue #58）: 設定は残すが、デフォルトの
+  // `pnpm test:e2e` では実行しない — 個別に `--project=firefox` 等を指定する。
   projects: [
     {
       name: 'chromium',
@@ -39,10 +48,6 @@ export default defineConfig({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
     },
   ],
 
