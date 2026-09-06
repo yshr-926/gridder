@@ -1,6 +1,5 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import * as Sentry from '@sentry/react';
 import { Button } from '@/components/ui';
 
 /**
@@ -22,15 +21,14 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  eventId: string | null;
 }
 
 /**
- * ErrorBoundary component with Sentry integration
- * Catches JavaScript errors anywhere in the child component tree
- * and reports them to Sentry for monitoring
+ * ErrorBoundary component.
+ * Catches JavaScript errors anywhere in the child component tree and shows a
+ * recovery UI instead of a blank page.
  *
- * Note: Error boundaries must be class components (React limitation)
+ * Note: Error boundaries must be class components (React limitation).
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -39,7 +37,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       hasError: false,
       error: null,
       errorInfo: null,
-      eventId: null,
     };
   }
 
@@ -49,15 +46,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.setState({ errorInfo });
-
-    // Report error to Sentry and get event ID for feedback
-    const eventId = Sentry.captureException(error, {
-      extra: {
-        componentStack: errorInfo.componentStack,
-      },
-    });
-
-    this.setState({ eventId });
 
     // Log error to console in development
     if (import.meta.env.DEV) {
@@ -78,14 +66,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       hasError: false,
       error: null,
       errorInfo: null,
-      eventId: null,
     });
-  };
-
-  handleReportFeedback = (): void => {
-    if (this.state.eventId) {
-      Sentry.showReportDialog({ eventId: this.state.eventId });
-    }
   };
 
   render(): ReactNode {
@@ -148,11 +129,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 リセット
               </Button>
               <Button onClick={this.handleReload}>再読み込み</Button>
-              {this.state.eventId && (
-                <Button variant="ghost" onClick={this.handleReportFeedback}>
-                  問題を報告
-                </Button>
-              )}
             </div>
           </div>
         </div>

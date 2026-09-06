@@ -31,7 +31,7 @@ export type Environment = 'development' | 'production';
 export const getCSPDirectives = (env: Environment): CSPDirectives => {
   const base: CSPDirectives = {
     'default-src': ["'self'"],
-    'script-src': ["'self'", 'https://plausible.io'],
+    'script-src': ["'self'"],
     'style-src': ["'self'", "'unsafe-inline'"], // Tailwind CSS requires unsafe-inline
     'img-src': ["'self'", 'data:', 'blob:'], // Canvas export support (data: and blob: URLs)
     'font-src': ["'self'"],
@@ -40,14 +40,6 @@ export const getCSPDirectives = (env: Environment): CSPDirectives => {
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
   };
-
-  if (env === 'production') {
-    // Add Sentry and Plausible connections for production
-    base['connect-src'].push(
-      'https://*.ingest.sentry.io',
-      'https://plausible.io'
-    );
-  }
 
   if (env === 'development') {
     // Allow inline scripts for HMR and development tools in development

@@ -31,8 +31,6 @@
     "@base-ui/react": "^1.8.0",
     "@gridder/shared-types": "workspace:*",
     "@gridder/editor-core": "workspace:*",
-    "@sentry/react": "^10.31.0",
-    "@sentry/vite-plugin": "^4.6.1",
     "clsx": "^2.1.1",
     "konva": "^10.0.12",
     "lucide-react": "^0.541.0",
@@ -40,7 +38,6 @@
     "react-dom": "^19.2.3",
     "react-konva": "^19.2.1",
     "tailwind-merge": "^3.4.0",
-    "web-vitals": "^5.1.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
