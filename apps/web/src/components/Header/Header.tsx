@@ -4,19 +4,18 @@ import {
   FilePlus2,
   FileText,
   FolderOpen,
-  Image,
   Maximize2,
   PenTool,
   Redo2,
   Save,
   SaveAll,
-  Share2,
   Undo2,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../utils/cn';
 import { Tooltip, TooltipProvider } from '../ui';
 import { SettingsPanel } from '../SettingsPanel';
+import { SharePanel } from '../SharePanel';
 
 interface HeaderProps {
   onNewSketch: () => void;
@@ -30,8 +29,6 @@ interface HeaderProps {
   canRedo: boolean;
   onAddPolygon: () => void;
   isAddingPolygon: boolean;
-  onSharePNG: () => void;
-  onShareJPEG: () => void;
   /** "内容に合わせる" (spec §4, issue #46): switch the drawing range back to auto. */
   onFitDrawingBoundsToContent: () => void;
 }
@@ -99,8 +96,6 @@ export const Header = ({
   canRedo,
   onAddPolygon,
   isAddingPolygon,
-  onSharePNG,
-  onShareJPEG,
   onFitDrawingBoundsToContent,
 }: HeaderProps) => (
   <TooltipProvider>
@@ -156,36 +151,7 @@ export const Header = ({
         </HeaderAction>
 
         <div className="ml-auto flex items-center gap-1">
-          <Menu.Root>
-            <Tooltip content="共有" position="bottom">
-              <Menu.Trigger
-                className={cn(
-                  iconButtonClassName,
-                  'bg-accent text-white hover:bg-accent-strong hover:text-white'
-                )}
-                aria-label="共有"
-              >
-                <Share2 aria-hidden="true" className="size-4" />
-                <span>共有</span>
-                <ChevronDown aria-hidden="true" className="size-3.5" />
-              </Menu.Trigger>
-            </Tooltip>
-            <Menu.Portal>
-              <Menu.Positioner side="bottom" align="end" sideOffset={8} className="z-40">
-                <Menu.Popup className={menuPopupClassName} aria-label="共有画像の形式">
-                  <Menu.Item className={menuItemClassName} onClick={onSharePNG}>
-                    <Image aria-hidden="true" className="size-4" />
-                    PNG画像
-                  </Menu.Item>
-                  <Menu.Item className={menuItemClassName} onClick={onShareJPEG}>
-                    <Image aria-hidden="true" className="size-4" />
-                    JPEG画像
-                  </Menu.Item>
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
-
+          <SharePanel />
           <SettingsPanel />
         </div>
       </nav>

@@ -15,8 +15,6 @@ describe('Header', () => {
     canRedo: false,
     onAddPolygon: vi.fn(),
     isAddingPolygon: false,
-    onSharePNG: vi.fn(),
-    onShareJPEG: vi.fn(),
     onFitDrawingBoundsToContent: vi.fn(),
   };
 

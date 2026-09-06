@@ -15,7 +15,6 @@ import {
   useSentryContext,
 } from './hooks';
 import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
-import { exportAsPNG, exportAsJPEG } from './features/export';
 import { useBeforeUnload, useFileMenu } from './features/file';
 
 export const App = () => {
@@ -65,22 +64,6 @@ export const App = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // PNG エクスポート
-  const handleExportPNG = useCallback(() => {
-    const stage = canvasRef.current?.getStage();
-    if (stage) {
-      exportAsPNG(stage);
-    }
-  }, []);
-
-  // JPEG エクスポート
-  const handleExportJPEG = useCallback(() => {
-    const stage = canvasRef.current?.getStage();
-    if (stage) {
-      exportAsJPEG(stage);
-    }
-  }, []);
-
   const handleAddPolygon = useCallback(() => {
     canvasRef.current?.startPolygonCreation();
   }, []);
@@ -98,8 +81,6 @@ export const App = () => {
         canRedo={canRedo}
         onAddPolygon={handleAddPolygon}
         isAddingPolygon={isCreatingPolygon}
-        onSharePNG={handleExportPNG}
-        onShareJPEG={handleExportJPEG}
         onFitDrawingBoundsToContent={fitDrawingBoundsToContent}
       />
 
