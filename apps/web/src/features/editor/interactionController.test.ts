@@ -12,6 +12,7 @@ import {
   previewRegion,
   reduceInteraction,
   resizePreview,
+  shapeEditPreview,
   type InteractionEvent,
   type InteractionState,
   type PointerSample,
@@ -46,6 +47,14 @@ const sample = (
   vertex: { x: Math.round(x), y: Math.round(y) },
   precise: { x, y },
   shiftKey,
+});
+
+/** A pointer sample at a precise (non-vertex-snapped) grid position, optionally with Alt held (issue #49). */
+const cellSample = (x: number, y: number, altKey = false): PointerSample => ({
+  vertex: { x: Math.round(x), y: Math.round(y) },
+  precise: { x, y },
+  shiftKey: false,
+  altKey,
 });
 
 /** Drive a sequence of events through the reducer, collecting effects. */
@@ -355,9 +364,10 @@ describe('reduceInteraction — rectangle handle resize (issue #44)', () => {
     };
     const document = documentOf([triangle]);
     const { state } = run(document, [{ type: 'pointerDown', sample: sample(0, 0) }], ['t'], 0.5);
-    // No handles for a triangle: (0,0) hits its vertex/border, so this is a
-    // plain shape hit — pending, not resizing.
-    expect(state.kind).toBe('pending');
+    // No bounding-box resize handles for a triangle: (0,0) hits its own
+    // vertex instead, entering vertex/edge direct manipulation (issue #50)
+    // rather than resizing.
+    expect(state.kind).toBe('movingVertex');
   });
 
   it('test_resizing_pointerMove_updatesCurrentBounds_liveWithoutCommitting', () => {
@@ -687,6 +697,253 @@ describe('reduceInteraction — polygon creation (issue #48)', () => {
     expect(polygonDraftPreview(IDLE_STATE)).toBeNull();
     expect(
       polygonDraftPreview({
+        kind: 'creatingRect',
+        originVertex: { x: 0, y: 0 },
+        currentVertex: { x: 1, y: 1 },
+      })
+    ).toBeNull();
+  });
+});
+
+describe('reduceInteraction — shape cell editing (issue #49)', () => {
+  it('test_doubleClickShape_fromIdle_entersEditingShape_withOriginalPolygonAsWorking', () => {
+    const shape = rectShape('a', 0, 0, 2, 2);
+    const document = documentOf([shape]);
+    const { state } = run(document, [{ type: 'doubleClickShape', shapeId: 'a' }]);
+    expect(state).toMatchObject({
+      kind: 'editingShape',
+      shapeId: 'a',
+      originalPolygon: shape.polygon,
+      workingPolygons: [shape.polygon],
+      stroke: null,
+    });
+  });
+
+  it('test_doubleClickShape_unknownShapeId_isIgnored', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [{ type: 'doubleClickShape', shapeId: 'missing' }]);
+    expect(state).toEqual(IDLE_STATE);
+  });
+
+  it('test_doubleClickShape_whileAlreadyEditingAnotherGesture_isIgnored', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state } = run(document, [
+      { type: 'pointerDown', sample: sample(10, 10) },
+      { type: 'pointerMove', sample: sample(15, 14) },
+      { type: 'doubleClickShape', shapeId: 'a' },
+    ]);
+    expect(state.kind).toBe('creatingRect');
+  });
+
+  it('test_cellDrag_addsACell_growsTheShape_byUnion', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(2.5, 0.5) }, // cell (2,0)-(3,1)
+      { type: 'pointerUp', sample: cellSample(2.5, 0.5) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(1);
+    expect(preview?.workingPolygons[0]).toEqual({
+      outerRing: [
+        { x: 0, y: 0 },
+        { x: 3, y: 0 },
+        { x: 3, y: 1 },
+        { x: 2, y: 1 },
+        { x: 2, y: 2 },
+        { x: 0, y: 2 },
+      ],
+      innerRings: [],
+    });
+  });
+
+  it('test_altCellDrag_removesACell_byDifference', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(1.5, 1.5, true) }, // cell (1,1)-(2,2), Alt held
+      { type: 'pointerUp', sample: cellSample(1.5, 1.5, true) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(1);
+    // Removing the corner cell of a 2x2 square leaves an L-shape.
+    expect(preview?.workingPolygons[0].outerRing).toHaveLength(6);
+  });
+
+  it('test_altCellDrag_onInteriorCell_createsAHole', () => {
+    const document = documentOf([rectShape('a', 0, 0, 3, 3)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(1.5, 1.5, true) }, // centre cell
+      { type: 'pointerUp', sample: cellSample(1.5, 1.5, true) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(1);
+    expect(preview?.workingPolygons[0].innerRings).toHaveLength(1);
+  });
+
+  it('test_altCellDrag_thatDisconnectsTheShape_splitsWorkingPolygonsIntoTwo', () => {
+    // A 1x3 horizontal strip; removing the middle cell splits it in two.
+    const document = documentOf([rectShape('a', 0, 0, 3, 1)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(1.5, 0.5, true) },
+      { type: 'pointerUp', sample: cellSample(1.5, 0.5, true) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(2);
+  });
+
+  it('test_altCellDrag_thatRemovesTheWholeShape_leavesNoWorkingPolygons', () => {
+    const document = documentOf([rectShape('a', 0, 0, 1, 1)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(0.5, 0.5, true) },
+      { type: 'pointerUp', sample: cellSample(0.5, 0.5, true) },
+    ]);
+    expect(shapeEditPreview(state)?.workingPolygons).toEqual([]);
+  });
+
+  it('test_dragAcrossMultipleCells_unionsEveryTouchedCell_inOneStroke', () => {
+    const document = documentOf([rectShape('a', 0, 0, 1, 1)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(1.5, 0.5) }, // cell (1,0)
+      { type: 'pointerMove', sample: cellSample(2.5, 0.5) }, // cell (2,0)
+      { type: 'pointerUp', sample: cellSample(2.5, 0.5) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(1);
+    expect(preview?.workingPolygons[0]).toEqual({
+      outerRing: [
+        { x: 0, y: 0 },
+        { x: 3, y: 0 },
+        { x: 3, y: 1 },
+        { x: 0, y: 1 },
+      ],
+      innerRings: [],
+    });
+  });
+
+  it('test_pointerMove_sameCellAsLast_isANoOp_doesNotRecompute', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const afterDown = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(0.5, 0.5) },
+    ]).state;
+    const afterMove = reduceInteraction(afterDown, {
+      type: 'pointerMove',
+      sample: cellSample(0.9, 0.9),
+    }).state;
+    // Still inside cell (0,0): the state reference should be unchanged.
+    expect(afterMove).toBe(afterDown);
+  });
+
+  it('test_secondStroke_buildsOnFirst_notOnOriginal', () => {
+    const document = documentOf([rectShape('a', 0, 0, 1, 1)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(1.5, 0.5) }, // add cell (1,0)
+      { type: 'pointerUp', sample: cellSample(1.5, 0.5) },
+      { type: 'pointerDown', sample: cellSample(2.5, 0.5) }, // add cell (2,0)
+      { type: 'pointerUp', sample: cellSample(2.5, 0.5) },
+    ]);
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toHaveLength(1);
+    // Both strokes accumulated: three cells wide now.
+    const xs = preview?.workingPolygons[0].outerRing.map((p) => p.x) ?? [];
+    expect(Math.max(...xs)).toBe(3);
+  });
+
+  it('test_selectingAnotherShape_isDisallowedWhileEditing_pointerDownDrivesTheStrokeInstead', () => {
+    const editingShape = rectShape('a', 0, 0, 2, 2);
+    const otherShape = rectShape('b', 10, 10, 2, 2);
+    const document = documentOf([editingShape, otherShape]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      // Pointer down where 'b' lives — must not select it or exit editing.
+      { type: 'pointerDown', sample: cellSample(10.5, 10.5) },
+    ]);
+    expect(state.kind).toBe('editingShape');
+    expect((state as { shapeId: string }).shapeId).toBe('a');
+  });
+
+  it('test_confirmShapeEdit_emitsCommitShapeEdit_withOriginalAndResultPolygons', () => {
+    const shape = rectShape('a', 0, 0, 2, 2);
+    const document = documentOf([shape]);
+    const { state, effects } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(2.5, 0.5) },
+      { type: 'pointerUp', sample: cellSample(2.5, 0.5) },
+      { type: 'confirmShapeEdit' },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toHaveLength(1);
+    const effect = effects[0] as {
+      type: string;
+      shapeId: string;
+      originalPolygon: unknown;
+      resultPolygons: unknown[];
+    };
+    expect(effect.type).toBe('commitShapeEdit');
+    expect(effect.shapeId).toBe('a');
+    expect(effect.originalPolygon).toEqual(shape.polygon);
+    expect(effect.resultPolygons).toHaveLength(1);
+  });
+
+  it('test_confirmShapeEdit_withNoChangeAtAll_commitsNothing', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state, effects } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'confirmShapeEdit' },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_confirmShapeEdit_outsideEditingShape_isIgnored', () => {
+    const document = documentOf([]);
+    const { state, effects } = run(document, [{ type: 'confirmShapeEdit' }]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_cancelShapeEdit_discardsEverything_backToIdle_noEffect', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state, effects } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(2.5, 0.5) },
+      { type: 'pointerUp', sample: cellSample(2.5, 0.5) },
+      { type: 'cancelShapeEdit' },
+    ]);
+    expect(state).toEqual(IDLE_STATE);
+    expect(effects).toEqual([]);
+  });
+
+  it('test_cancelShapeEdit_outsideEditingShape_isIgnored', () => {
+    const document = documentOf([]);
+    const { state } = run(document, [{ type: 'cancelShapeEdit' }]);
+    expect(state).toEqual(IDLE_STATE);
+  });
+
+  it('test_pointerCancel_midStroke_dropsOnlyTheStroke_keepsEditingShapeActive', () => {
+    const document = documentOf([rectShape('a', 0, 0, 2, 2)]);
+    const { state } = run(document, [
+      { type: 'doubleClickShape', shapeId: 'a' },
+      { type: 'pointerDown', sample: cellSample(2.5, 0.5) },
+      { type: 'pointerCancel' },
+    ]);
+    expect(state.kind).toBe('editingShape');
+    expect((state as { stroke: unknown }).stroke).toBeNull();
+    // The in-progress stroke's speculative cell is dropped, not kept.
+    const preview = shapeEditPreview(state);
+    expect(preview?.workingPolygons).toEqual([rectShape('a', 0, 0, 2, 2).polygon]);
+  });
+
+  it('test_shapeEditPreview_isNull_outsideEditingShape', () => {
+    expect(shapeEditPreview(IDLE_STATE)).toBeNull();
+    expect(
+      shapeEditPreview({
         kind: 'creatingRect',
         originVertex: { x: 0, y: 0 },
         currentVertex: { x: 1, y: 1 },

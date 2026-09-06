@@ -71,3 +71,23 @@ export {
   fitDrawingBoundsToContent,
 } from './drawingBoundsCommands';
 export { setPhysicalScale, clearPhysicalScale } from './physicalScaleCommands';
+export {
+  vertexAtPoint,
+  edgeAtPoint,
+  isAxisAlignedPolygonEdge,
+  withVertexMoved,
+  withEdgeMoved,
+  type PolygonRingRef,
+  type PolygonVertexRef,
+  type PolygonEdgeRef,
+} from './hitTest';
+export { vertexEditPreview } from './interactionController';
+export {
+  groupContaining,
+  expandSelectionForGroups,
+  resolveClickSelection,
+  resolveDoubleClickTarget,
+  type ClickSelectionResult,
+  type DoubleClickTarget,
+} from './groupSelection';
+export { groupSelection, ungroupSelection } from './groupCommands';

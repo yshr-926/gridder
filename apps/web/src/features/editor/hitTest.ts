@@ -310,3 +310,226 @@ export const ringFromRect = (bounds: GridRect): GridRing => [
   { x: bounds.maxX, y: bounds.maxY },
   { x: bounds.minX, y: bounds.maxY },
 ];
+
+/**
+ * The unit grid cell (a 1x1 {@link GridRect}) containing `point`, floored to
+ * its lower-left corner (issue #49, spec §6.3 cell editing). Used to resolve
+ * a precise pointer position to the cell a drag adds or removes.
+ */
+export const cellAtPoint = (point: GridPoint): GridRect => {
+  const minX = Math.floor(point.x);
+  const minY = Math.floor(point.y);
+  return { minX, minY, maxX: minX + 1, maxY: minY + 1 };
+};
+
+/** The 4-vertex unit-square {@link GridPolygon} for one grid cell (issue #49). */
+export const cellPolygon = (cell: GridRect): GridPolygon => ({
+  outerRing: ringFromRect(cell),
+  innerRings: [],
+});
+
+/** Structural equality for two {@link GridRect} cells (issue #49 drag stroke). */
+export const cellsEqual = (a: GridRect, b: GridRect): boolean =>
+  a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
+
+/**
+ * Identifies one ring of a {@link GridPolygon} — the outer boundary or one
+ * numbered hole (issue #50, spec §6.2 "ポリゴンは...頂点・辺を直接動かして変形する").
+ * A hole's vertices are edited exactly like the outer ring's; this is only how
+ * a caller says *which* ring a vertex or edge index belongs to.
+ */
+export type PolygonRingRef =
+  | { readonly kind: 'outer' }
+  | { readonly kind: 'inner'; readonly holeIndex: number };
+
+/** One vertex of a polygon, identified by ring and index within that ring. */
+export interface PolygonVertexRef {
+  readonly ring: PolygonRingRef;
+  readonly vertexIndex: number;
+}
+
+/** One edge of a polygon: the segment from vertex `edgeIndex` to the next one in the same ring (wrapping). */
+export interface PolygonEdgeRef {
+  readonly ring: PolygonRingRef;
+  readonly edgeIndex: number;
+}
+
+/** The ring identified by `ref`, or `undefined` if the hole index is out of range. */
+const ringByRef = (polygon: GridPolygon, ref: PolygonRingRef): GridRing | undefined =>
+  ref.kind === 'outer' ? polygon.outerRing : polygon.innerRings[ref.holeIndex];
+
+/** Every ring of `polygon` paired with the {@link PolygonRingRef} that identifies it. */
+const allRings = (polygon: GridPolygon): readonly (readonly [PolygonRingRef, GridRing])[] => [
+  [{ kind: 'outer' }, polygon.outerRing],
+  ...polygon.innerRings.map(
+    (ring, holeIndex): readonly [PolygonRingRef, GridRing] => [{ kind: 'inner', holeIndex }, ring]
+  ),
+];
+
+/**
+ * The polygon vertex (outer ring or a hole) nearest `point`, within
+ * `hitRadius` grid units, or `null`. Ties are broken by ring/vertex order —
+ * in practice a genuine tie only happens for a degenerate polygon, which
+ * cannot reach this hit-test in the first place (issue #50: only a non-
+ * rectangular, therefore already-valid, shape gets vertex editing).
+ */
+export const vertexAtPoint = (
+  polygon: GridPolygon,
+  point: GridPoint,
+  hitRadius: number
+): PolygonVertexRef | null => {
+  let best: PolygonVertexRef | null = null;
+  let bestDistance = hitRadius;
+  for (const [ringRef, ring] of allRings(polygon)) {
+    ring.forEach((vertex, vertexIndex) => {
+      const distance = Math.hypot(point.x - vertex.x, point.y - vertex.y);
+      if (distance <= bestDistance) {
+        bestDistance = distance;
+        best = { ring: ringRef, vertexIndex };
+      }
+    });
+  }
+  return best;
+};
+
+/** Squared distance from `point` to the closed segment `[a, b]`. */
+const distanceToSegmentSquared = (point: GridPoint, a: GridPoint, b: GridPoint): number => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    return (point.x - a.x) ** 2 + (point.y - a.y) ** 2;
+  }
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared)
+  );
+  const closestX = a.x + t * dx;
+  const closestY = a.y + t * dy;
+  return (point.x - closestX) ** 2 + (point.y - closestY) ** 2;
+};
+
+/**
+ * The polygon edge (outer ring or a hole) nearest `point`, within `hitRadius`
+ * grid units, or `null`. Checked only after {@link vertexAtPoint} finds
+ * nothing, matching the resize-handle-before-body priority: grabbing a
+ * vertex should never instead grab the edge that touches it.
+ */
+export const edgeAtPoint = (
+  polygon: GridPolygon,
+  point: GridPoint,
+  hitRadius: number
+): PolygonEdgeRef | null => {
+  let best: PolygonEdgeRef | null = null;
+  let bestDistanceSquared = hitRadius * hitRadius;
+  for (const [ringRef, ring] of allRings(polygon)) {
+    for (let edgeIndex = 0; edgeIndex < ring.length; edgeIndex += 1) {
+      const a = ring[edgeIndex];
+      const b = ring[(edgeIndex + 1) % ring.length];
+      if (a === undefined || b === undefined) {
+        continue;
+      }
+      const distanceSquared = distanceToSegmentSquared(point, a, b);
+      if (distanceSquared <= bestDistanceSquared) {
+        bestDistanceSquared = distanceSquared;
+        best = { ring: ringRef, edgeIndex };
+      }
+    }
+  }
+  return best;
+};
+
+/** True when the segment `[a, b]` is horizontal or vertical. */
+const isAxisAlignedEdge = (a: GridPoint, b: GridPoint): boolean => a.x === b.x || a.y === b.y;
+
+/**
+ * Whether the edge at `ref` is axis-aligned (spec §6.2: "軸平行の辺はその辺を平行
+ * 移動" vs. "斜辺は両端頂点を同じ delta で移動" — both end up moving both
+ * endpoints by the same delta, but callers use this to decide edge-drag
+ * semantics vs. axis, e.g. showing an `ew`/`ns` cursor for an axis-aligned
+ * edge). Returns `false` (treated as diagonal) if the ref is out of range.
+ */
+export const isAxisAlignedPolygonEdge = (polygon: GridPolygon, ref: PolygonEdgeRef): boolean => {
+  const ring = ringByRef(polygon, ref.ring);
+  if (ring === undefined) {
+    return false;
+  }
+  const a = ring[ref.edgeIndex];
+  const b = ring[(ref.edgeIndex + 1) % ring.length];
+  if (a === undefined || b === undefined) {
+    return false;
+  }
+  return isAxisAlignedEdge(a, b);
+};
+
+/**
+ * Replaces one vertex of `polygon` at `ref` with `next`, leaving every other
+ * vertex (including the same vertex in every other ring) untouched. Returns
+ * `polygon` — the exact same reference — unchanged both when `ref` is out of
+ * range and when `next` is already the vertex's position, so a caller can use
+ * reference equality to detect "no net change" (matching how
+ * {@link resizeRectBounds}'s callers compare `GridRect`s by value instead,
+ * since a `GridRect` is cheap to compare structurally but a whole
+ * {@link GridPolygon} is not).
+ */
+export const withVertexMoved = (
+  polygon: GridPolygon,
+  ref: PolygonVertexRef,
+  next: GridPoint
+): GridPolygon => {
+  const ring = ringByRef(polygon, ref.ring);
+  if (ring === undefined || ref.vertexIndex < 0 || ref.vertexIndex >= ring.length) {
+    return polygon;
+  }
+  const current = ring[ref.vertexIndex];
+  if (current !== undefined && current.x === next.x && current.y === next.y) {
+    return polygon;
+  }
+  const nextRing = ring.map((vertex, index) => (index === ref.vertexIndex ? next : vertex));
+  return withRingReplaced(polygon, ref.ring, nextRing);
+};
+
+/**
+ * Translates both endpoints of the edge at `ref` by `delta` (spec §6.2: an
+ * axis-aligned edge drag slides the whole edge, a diagonal edge drag moves
+ * both endpoints by the same offset — the same operation either way). Returns
+ * `polygon` — the exact same reference — unchanged both when `ref` is out of
+ * range and when `delta` is zero, so a caller can use reference equality to
+ * detect "no net change" the same way {@link withVertexMoved} does.
+ */
+export const withEdgeMoved = (
+  polygon: GridPolygon,
+  ref: PolygonEdgeRef,
+  delta: GridPoint
+): GridPolygon => {
+  if (delta.x === 0 && delta.y === 0) {
+    return polygon;
+  }
+  const ring = ringByRef(polygon, ref.ring);
+  if (ring === undefined || ref.edgeIndex < 0 || ref.edgeIndex >= ring.length) {
+    return polygon;
+  }
+  const nextIndex = (ref.edgeIndex + 1) % ring.length;
+  const nextRing = ring.map((vertex, index) => {
+    if (index !== ref.edgeIndex && index !== nextIndex) {
+      return vertex;
+    }
+    return { x: vertex.x + delta.x, y: vertex.y + delta.y };
+  });
+  return withRingReplaced(polygon, ref.ring, nextRing);
+};
+
+/** Returns a copy of `polygon` with the ring identified by `ref` replaced by `nextRing`. */
+const withRingReplaced = (
+  polygon: GridPolygon,
+  ref: PolygonRingRef,
+  nextRing: GridRing
+): GridPolygon => {
+  if (ref.kind === 'outer') {
+    return { ...polygon, outerRing: nextRing };
+  }
+  return {
+    ...polygon,
+    innerRings: polygon.innerRings.map((ring, index) => (index === ref.holeIndex ? nextRing : ring)),
+  };
+};

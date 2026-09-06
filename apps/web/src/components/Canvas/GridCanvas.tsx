@@ -9,6 +9,8 @@ import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
+import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
+import { useShapeEditPreviewStore } from '@/stores/shapeEditPreviewStore';
 import { GridBackground } from './GridBackground';
 import { ObjectsLayer } from './ObjectsLayer';
 import { ShapesLayer } from './ShapesLayer';
@@ -19,6 +21,8 @@ import {
   type EditorInteractionLayerHandle,
 } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
+import { VertexEditOverlay } from './VertexEditOverlay';
+import { ShapeEditLayer } from './ShapeEditLayer';
 import { DrawingRangeLayer } from './DrawingRangeLayer';
 import { DimensionLayer } from './DimensionLayer';
 import { debounceResize } from '@/utils/performance';
@@ -88,6 +92,10 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   const movePreview = useMovePreviewStore((state) => state.preview) ?? undefined;
   // 矩形ハンドル伸縮中の Konva ノード限定プレビュー（#44, spec §14）
   const resizePreview = useResizePreviewStore((state) => state.preview) ?? undefined;
+  // 頂点・辺ドラッグ中の Konva ノード限定プレビュー（#50, spec §14）
+  const vertexPreview = useVertexPreviewStore((state) => state.preview) ?? undefined;
+  // セル編集（図形編集状態）中の Konva ノード限定プレビュー（#49, spec §14）
+  const shapeEditPreview = useShapeEditPreviewStore((state) => state.preview) ?? undefined;
   // #43 の移動ジェスチャーが要求する grab/grabbing カーソル、
   // #44 のハンドルドラッグが要求する方向別カーソル
   const [interactionCursor, setInteractionCursor] = useState<EditorInteractionCursor | null>(
@@ -229,11 +237,25 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               scale={scale}
               movePreview={movePreview}
               resizePreview={resizePreview}
+              vertexPreview={vertexPreview}
             />
           ) : (
             <ObjectsLayer />
           )}
         </Layer>
+
+        {/* Shape Edit Layer: セル編集中は編集対象以外を薄く表示し、編集対象のセル
+            境界を示す（#49）。document 上の他図形の描画は変更せず、上から重ねる */}
+        {isEditorDocumentMode && shapeEditPreview !== undefined && (
+          <Layer listening={false}>
+            <ShapeEditLayer
+              document={editorDocument}
+              shapeId={shapeEditPreview.shapeId}
+              workingPolygons={shapeEditPreview.workingPolygons}
+              gridSize={gridSize}
+            />
+          </Layer>
+        )}
 
         {/* Interaction Layer: 文書経路は新しい interaction controller（#42）、
             旧経路はセルベースの InteractionLayer（削除は #59） */}
@@ -267,6 +289,20 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               scale={scale}
               movePreview={movePreview}
               resizePreview={resizePreview}
+            />
+          </Layer>
+        )}
+
+        {/* Vertex Edit Overlay: 矩形以外の単一選択図形の頂点マーカーと辺の hit 領域（#50）。
+            矩形のバウンディングボックスハンドルとは棲み分ける */}
+        {isEditorDocumentMode && (
+          <Layer listening={false}>
+            <VertexEditOverlay
+              document={editorDocument}
+              selectedIds={selectedIds}
+              gridSize={gridSize}
+              scale={scale}
+              vertexPreview={vertexPreview}
             />
           </Layer>
         )}

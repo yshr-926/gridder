@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Group } from 'react-konva';
-import type { EditorDocument, EditorShape, GridPoint } from '@gridder/editor-core';
+import type { EditorDocument, EditorShape, GridPoint, GridPolygon } from '@gridder/editor-core';
 import { ringFromRect, type GridRect } from '@/features/editor';
 import { ShapePolygon } from './ShapePolygon';
 import { ShapeAnnotation } from './ShapeAnnotation';
@@ -18,6 +18,13 @@ export interface ShapesLayerResizePreview {
   readonly shapeId: string;
   /** Live flip-normalised bounds, replacing the shape's document geometry. */
   readonly bounds: GridRect;
+}
+
+/** A vertex or edge drag in progress (issue #50), or `undefined` when idle. */
+export interface ShapesLayerVertexPreview {
+  readonly shapeId: string;
+  /** Live proposed polygon, replacing the shape's document geometry. */
+  readonly polygon: GridPolygon;
 }
 
 /**
@@ -44,6 +51,13 @@ export interface ShapesLayerProps {
    * polygon — the document is not touched until pointer-up commits a Command.
    */
   resizePreview?: ShapesLayerResizePreview;
+  /**
+   * Live vertex/edge-edit polygon (issue #50, spec §14). When set, the listed
+   * shape's Konva node is redrawn from this polygon instead of its document
+   * geometry — the document is not touched until pointer-up commits a
+   * Command (or the edit is rejected and nothing commits).
+   */
+  vertexPreview?: ShapesLayerVertexPreview;
 }
 
 /**
@@ -76,6 +90,7 @@ export const ShapesLayer = ({
   theme = DEFAULT_SHAPES_LAYER_THEME,
   movePreview,
   resizePreview,
+  vertexPreview,
 }: ShapesLayerProps) => {
   const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
 
@@ -88,17 +103,21 @@ export const ShapesLayer = ({
 
   /**
    * The shape to actually draw: unchanged, unless it is the one shape being
-   * resized (issue #44), in which case its polygon is swapped for the live
-   * preview bounds — a Konva-only substitution that never touches `document`.
+   * resized (issue #44) or vertex/edge-edited (issue #50), in which case its
+   * polygon is swapped for the live preview — a Konva-only substitution that
+   * never touches `document`.
    */
   const shapeToRender = (shape: EditorShape): EditorShape => {
-    if (resizePreview === undefined || resizePreview.shapeId !== shape.id) {
-      return shape;
+    if (resizePreview !== undefined && resizePreview.shapeId === shape.id) {
+      return {
+        ...shape,
+        polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
+      };
     }
-    return {
-      ...shape,
-      polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
-    };
+    if (vertexPreview !== undefined && vertexPreview.shapeId === shape.id) {
+      return { ...shape, polygon: vertexPreview.polygon };
+    }
+    return shape;
   };
 
   return (

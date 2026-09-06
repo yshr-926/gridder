@@ -1,9 +1,12 @@
 import {
   CompositeCommand,
   CreateShapeCommand,
+  DeleteShapeCommand,
+  doubleSignedArea,
   isSimplePolygon,
   ReplaceShapeVerticesCommand,
   type EditorCommand,
+  type EditorShape,
   type GridPoint,
   type GridPolygon,
   type GridRing,
@@ -15,6 +18,7 @@ import { createRectShape, defaultShapeStyle } from './document';
 import type { EditorSession } from './editorSession';
 import type { InteractionEffect } from './interactionController';
 import { ringFromRect } from './hitTest';
+import { expandSelectionForGroups, resolveClickSelection } from './groupSelection';
 
 /** Translate every vertex of a ring by a whole-grid-unit offset. */
 const translateRing = (ring: GridRing, delta: GridPoint): GridRing =>
@@ -25,6 +29,28 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
   outerRing: translateRing(polygon.outerRing, delta),
   innerRings: polygon.innerRings.map((ring) => translateRing(ring, delta)),
 });
+
+/**
+ * Whether a vertex/edge edit (issue #50, spec §6.2 "自己交差や退化になる操作は確定
+ * 時に拒否") can be committed: every ring — the outer boundary and every hole
+ * — must stay a simple polygon (no self-intersection, no repeated vertex) and
+ * the outer ring must keep a non-zero area (not degenerate). A hole's area
+ * is not checked the same way: a hole can legitimately shrink toward (but
+ * only its own self-intersection check, not an area-zero check, applies to
+ * it) — a zero-area hole would just mean "no hole", which `isSimplePolygon`
+ * already rejects via its "fewer than 3 distinct vertices" / repeated-vertex
+ * checks before area ever comes into it for the degenerate cases that matter
+ * here (a dragged hole vertex colliding with its neighbour).
+ */
+const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
+  if (!isSimplePolygon(polygon.outerRing)) {
+    return false;
+  }
+  if (doubleSignedArea(polygon.outerRing) === 0) {
+    return false;
+  }
+  return polygon.innerRings.every((ring) => isSimplePolygon(ring));
+};
 
 /**
  * Carry out one {@link InteractionEffect} produced by the interaction
@@ -42,7 +68,17 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
  * the confirmed vertices with {@link isSimplePolygon} — a self-intersecting
  * ring is refused with a toast rather than committed — then builds and
  * commits the shape through one {@link CreateShapeCommand}, same as
- * `createRect`.
+ * `createRect`. `updateShapeVertices` (issue #50, vertex/edge direct
+ * manipulation) validates the proposed polygon the same way, additionally
+ * rejecting a zero-area result, before committing one
+ * {@link ReplaceShapeVerticesCommand}. `commitShapeEdit` (issue #49, cell
+ * editing) reconciles the edited shape's original polygon against the
+ * boolean-op result computed live by the interaction controller: one result
+ * polygon replaces the shape in place, more than one splits it into that
+ * many shapes (ADR-0001) each inheriting the original name and style under
+ * a new id, and zero results deletes the shape — always as a single
+ * {@link CompositeCommand} (or the lone Command when there is only one),
+ * so the whole edit is one undo step back to the pre-edit shape.
  */
 export const applyInteractionEffect = (
   session: EditorSession,
@@ -51,9 +87,29 @@ export const applyInteractionEffect = (
   const selection = useSelectionStore.getState();
 
   switch (effect.type) {
-    case 'selectOnly':
-      selection.selectOnly(effect.shapeId);
+    case 'selectOnly': {
+      // A click resolves through the group rules (issue #52, spec §7): a
+      // member of a group not currently entered selects the whole group; a
+      // member of the entered group (or an ungrouped shape) selects just
+      // itself. `resolveClickSelection` also decides whether group mode
+      // stays entered.
+      const { shapeIds, activeGroupId } = resolveClickSelection(
+        session.getDocument(),
+        selection.activeGroupId,
+        effect.shapeId,
+      );
+      if (shapeIds.length === 1) {
+        selection.selectOnly(shapeIds[0]);
+      } else {
+        selection.setSelection(shapeIds);
+      }
+      if (activeGroupId !== null) {
+        // `setSelection` / `selectOnly` above already exited group mode;
+        // restore it when the click landed on the still-entered group.
+        selection.enterGroup(activeGroupId, shapeIds);
+      }
       return;
+    }
     case 'toggleSelection':
       selection.toggle(effect.shapeId);
       return;
@@ -82,8 +138,17 @@ export const applyInteractionEffect = (
         return;
       }
       const document = session.getDocument();
+      // A group moves as a rigid whole (spec §7): if the drag started on one
+      // member without the group already fully selected (`interactionController`
+      // only knows the single hit shape at that point), expand it here so
+      // every member gets the same delta in the same Command.
+      const shapeIds = expandSelectionForGroups(
+        document,
+        effect.shapeIds,
+        selection.activeGroupId,
+      );
       const commands: EditorCommand[] = [];
-      for (const shapeId of effect.shapeIds) {
+      for (const shapeId of shapeIds) {
         const shape = document.shapes[shapeId];
         if (shape === undefined) {
           continue;
@@ -132,6 +197,77 @@ export const applyInteractionEffect = (
       };
       session.dispatch(new CreateShapeCommand(shape));
       selection.selectOnly(shape.id);
+      return;
+    }
+    case 'updateShapeVertices': {
+      const document = session.getDocument();
+      if (document.shapes[effect.shapeId] === undefined) {
+        return;
+      }
+      // Reject a vertex/edge drag that would self-intersect or collapse to
+      // zero area (issue #50, spec §6.2) by simply not committing — the
+      // shape stays at its last valid geometry, matching `createPolygon`'s
+      // reject-with-a-toast pattern rather than clamping the drag.
+      if (!isValidPolygonEdit(effect.polygon)) {
+        useToastStore.getState().addToast({
+          type: 'error',
+          message: '辺が交差する、または面積が0になる変形はできません。',
+        });
+        return;
+      }
+      session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, effect.polygon));
+      return;
+    }
+    case 'commitShapeEdit': {
+      const document = session.getDocument();
+      const shape = document.shapes[effect.shapeId];
+      if (shape === undefined) {
+        return;
+      }
+      const { resultPolygons } = effect;
+
+      if (resultPolygons.length === 0) {
+        // Every cell was removed: the shape is gone (spec §49 "図形が空になっ
+        // た場合の扱い"). One DeleteShapeCommand round-trips it on undo,
+        // same as any other delete.
+        session.dispatch(new DeleteShapeCommand(effect.shapeId));
+        selection.clear();
+        return;
+      }
+
+      if (resultPolygons.length === 1) {
+        // Grown, shrunk, or gained/lost a hole, but stayed one connected
+        // region: replace the shape's geometry in place, keeping its id,
+        // name, style, and z-order slot untouched.
+        session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, resultPolygons[0]));
+        selection.selectOnly(effect.shapeId);
+        return;
+      }
+
+      // A `difference` disconnected the shape into several regions
+      // (ADR-0001 "差演算によって図形が複数の非連結領域へ分かれた場合は、それぞれ
+      // を独立した図形にする"): the original id keeps the first (largest,
+      // per the boolean engine's ordering) region so any other Command that
+      // still refers to this id keeps working, and every remaining region
+      // becomes a new shape with a fresh id, right above the original in
+      // z-order, inheriting its name and style. The whole split is one
+      // Command.
+      const [firstPolygon, ...restPolygons] = resultPolygons;
+      const zIndex = document.zOrder.indexOf(effect.shapeId);
+      const newShapes: EditorShape[] = restPolygons.map((polygon) => ({
+        id: generateId('shape'),
+        polygon,
+        style: shape.style,
+        ...(shape.name === undefined ? {} : { name: shape.name }),
+      }));
+      const commands: EditorCommand[] = [
+        new ReplaceShapeVerticesCommand(effect.shapeId, firstPolygon),
+        ...newShapes.map(
+          (newShape, index) => new CreateShapeCommand(newShape, zIndex + 1 + index)
+        ),
+      ];
+      session.dispatch(new CompositeCommand(commands, 'Edit shape (split)'));
+      selection.setSelection([effect.shapeId, ...newShapes.map((newShape) => newShape.id)]);
       return;
     }
   }

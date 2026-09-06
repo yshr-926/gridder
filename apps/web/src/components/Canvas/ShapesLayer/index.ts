@@ -3,6 +3,7 @@ export type {
   ShapesLayerProps,
   ShapesLayerMovePreview,
   ShapesLayerResizePreview,
+  ShapesLayerVertexPreview,
 } from './ShapesLayer';
 export { ShapePolygon } from './ShapePolygon';
 export type { ShapePolygonProps } from './ShapePolygon';
