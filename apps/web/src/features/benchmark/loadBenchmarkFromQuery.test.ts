@@ -50,12 +50,23 @@ describe('loadBenchmarkFromQuery', () => {
 
   it('test_loadBenchmarkFromQuery_outsideDev_isANoOp', () => {
     vi.stubEnv('DEV', false);
+    vi.stubEnv('VITE_E2E', undefined);
     const session = new EditorSession(createEmptyDocument());
     const before = session.getDocument();
 
     loadBenchmarkFromQuery(session, { search: '?benchmark=10' });
 
     expect(session.getDocument()).toBe(before);
+  });
+
+  it('test_loadBenchmarkFromQuery_e2eBuild_loadsTheFixture', () => {
+    vi.stubEnv('DEV', false);
+    vi.stubEnv('VITE_E2E', 'true');
+    const session = new EditorSession(createEmptyDocument());
+
+    loadBenchmarkFromQuery(session, { search: '?benchmark=10' });
+
+    expect(session.shapeCount).toBe(10);
   });
 
   it('test_loadBenchmarkFromQuery_otherUnrelatedQueryParams_isANoOp', () => {

@@ -66,9 +66,20 @@ export default defineConfig({
     // A dedicated, unlikely-to-collide port: the default 5173 is commonly
     // held open by editor tooling (e.g. an IDE's own dev-server preview),
     // which `reuseExistingServer` would otherwise silently attach to.
-    command: 'pnpm exec vite --port 5299 --strictPort',
+    //
+    // `BENCH_TARGET=preview` measures a production-optimised bundle instead
+    // of the Vite dev server (issue #61): the React development build's
+    // per-element bookkeeping (`jsxDEV` owner stacks) dominated the React
+    // share of a zoom frame in profiles, so dev-server numbers overstate
+    // the React cost. The `?benchmark` loader is enabled for the
+    // `VITE_E2E=true` build for exactly this purpose. Set
+    // `BENCH_SKIP_BUILD=1` to reuse an existing `dist/`.
+    command:
+      process.env.BENCH_TARGET === 'preview'
+        ? `${process.env.BENCH_SKIP_BUILD === '1' ? '' : 'VITE_E2E=true pnpm run build && '}pnpm exec vite preview --port 5299 --strictPort`
+        : 'pnpm exec vite --port 5299 --strictPort',
     url: 'http://localhost:5299',
     reuseExistingServer: !process.env.CI,
-    timeout: 60 * 1000,
+    timeout: 240 * 1000,
   },
 });

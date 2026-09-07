@@ -53,6 +53,8 @@ React コンポーネントは文書を直接変更せず、application layer �
 
 未保存フラグは永続状態と保存済み snapshot の差から導出する。復元用ドラフトは永続形式と同じ文書データを一時保管する保存 Adapter の責務であり、選択やビューポートを混ぜない。
 
+ビューポートの変換（パン、ズーム）は一時状態として Zustand が持つが、描画への適用は Renderer Adapter がストアの購読から Konva Stage の変換として直接行う。React コンポーネントは `offset` を購読せず、ポインター座標の変換はイベント時にストアを読む（[ADR-0005](../adr/0005-konva-rendering-performance-rules.md)）。
+
 ## 操作の流れ
 
 ```text
