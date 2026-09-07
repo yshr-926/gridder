@@ -8,4 +8,13 @@ export {
   type BenchmarkDocumentResult,
 } from './generateBenchmarkDocument';
 export { loadBenchmarkFromQuery } from './loadBenchmarkFromQuery';
-export { frameDurationsMs, percentile95, type TraceEvent } from './frameTiming';
+export {
+  FRAME_PROBE_GLOBAL,
+  formatFrameProbeSummary,
+  installFrameProbe,
+  percentile95,
+  summarizeFrameProbe,
+  type FrameProbeHandle,
+  type FrameProbeSamples,
+  type FrameProbeSummary,
+} from './frameProbe';

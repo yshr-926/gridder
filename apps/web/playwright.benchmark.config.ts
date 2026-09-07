@@ -30,7 +30,7 @@ export default defineConfig({
   reporter: [['list']],
 
   use: {
-    baseURL: 'http://localhost:5199',
+    baseURL: 'http://localhost:5299',
     actionTimeout: 10000,
     navigationTimeout: 30000,
   },
@@ -38,7 +38,27 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Measure in the installed Google Chrome, headed, to match the
+      // docs/performance.md §1 target environment (DevTools-style numbers).
+      // `BENCH_HEADLESS=1` switches to headless for unattended runs, and
+      // `BENCH_BROWSER=chromium` falls back to Playwright's bundled Chromium
+      // when Chrome is not installed.
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env.BENCH_BROWSER === 'chromium' ? undefined : 'chrome',
+        headless: process.env.BENCH_HEADLESS === '1',
+        viewport: { width: 1440, height: 900 },
+        launchOptions: {
+          // A headed window that ends up behind other windows is treated as
+          // occluded by Chrome and its `requestAnimationFrame` stops firing,
+          // which would read as "zero frames" rather than as slow frames.
+          args: [
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-background-timer-throttling',
+          ],
+        },
+      },
     },
   ],
 
@@ -46,8 +66,8 @@ export default defineConfig({
     // A dedicated, unlikely-to-collide port: the default 5173 is commonly
     // held open by editor tooling (e.g. an IDE's own dev-server preview),
     // which `reuseExistingServer` would otherwise silently attach to.
-    command: 'pnpm exec vite --port 5199 --strictPort',
-    url: 'http://localhost:5199',
+    command: 'pnpm exec vite --port 5299 --strictPort',
+    url: 'http://localhost:5299',
     reuseExistingServer: !process.env.CI,
     timeout: 60 * 1000,
   },
