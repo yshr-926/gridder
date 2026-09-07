@@ -43,6 +43,20 @@ const tracePolygonPath = (context: Context, ringPaths: readonly PixelRingPath[])
  * `evenodd` fill, and whose `hitFunc` uses the same polygon path (widened by
  * `hitStrokeWidth`) so even thin shapes stay grabbable. `strokeScaleEnabled`
  * is off, so the border keeps a constant screen width while zooming.
+ *
+ * `perfectDrawEnabled` is off (issue #61, ADR-0005). Konva's default draws
+ * every shape that has a fill *and* a stroke *and* an opacity below 1 into a
+ * full-layer buffer canvas first, then composites that buffer onto the layer
+ * — one full-screen clear + composite per shape. With the spec §14 baseline
+ * (500 semi-transparent, bordered shapes) that raster work cost ~93 ms per
+ * frame on the GPU side (measured: Konva-only `stage.draw()` flush 93 ms →
+ * 4 ms once disabled), invisible to JS profiling and far past the 16.7 ms
+ * frame budget in docs/performance.md §4; it also made the off-screen
+ * `ExportStage` (SharePanel, issue #56) take ~4 s per document change. The
+ * visual trade-off is sub-pixel: the inner half of the 1.5 px border now
+ * blends over the fill instead of replacing it, so a semi-transparent
+ * shape's border reads very slightly darker on its inside edge. The same
+ * applies to the exported share image, which reuses this component.
  */
 export const ShapePolygon = ({
   shape,
@@ -84,6 +98,7 @@ export const ShapePolygon = ({
       strokeWidth={isBorderVisible ? theme.borderWidth : 0}
       strokeEnabled={isBorderVisible}
       strokeScaleEnabled={false}
+      perfectDrawEnabled={false}
       hitStrokeWidth={theme.hitStrokeWidth}
     />
   );

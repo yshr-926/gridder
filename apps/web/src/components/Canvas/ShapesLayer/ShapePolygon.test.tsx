@@ -15,6 +15,7 @@ interface CapturedShapeProps {
   stroke?: string;
   strokeEnabled: boolean;
   hitStrokeWidth: number;
+  perfectDrawEnabled: boolean;
   name: string;
 }
 
@@ -82,9 +83,7 @@ const concaveShape = (): EditorShape => ({
 
 describe('ShapePolygon', () => {
   it('test_ShapePolygon_rendersExactlyOneKonvaNode', () => {
-    const { getAllByTestId } = render(
-      <ShapePolygon shape={rectShape()} gridSize={10} />
-    );
+    const { getAllByTestId } = render(<ShapePolygon shape={rectShape()} gridSize={10} />);
 
     expect(getAllByTestId('konva-shape')).toHaveLength(1);
   });
@@ -103,6 +102,15 @@ describe('ShapePolygon', () => {
     expect(props?.name).toBe('shape-polygon-rect-1');
   });
 
+  it('test_ShapePolygon_disablesPerfectDraw_toSkipKonvaBufferCanvas', () => {
+    // Issue #61: with fill + stroke + opacity < 1, Konva's default would
+    // composite every shape through a full-layer buffer canvas (~93 ms/frame
+    // of raster for the spec §14 baseline).
+    render(<ShapePolygon shape={rectShape()} gridSize={10} />);
+
+    expect(captured.props?.perfectDrawEnabled).toBe(false);
+  });
+
   it('test_ShapePolygon_borderHidden_disablesStroke', () => {
     render(<ShapePolygon shape={concaveShape()} gridSize={10} />);
 
@@ -117,10 +125,10 @@ describe('ShapePolygon', () => {
     captured.props?.sceneFunc(context, {} as KonvaShape);
 
     // One beginPath, one fillStrokeShape, one closePath per ring (outer + hole).
-    expect(calls.filter((c) => c[0] === 'beginPath')).toHaveLength(1);
-    expect(calls.filter((c) => c[0] === 'closePath')).toHaveLength(2);
-    expect(calls.filter((c) => c[0] === 'moveTo')).toHaveLength(2);
-    expect(calls.filter((c) => c[0] === 'fillStrokeShape')).toHaveLength(1);
+    expect(calls.filter(c => c[0] === 'beginPath')).toHaveLength(1);
+    expect(calls.filter(c => c[0] === 'closePath')).toHaveLength(2);
+    expect(calls.filter(c => c[0] === 'moveTo')).toHaveLength(2);
+    expect(calls.filter(c => c[0] === 'fillStrokeShape')).toHaveLength(1);
 
     // Outer ring scaled by gridSize, first move at origin.
     expect(calls).toContainEqual(['moveTo', 0, 0]);
@@ -136,7 +144,7 @@ describe('ShapePolygon', () => {
 
     captured.props?.sceneFunc(context, {} as KonvaShape);
 
-    const vertexCalls = calls.filter((c) => c[0] === 'moveTo' || c[0] === 'lineTo');
+    const vertexCalls = calls.filter(c => c[0] === 'moveTo' || c[0] === 'lineTo');
     // 8 vertices of the U-shape, no simplification.
     expect(vertexCalls).toEqual([
       ['moveTo', 0, 0],
