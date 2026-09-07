@@ -1,9 +1,10 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { EditorDocument } from '@gridder/editor-core';
 import { GridBackground, ShapesLayer, DimensionLayer } from '@/components/Canvas';
 import type { ExportCropRect } from '@/features/export-image';
+import { visibleCellRange } from '@/features/viewport';
 
 /**
  * Imperative handle for triggering the export raster (issue #56, spec §10).
@@ -77,6 +78,16 @@ export const ExportStage = forwardRef<ExportStageHandle, ExportStageProps>(
     const offsetY = -cropRect.y;
     const width = Math.max(1, Math.round(cropRect.width));
     const height = Math.max(1, Math.round(cropRect.height));
+    // The grid lines covering exactly the crop rect, in cell indices.
+    const gridRange = useMemo(
+      () =>
+        visibleCellRange(
+          { scale: 1, offset: { x: offsetX, y: offsetY } },
+          { width, height },
+          gridSize
+        ),
+      [offsetX, offsetY, width, height, gridSize]
+    );
 
     return (
       <div
@@ -95,11 +106,11 @@ export const ExportStage = forwardRef<ExportStageHandle, ExportStageProps>(
           {includeGrid && (
             <Layer listening={false} x={offsetX} y={offsetY}>
               <GridBackground
-                width={width}
-                height={height}
+                startX={gridRange.startX}
+                startY={gridRange.startY}
+                endX={gridRange.endX}
+                endY={gridRange.endY}
                 gridSize={gridSize}
-                panX={offsetX}
-                panY={offsetY}
                 zoom={1}
               />
             </Layer>

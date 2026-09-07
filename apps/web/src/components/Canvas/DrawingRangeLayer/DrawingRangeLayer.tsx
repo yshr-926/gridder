@@ -12,16 +12,18 @@ import {
   type GridRect,
   type ResizeHandleKind,
 } from '@/features/editor';
-import { screenToWorld } from '@/features/viewport';
+import { readViewportTransform, screenToWorld } from '@/features/viewport';
 import { useSelectionStore } from '@/stores/selectionStore';
 
 interface DrawingRangeLayerProps {
   /** Pixel size of one grid cell. */
   gridSize: number;
-  /** Viewport scale. */
+  /**
+   * Viewport scale, for the zoom-invariant handle sizes. Pointer conversion
+   * reads the live transform at event time (`readViewportTransform`, issue
+   * #61), so a pan never re-renders this layer.
+   */
   scale: number;
-  /** Viewport offset in screen pixels. */
-  offset: { x: number; y: number };
 }
 
 /** Frame colour: neutral, distinct from the accent used for shape selection (ui-principles §3). */
@@ -65,7 +67,7 @@ const toGridRect = (bounds: { min: GridPoint; max: GridPoint }): GridRect => ({
  * the document is untouched mid-drag) and commit exactly one
  * `SetDrawingBoundsCommand` via {@link setManualDrawingBounds} on pointer up.
  */
-export const DrawingRangeLayer = ({ gridSize, scale, offset }: DrawingRangeLayerProps) => {
+export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) => {
   const bounds = useDrawingBounds();
   const hasSelection = useSelectionStore((state) => state.selectedIds.length > 0);
   const [dragState, setDragState] = useState<{
@@ -88,10 +90,10 @@ export const DrawingRangeLayer = ({ gridSize, scale, offset }: DrawingRangeLayer
       if (!pointer) {
         return null;
       }
-      const world = screenToWorld(pointer, { scale, offset });
+      const world = screenToWorld(pointer, readViewportTransform());
       return { x: world.x / gridSize, y: world.y / gridSize };
     },
-    [gridSize, scale, offset],
+    [gridSize],
   );
 
   const handlePointerDown = useCallback(

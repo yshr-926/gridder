@@ -4,14 +4,19 @@ import type Konva from 'konva';
 import type { EditorDocument } from '@gridder/editor-core';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
 import { useViewportStore } from '@/stores/viewportStore';
-import { screenToWorld, useViewportPan } from '@/features/viewport';
+import {
+  readViewportTransform,
+  screenToWorld,
+  useStageViewport,
+  useViewportPan,
+} from '@/features/viewport';
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
 import { useShapeEditPreviewStore } from '@/stores/shapeEditPreviewStore';
-import { GridBackground } from './GridBackground';
+import { ViewportGridBackground } from './ViewportGridBackground';
 import { ShapesLayer } from './ShapesLayer';
 import {
   EditorInteractionLayer,
@@ -73,12 +78,14 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ストアから状態取得
+  // ストアから状態取得。`offset` はここでは購読しない（#61）: パンは Stage の
+  // 変換だけで表現でき、`useStageViewport` がストアから直接 Stage に適用する。
+  // `scale` はズーム不変のオーバーレイと注釈が必要とするので購読する。
   const basePixelSize = useGridSettingsStore((state) => state.basePixelSize);
   const scale = useViewportStore((state) => state.scale);
-  const offset = useViewportStore((state) => state.offset);
   const { handleZoom } = useCanvasZoom();
   const viewportPan = useViewportPan();
+  useStageViewport(stageRef);
 
   // 新しいポリゴン文書経路での選択図形（#42）
   const selectedIds = useSelectionStore((state) => state.selectedIds);
@@ -158,14 +165,14 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
 
-      const worldPoint = screenToWorld(pointer, { scale, offset });
+      const worldPoint = screenToWorld(pointer, readViewportTransform());
 
       onCursorPositionChange({
         x: Math.round(worldPoint.x),
         y: Math.round(worldPoint.y),
       });
     },
-    [scale, offset, onCursorPositionChange]
+    [onCursorPositionChange]
   );
 
   /**
@@ -194,31 +201,25 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
       onMouseDownCapture={viewportPan.handleMouseDownCapture}
       onAuxClick={viewportPan.handleAuxClick}
     >
+      {/* 位置と scale は props ではなく useStageViewport が Stage へ直接適用する（#61） */}
       <Stage
         ref={stageRef}
         width={dimensions.width}
         height={dimensions.height}
-        x={offset.x}
-        y={offset.y}
-        scaleX={scale}
-        scaleY={scale}
         onWheel={(event) => handleZoom(event, stageRef.current)}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
         {/* Grid Background Layer - listening=false for performance */}
         <Layer listening={false}>
-          <GridBackground
+          <ViewportGridBackground
             width={dimensions.width}
             height={dimensions.height}
             gridSize={gridSize}
-            panX={offset.x}
-            panY={offset.y}
-            zoom={scale}
           />
         </Layer>
 
-        <Layer><DrawingRangeLayer gridSize={gridSize} scale={scale} offset={offset} /></Layer>
+        <Layer><DrawingRangeLayer gridSize={gridSize} scale={scale} /></Layer>
 
         {/* Objects Layer: editor-core の文書をポリゴンレンダラーで描画する */}
         <Layer>
@@ -249,7 +250,6 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
         <Layer>
           <EditorInteractionLayer
             ref={interactionLayerRef}
-            panPosition={offset}
             zoom={scale}
             gridSize={gridSize}
             isViewportInteracting={viewportPan.isViewportInteracting}

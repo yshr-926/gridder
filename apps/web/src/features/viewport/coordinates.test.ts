@@ -4,6 +4,7 @@ import {
   gridToWorld,
   screenToGrid,
   screenToWorld,
+  visibleCellRange,
   worldToScreen,
   worldToGrid,
   zoomViewportAtPoint,
@@ -45,6 +46,39 @@ describe('viewport coordinates', () => {
       top: -10,
       right: 400,
       bottom: 330,
+    });
+  });
+
+  describe('visibleCellRange', () => {
+    const size = { width: 800, height: 600 };
+
+    it('test_visibleCellRange_quantumOne_coversTheVisibleWorldExactly', () => {
+      // scale 1, offset (-30, 10): world left = 30 -> cell 1 (floor), right = 830 -> 42 (ceil).
+      const range = visibleCellRange({ scale: 1, offset: { x: -30, y: 10 } }, size, 20, 1);
+      expect(range).toEqual({ startX: 1, startY: -1, endX: 42, endY: 30 });
+    });
+
+    it('test_visibleCellRange_quantum_roundsOutwardToMultiples', () => {
+      const range = visibleCellRange({ scale: 1, offset: { x: -30, y: 10 } }, size, 20, 5);
+      expect(range).toEqual({ startX: 0, startY: -5, endX: 45, endY: 30 });
+    });
+
+    it('test_visibleCellRange_subQuantumPan_yieldsIdenticalRange', () => {
+      const before = visibleCellRange({ scale: 1, offset: { x: -30, y: 10 } }, size, 20, 5);
+      const after = visibleCellRange({ scale: 1, offset: { x: -47, y: 3 } }, size, 20, 5);
+      expect(after).toEqual(before);
+    });
+
+    it('test_visibleCellRange_crossingQuantumBoundary_shiftsRange', () => {
+      const before = visibleCellRange({ scale: 1, offset: { x: 0, y: 0 } }, size, 20, 5);
+      const after = visibleCellRange({ scale: 1, offset: { x: -101, y: 0 } }, size, 20, 5);
+      expect(after.startX).toBe(before.startX + 5);
+    });
+
+    it('test_visibleCellRange_zoomedOut_growsWithTheVisibleArea', () => {
+      const near = visibleCellRange({ scale: 1, offset: { x: 0, y: 0 } }, size, 20, 1);
+      const far = visibleCellRange({ scale: 0.25, offset: { x: 0, y: 0 } }, size, 20, 1);
+      expect(far.endX - far.startX).toBe(4 * (near.endX - near.startX));
     });
   });
 });

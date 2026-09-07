@@ -84,3 +84,37 @@ export const getVisibleWorldBounds = (
     bottom: end.y + overscan,
   };
 };
+
+/** An inclusive range of grid-line indices (cell edges) along each axis. */
+export interface GridCellRange {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+/**
+ * The grid-line index range that covers the visible world rectangle, rounded
+ * *outward* to a multiple of `quantumCells` (issue #61, spec §14). Panning by
+ * a sub-quantum amount therefore yields an identical range, so a consumer
+ * that regenerates its grid lines from this range (`GridBackground`) does so
+ * only when the viewport crosses a quantum boundary instead of every frame.
+ * `quantumCells` of 1 gives the exact covering range.
+ */
+export const visibleCellRange = (
+  viewport: ViewportTransform,
+  size: ViewportSize,
+  gridSize: number,
+  quantumCells = 1
+): GridCellRange => {
+  const quantum = Math.max(1, Math.floor(quantumCells));
+  const bounds = getVisibleWorldBounds(viewport, size);
+  const floorTo = (value: number): number => Math.floor(value / quantum) * quantum;
+  const ceilTo = (value: number): number => Math.ceil(value / quantum) * quantum;
+  return {
+    startX: floorTo(Math.floor(bounds.left / gridSize)),
+    startY: floorTo(Math.floor(bounds.top / gridSize)),
+    endX: ceilTo(Math.ceil(bounds.right / gridSize)),
+    endY: ceilTo(Math.ceil(bounds.bottom / gridSize)),
+  };
+};

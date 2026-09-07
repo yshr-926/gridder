@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useImperativeHandle } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GridCanvas } from './GridCanvas';
 import { useGridSettingsStore } from '@/stores/gridSettingsStore';
@@ -6,13 +7,31 @@ import { useViewportStore } from '@/stores/viewportStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { createEmptyDocument, editorSession } from '@/features/editor';
 
+/**
+ * A stand-in for the Konva Stage instance behind `GridCanvas`'s ref, so tests
+ * can observe the imperative viewport writes (`useStageViewport`, issue #61).
+ */
+const stageStub = {
+  position: vi.fn(),
+  scale: vi.fn(),
+  batchDraw: vi.fn(),
+  getPointerPosition: () => null,
+};
+
 // Mock Konva
 vi.mock('react-konva', () => ({
-  Stage: ({ children, ...props }: { children: React.ReactNode } & Record<string, unknown>) => (
-    <div data-testid="konva-stage" {...props}>
-      {children}
-    </div>
-  ),
+  Stage: ({
+    children,
+    ref,
+    ...props
+  }: { children: React.ReactNode; ref?: React.Ref<unknown> } & Record<string, unknown>) => {
+    useImperativeHandle(ref, () => stageStub, []);
+    return (
+      <div data-testid="konva-stage" {...props}>
+        {children}
+      </div>
+    );
+  },
   Layer: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="konva-layer">{children}</div>
   ),
@@ -111,6 +130,25 @@ describe('GridCanvas', () => {
     fireEvent.keyDown(window, { code: 'Space', repeat: true });
     // Cursor should still be default because repeat is ignored
     expect(container).toHaveStyle({ cursor: 'default' });
+  });
+
+  it('applies a pan to the Stage directly instead of through Stage props', () => {
+    render(<GridCanvas editorDocument={createEmptyDocument()} />);
+    const stage = screen.getByTestId('konva-stage');
+    // The Stage is rendered without x / y / scaleX / scaleY (#61): the
+    // viewport store drives the Konva node, so React never re-renders the
+    // canvas tree just to move it.
+    expect(stage).not.toHaveAttribute('x');
+    expect(stage).not.toHaveAttribute('scaleX');
+    stageStub.position.mockClear();
+
+    const container = screen.getByTestId('grid-canvas-container');
+    fireEvent.pointerDown(container, { button: 1, pointerId: 9, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(container, { pointerId: 9, clientX: 40, clientY: 25 });
+
+    expect(stageStub.position).toHaveBeenLastCalledWith({ x: 30, y: 15 });
+    expect(stageStub.batchDraw).toHaveBeenCalled();
+    fireEvent.pointerUp(container, { pointerId: 9, clientX: 40, clientY: 25 });
   });
 
   it('pans with a middle-button drag without changing the document', () => {

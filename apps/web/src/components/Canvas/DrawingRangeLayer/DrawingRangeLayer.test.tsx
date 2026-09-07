@@ -91,7 +91,7 @@ const rectShape = (id: string, minX: number, minY: number, maxX: number, maxY: n
   style: { fill: '#3b82f6', opacity: 0.8, isBorderVisible: true },
 });
 
-const defaultProps = { gridSize: 20, scale: 1, offset: { x: 0, y: 0 } };
+const defaultProps = { gridSize: 20, scale: 1 };
 
 const reset = () => {
   // Wrapped in act: a previous test's DrawingRangeLayer may still be mounted

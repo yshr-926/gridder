@@ -12,7 +12,7 @@ import {
   shapeAtPoint,
   useEditorInteraction,
 } from '@/features/editor';
-import { screenToGrid } from '@/features/viewport';
+import { readViewportTransform, screenToGrid } from '@/features/viewport';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { PolygonDraftLayer } from './PolygonDraftLayer';
 
@@ -39,9 +39,11 @@ export interface EditorInteractionLayerHandle {
  * EditorInteractionLayer Props
  */
 interface EditorInteractionLayerProps {
-  /** Viewport offset in screen pixels. */
-  panPosition: Position;
-  /** Viewport scale. */
+  /**
+   * Viewport scale, for the zoom-invariant polygon-draft markers. Pointer
+   * conversion reads the live transform (`readViewportTransform`) at event
+   * time instead, so a pan never re-renders this layer (issue #61).
+   */
   zoom: number;
   /** Pixel size of one grid cell. */
   gridSize: number;
@@ -94,7 +96,7 @@ const MARQUEE_PREVIEW_STROKE = '#475569';
 export const EditorInteractionLayer = forwardRef<
   EditorInteractionLayerHandle,
   EditorInteractionLayerProps
->(({ panPosition, zoom, gridSize, isViewportInteracting, onCursorChange, onCreatingPolygonChange }, ref) => {
+>(({ zoom, gridSize, isViewportInteracting, onCursorChange, onCreatingPolygonChange }, ref) => {
   const {
     state,
     hoveredHandle,
@@ -105,8 +107,6 @@ export const EditorInteractionLayer = forwardRef<
     startPolygon,
     enterShapeEdit,
   } = useEditorInteraction({
-    scale: zoom,
-    offset: panPosition,
     gridSize,
     isViewportInteracting,
   });
@@ -168,7 +168,7 @@ export const EditorInteractionLayer = forwardRef<
       if (point === null) {
         return;
       }
-      const gridPoint = screenToGrid(point, { scale: zoom, offset: panPosition }, gridSize);
+      const gridPoint = screenToGrid(point, readViewportTransform(), gridSize);
       const document = editorSession.getDocument();
       const shape = shapeAtPoint(document, gridPoint);
       if (shape === null) {
@@ -187,7 +187,7 @@ export const EditorInteractionLayer = forwardRef<
         enterShapeEdit(shape.id);
       }
     },
-    [pointerFromEvent, zoom, panPosition, gridSize, enterShapeEdit]
+    [pointerFromEvent, gridSize, enterShapeEdit]
   );
 
   // Cursor feedback for the move gesture (spec §6.1, issue #43), the resize

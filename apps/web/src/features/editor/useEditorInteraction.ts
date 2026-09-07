@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GridPoint } from '@gridder/editor-core';
 import type { Position } from '@/types';
-import { screenToWorld } from '@/features/viewport';
+import { readViewportTransform, screenToWorld } from '@/features/viewport';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
@@ -41,10 +41,6 @@ const DRAG_THROTTLE_MS = 16;
 const RESIZE_HANDLE_HIT_RADIUS_PX = 10;
 
 interface UseEditorInteractionArgs {
-  /** Current viewport scale. */
-  readonly scale: number;
-  /** Current viewport offset in screen pixels. */
-  readonly offset: Position;
   /** Pixel size of one grid cell. */
   readonly gridSize: number;
   /**
@@ -87,11 +83,12 @@ interface UseEditorInteractionResult {
  * positions to grid space, drives the pure reducer, applies any effect through
  * {@link applyInteractionEffect}, and re-renders only when the preview-relevant
  * state changes (so a rectangle drag repaints the Konva preview but never the
- * React document).
+ * React document). The viewport transform is read from the store at event
+ * time (`readViewportTransform`, issue #61) rather than taken as an argument,
+ * so a pan or zoom never has to re-render the caller to keep conversions
+ * current.
  */
 export const useEditorInteraction = ({
-  scale,
-  offset,
   gridSize,
   isViewportInteracting,
 }: UseEditorInteractionArgs): UseEditorInteractionResult => {
@@ -104,7 +101,7 @@ export const useEditorInteraction = ({
 
   const toSample = useCallback(
     (screenPoint: Position, shiftKey: boolean, altKey = false): PointerSample => {
-      const world = screenToWorld(screenPoint, { scale, offset });
+      const world = screenToWorld(screenPoint, readViewportTransform());
       const precise: GridPoint = { x: world.x / gridSize, y: world.y / gridSize };
       const vertex: GridPoint = {
         x: Math.round(precise.x),
@@ -112,7 +109,16 @@ export const useEditorInteraction = ({
       };
       return { vertex, precise, shiftKey, altKey };
     },
-    [scale, offset, gridSize]
+    [gridSize]
+  );
+
+  /**
+   * On-screen handle hit radius expressed in grid units at the *current*
+   * zoom, so the handle stays equally easy to grab at any scale (issue #44).
+   */
+  const handleHitRadiusInGridUnits = useCallback(
+    (): number => RESIZE_HANDLE_HIT_RADIUS_PX / (gridSize * readViewportTransform().scale),
+    [gridSize]
   );
 
   // The Konva-only move preview (issue #43, spec §14) is transient UI state
@@ -190,13 +196,12 @@ export const useEditorInteraction = ({
       // A resize handle only exists for a single selected axis-aligned
       // rectangle; the hit radius is expressed in grid units so it stays a
       // fixed on-screen size at any zoom (issue #44).
-      const handleHitRadius = RESIZE_HANDLE_HIT_RADIUS_PX / (gridSize * scale);
       const { state: nextState, effect } = reduceInteraction(
         stateRef.current,
         event,
         editorSession.getDocument(),
         useSelectionStore.getState().selectedIds,
-        handleHitRadius
+        handleHitRadiusInGridUnits()
       );
       if (nextState !== stateRef.current) {
         stateRef.current = nextState;
@@ -212,8 +217,7 @@ export const useEditorInteraction = ({
     },
     [
       isViewportInteracting,
-      gridSize,
-      scale,
+      handleHitRadiusInGridUnits,
       syncMovePreview,
       syncResizePreview,
       syncVertexPreview,
@@ -248,11 +252,14 @@ export const useEditorInteraction = ({
         return;
       }
       const { precise } = toSample(screenPoint, false);
-      const handleHitRadius = RESIZE_HANDLE_HIT_RADIUS_PX / (gridSize * scale);
-      const handle = resizeHandleAtPoint(polygonBounds(shape.polygon), precise, handleHitRadius);
+      const handle = resizeHandleAtPoint(
+        polygonBounds(shape.polygon),
+        precise,
+        handleHitRadiusInGridUnits()
+      );
       setHoveredHandle((previous) => (previous === handle ? previous : handle));
     },
-    [toSample, gridSize, scale]
+    [toSample, handleHitRadiusInGridUnits]
   );
 
   const onPointerMove = useCallback(
