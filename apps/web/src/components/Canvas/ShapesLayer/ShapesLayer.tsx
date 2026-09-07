@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Group } from 'react-konva';
 import type { EditorDocument, EditorShape, GridPoint, GridPolygon } from '@gridder/editor-core';
 import { ringFromRect, type GridRect } from '@/features/editor';
@@ -76,78 +76,129 @@ const resolveOrderedShapes = (document: EditorDocument): readonly EditorShape[] 
   return ordered;
 };
 
+interface ShapeItemProps {
+  readonly shape: EditorShape;
+  readonly gridSize: number;
+  readonly theme: ShapesLayerTheme;
+  /** Live move-preview translation in world pixels (0 when the shape is not being dragged). */
+  readonly offsetX: number;
+  readonly offsetY: number;
+}
+
+/**
+ * One shape's polygon node inside its move-preview group. Memoised so that a
+ * re-render of `ShapesLayer` — a zoom, a selection change, another shape's
+ * drag — touches only the items whose own props changed (issue #61): the
+ * `shape` reference is stable for every shape not being previewed, and the
+ * offsets are `0` for every shape not being moved.
+ */
+const ShapeItem = memo(({ shape, gridSize, theme, offsetX, offsetY }: ShapeItemProps) => (
+  <Group name={`shape-move-group-${shape.id}`} x={offsetX} y={offsetY}>
+    <ShapePolygon shape={shape} gridSize={gridSize} theme={theme} />
+  </Group>
+));
+ShapeItem.displayName = 'ShapeItem';
+
+interface ShapeAnnotationItemProps extends ShapeItemProps {
+  readonly scale: number;
+}
+
+/** One shape's name annotation inside its move-preview group; see {@link ShapeItem}. */
+const ShapeAnnotationItem = memo(
+  ({ shape, gridSize, scale, theme, offsetX, offsetY }: ShapeAnnotationItemProps) => (
+    <Group name={`shape-annotation-move-group-${shape.id}`} x={offsetX} y={offsetY}>
+      <ShapeAnnotation shape={shape} gridSize={gridSize} scale={scale} theme={theme} />
+    </Group>
+  )
+);
+ShapeAnnotationItem.displayName = 'ShapeAnnotationItem';
+
 /**
  * ShapesLayer is the polygon renderer Adapter (ADR-0003): it consumes an
  * `EditorDocument` and draws one Konva polygon node per shape, in `zOrder`,
  * with the name annotation on top. Konva-specific concerns (custom shape,
  * hit region, theme) stay inside this folder; the document model has no Konva
  * types.
+ *
+ * Memoised end to end (issue #61, spec §14): the layer itself skips renders
+ * whose props are unchanged (a pan never reaches it at all — see
+ * `useStageViewport`), and every per-shape item is memoised so a zoom only
+ * re-renders the annotations, and a move / resize / vertex-edit preview only
+ * re-renders the shapes it names. Preview props are resolved *per shape* into
+ * plain values (a stable `shape` reference plus two numeric offsets) before
+ * they reach an item, so a preview for one shape never invalidates another.
  */
-export const ShapesLayer = ({
-  document,
-  gridSize,
-  scale,
-  theme = DEFAULT_SHAPES_LAYER_THEME,
-  movePreview,
-  resizePreview,
-  vertexPreview,
-}: ShapesLayerProps) => {
-  const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
+export const ShapesLayer = memo(
+  ({
+    document,
+    gridSize,
+    scale,
+    theme = DEFAULT_SHAPES_LAYER_THEME,
+    movePreview,
+    resizePreview,
+    vertexPreview,
+  }: ShapesLayerProps) => {
+    const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
 
-  const offsetFor = (shapeId: string): { x: number; y: number } => {
-    if (movePreview === undefined || !movePreview.shapeIds.includes(shapeId)) {
-      return { x: 0, y: 0 };
-    }
-    return { x: movePreview.delta.x * gridSize, y: movePreview.delta.y * gridSize };
-  };
+    const offsetFor = (shapeId: string): { x: number; y: number } => {
+      if (movePreview === undefined || !movePreview.shapeIds.includes(shapeId)) {
+        return { x: 0, y: 0 };
+      }
+      return { x: movePreview.delta.x * gridSize, y: movePreview.delta.y * gridSize };
+    };
 
-  /**
-   * The shape to actually draw: unchanged, unless it is the one shape being
-   * resized (issue #44) or vertex/edge-edited (issue #50), in which case its
-   * polygon is swapped for the live preview — a Konva-only substitution that
-   * never touches `document`.
-   */
-  const shapeToRender = (shape: EditorShape): EditorShape => {
-    if (resizePreview !== undefined && resizePreview.shapeId === shape.id) {
-      return {
-        ...shape,
-        polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
-      };
-    }
-    if (vertexPreview !== undefined && vertexPreview.shapeId === shape.id) {
-      return { ...shape, polygon: vertexPreview.polygon };
-    }
-    return shape;
-  };
+    /**
+     * The shape to actually draw: unchanged, unless it is the one shape being
+     * resized (issue #44) or vertex/edge-edited (issue #50), in which case its
+     * polygon is swapped for the live preview — a Konva-only substitution that
+     * never touches `document`. Returns the document's own object otherwise,
+     * so memoised items see the same reference render after render.
+     */
+    const shapeToRender = (shape: EditorShape): EditorShape => {
+      if (resizePreview !== undefined && resizePreview.shapeId === shape.id) {
+        return {
+          ...shape,
+          polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
+        };
+      }
+      if (vertexPreview !== undefined && vertexPreview.shapeId === shape.id) {
+        return { ...shape, polygon: vertexPreview.polygon };
+      }
+      return shape;
+    };
 
-  return (
-    <Group name="shapes-layer">
-      {orderedShapes.map((shape) => {
-        const offset = offsetFor(shape.id);
-        return (
-          <Group key={shape.id} name={`shape-move-group-${shape.id}`} x={offset.x} y={offset.y}>
-            <ShapePolygon shape={shapeToRender(shape)} gridSize={gridSize} theme={theme} />
-          </Group>
-        );
-      })}
-      {orderedShapes.map((shape) => {
-        const offset = offsetFor(shape.id);
-        return (
-          <Group
-            key={shape.id}
-            name={`shape-annotation-move-group-${shape.id}`}
-            x={offset.x}
-            y={offset.y}
-          >
-            <ShapeAnnotation
+    return (
+      <Group name="shapes-layer">
+        {orderedShapes.map((shape) => {
+          const offset = offsetFor(shape.id);
+          return (
+            <ShapeItem
+              key={shape.id}
+              shape={shapeToRender(shape)}
+              gridSize={gridSize}
+              theme={theme}
+              offsetX={offset.x}
+              offsetY={offset.y}
+            />
+          );
+        })}
+        {orderedShapes.map((shape) => {
+          const offset = offsetFor(shape.id);
+          return (
+            <ShapeAnnotationItem
+              key={shape.id}
               shape={shapeToRender(shape)}
               gridSize={gridSize}
               scale={scale}
               theme={theme}
+              offsetX={offset.x}
+              offsetY={offset.y}
             />
-          </Group>
-        );
-      })}
-    </Group>
-  );
-};
+          );
+        })}
+      </Group>
+    );
+  }
+);
+
+ShapesLayer.displayName = 'ShapesLayer';

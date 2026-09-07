@@ -159,24 +159,44 @@ describe('ShapesLayer', () => {
     ]);
   });
 
-  it('test_ShapesLayer_annotationFontSize_growsAsZoomShrinks_forConstantScreenSize', () => {
+  it('test_ShapesLayer_annotationGroupScale_isInverseOfZoom_forConstantScreenSize', () => {
     const document = createConcaveHoleDocument();
+    const shapeId = document.zOrder[0];
 
-    const zoomedIn = render(<ShapesLayer document={document} gridSize={10} scale={2} />);
-    const fontAt2x = Number(
-      zoomedIn.getByTestId('konva-text').getAttribute('data-fontsize')
-    );
-    zoomedIn.unmount();
+    const annotationScale = (scale: number): { group: number; font: number } => {
+      const { container, getByTestId, unmount } = render(
+        <ShapesLayer document={document} gridSize={10} scale={scale} />
+      );
+      const group = container.querySelector(`[name="shape-annotation-${shapeId}"]`);
+      const result = {
+        group: Number(group?.getAttribute('scaleX')),
+        font: Number(getByTestId('konva-text').getAttribute('data-fontsize')),
+      };
+      unmount();
+      return result;
+    };
 
-    const zoomedOut = render(<ShapesLayer document={document} gridSize={10} scale={0.5} />);
-    const fontAtHalf = Number(
-      zoomedOut.getByTestId('konva-text').getAttribute('data-fontsize')
-    );
-    zoomedOut.unmount();
+    const zoomedIn = annotationScale(2);
+    const zoomedOut = annotationScale(0.5);
 
-    // World font size is inversely proportional to scale, so the on-screen size
-    // (fontSize * scale) stays constant.
-    expect(fontAt2x * 2).toBeCloseTo(fontAtHalf * 0.5);
+    // The label keeps its screen font size; the wrapping group is scaled by
+    // 1 / zoom, so on screen (group scale * zoom) stays 1 at any zoom (#61).
+    expect(zoomedIn.font).toBe(zoomedOut.font);
+    expect(zoomedIn.group * 2).toBeCloseTo(1);
+    expect(zoomedOut.group * 0.5).toBeCloseTo(1);
+  });
+
+  it('test_ShapesLayer_annotation_isOmittedWhenShapeIsSmallerThanOneLineOnScreen', () => {
+    // 3x3-cell shapes at gridSize 10: 30px on screen at zoom 1, 3px at zoom 0.1.
+    const document = createDummyDocument({ shapeCount: 2, cellsPerShape: 9, withName: true });
+
+    const legible = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
+    expect(legible.getAllByTestId('konva-text')).toHaveLength(2);
+    legible.unmount();
+
+    const tooSmall = render(<ShapesLayer document={document} gridSize={10} scale={0.1} />);
+    expect(tooSmall.queryAllByTestId('konva-text')).toHaveLength(0);
+    tooSmall.unmount();
   });
 
   it('test_ShapesLayer_movePreview_offsetsOnlyTheMovingShapesGroup_issue43', () => {

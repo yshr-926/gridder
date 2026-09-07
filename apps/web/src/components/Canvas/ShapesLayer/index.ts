@@ -9,6 +9,7 @@ export { ShapePolygon } from './ShapePolygon';
 export type { ShapePolygonProps } from './ShapePolygon';
 export { ShapeAnnotation } from './ShapeAnnotation';
 export type { ShapeAnnotationProps } from './ShapeAnnotation';
+export { isAnnotationLegible } from './annotationLegibility';
 export {
   DEFAULT_SHAPES_LAYER_THEME,
   type ShapesLayerTheme,

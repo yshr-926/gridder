@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Shape } from 'react-konva';
 import type { Context } from 'konva/lib/Context';
 import type { Shape as KonvaShape } from 'konva/lib/Shape';
@@ -58,48 +58,48 @@ const tracePolygonPath = (context: Context, ringPaths: readonly PixelRingPath[])
  * shape's border reads very slightly darker on its inside edge. The same
  * applies to the exported share image, which reuses this component.
  */
-export const ShapePolygon = ({
-  shape,
-  gridSize,
-  theme = DEFAULT_SHAPES_LAYER_THEME,
-}: ShapePolygonProps) => {
-  const ringPaths = useMemo(
-    () => polygonToPixelPaths(shape.polygon, gridSize),
-    [shape.polygon, gridSize]
-  );
+export const ShapePolygon = memo(
+  ({ shape, gridSize, theme = DEFAULT_SHAPES_LAYER_THEME }: ShapePolygonProps) => {
+    const ringPaths = useMemo(
+      () => polygonToPixelPaths(shape.polygon, gridSize),
+      [shape.polygon, gridSize]
+    );
 
-  const isBorderVisible = shape.style.isBorderVisible;
+    const isBorderVisible = shape.style.isBorderVisible;
 
-  const sceneFunc = useCallback(
-    (context: Context, konvaShape: KonvaShape) => {
-      tracePolygonPath(context, ringPaths);
-      context.fillStrokeShape(konvaShape);
-    },
-    [ringPaths]
-  );
+    const sceneFunc = useCallback(
+      (context: Context, konvaShape: KonvaShape) => {
+        tracePolygonPath(context, ringPaths);
+        context.fillStrokeShape(konvaShape);
+      },
+      [ringPaths]
+    );
 
-  const hitFunc = useCallback(
-    (context: Context, konvaShape: KonvaShape) => {
-      tracePolygonPath(context, ringPaths);
-      context.fillStrokeShape(konvaShape);
-    },
-    [ringPaths]
-  );
+    const hitFunc = useCallback(
+      (context: Context, konvaShape: KonvaShape) => {
+        tracePolygonPath(context, ringPaths);
+        context.fillStrokeShape(konvaShape);
+      },
+      [ringPaths]
+    );
 
-  return (
-    <Shape
-      name={`shape-polygon-${shape.id}`}
-      sceneFunc={sceneFunc}
-      hitFunc={hitFunc}
-      fill={shape.style.fill}
-      opacity={shape.style.opacity}
-      fillRule="evenodd"
-      stroke={isBorderVisible ? theme.borderColor : undefined}
-      strokeWidth={isBorderVisible ? theme.borderWidth : 0}
-      strokeEnabled={isBorderVisible}
-      strokeScaleEnabled={false}
-      perfectDrawEnabled={false}
-      hitStrokeWidth={theme.hitStrokeWidth}
-    />
-  );
-};
+    return (
+      <Shape
+        name={`shape-polygon-${shape.id}`}
+        sceneFunc={sceneFunc}
+        hitFunc={hitFunc}
+        fill={shape.style.fill}
+        opacity={shape.style.opacity}
+        fillRule="evenodd"
+        stroke={isBorderVisible ? theme.borderColor : undefined}
+        strokeWidth={isBorderVisible ? theme.borderWidth : 0}
+        strokeEnabled={isBorderVisible}
+        strokeScaleEnabled={false}
+        perfectDrawEnabled={false}
+        hitStrokeWidth={theme.hitStrokeWidth}
+      />
+    );
+  }
+);
+
+ShapePolygon.displayName = 'ShapePolygon';
