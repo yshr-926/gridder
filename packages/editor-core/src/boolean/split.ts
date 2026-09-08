@@ -1,5 +1,5 @@
 import type { GridPolygon } from '../model.js';
-import { doubleSignedArea } from './geometry.js';
+import { doubleSignedArea } from '../geometry/ring.js';
 
 /**
  * Splits a list of grid polygons so that every entry is a single connected

@@ -1,5 +1,5 @@
 import type { GridPoint, GridPolygon, GridRing } from '../model.js';
-import { areCollinear, doubleSignedArea } from './geometry.js';
+import { areCollinear, doubleSignedArea } from '../geometry/ring.js';
 
 /**
  * Shared builders and invariant checks for the polygon boolean tests. Kept in a

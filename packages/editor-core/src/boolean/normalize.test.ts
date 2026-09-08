@@ -4,7 +4,7 @@ import {
   normalizeMultiPolygon,
   type ClosedMultiPolygon,
 } from './normalize.js';
-import { doubleSignedArea } from './geometry.js';
+import { doubleSignedArea } from '../geometry/ring.js';
 import { rectangle } from './test-helpers.js';
 
 describe('normalizeMultiPolygon', () => {

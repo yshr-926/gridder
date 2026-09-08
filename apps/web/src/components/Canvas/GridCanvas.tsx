@@ -21,6 +21,7 @@ import {
   EditorInteractionLayer,
   type EditorInteractionCursor,
   type EditorInteractionLayerHandle,
+  type VertexInsertGhost,
 } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { VertexEditOverlay } from './VertexEditOverlay';
@@ -98,6 +99,8 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   const [interactionCursor, setInteractionCursor] = useState<EditorInteractionCursor | null>(
     null
   );
+  // #64 のゴースト頂点（辺上のグリッド点に hover 中だけ存在する）。VertexEditOverlay が描く
+  const [insertGhost, setInsertGhost] = useState<VertexInsertGhost | null>(null);
 
   // グリッドサイズ（ピクセル）
   const gridSize = basePixelSize;
@@ -237,6 +240,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             gridSize={gridSize}
             isViewportInteracting={viewportPan.isViewportInteracting}
             onCursorChange={setInteractionCursor}
+            onInsertGhostChange={setInsertGhost}
             onCreatingPolygonChange={onCreatingPolygonChange}
           />
         </Layer>
@@ -250,11 +254,12 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             scale={scale}
             movePreview={movePreview}
             resizePreview={resizePreview}
+            vertexPreview={vertexPreview}
           />
         </Layer>
 
-        {/* Vertex Edit Overlay: 矩形以外の単一選択図形の頂点マーカーと辺の hit 領域（#50）。
-            矩形のバウンディングボックスハンドルとは棲み分ける */}
+        {/* Vertex Edit Overlay: 矩形以外の単一選択図形の頂点マーカーと辺の hit 領域（#50）、
+            辺 hover 中のゴースト頂点（#64）。矩形のバウンディングボックスハンドルとは棲み分ける */}
         <Layer listening={false}>
           <VertexEditOverlay
             document={editorDocument}
@@ -262,6 +267,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             gridSize={gridSize}
             scale={scale}
             vertexPreview={vertexPreview}
+            insertGhost={insertGhost ?? undefined}
           />
         </Layer>
 

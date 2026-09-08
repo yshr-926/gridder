@@ -1,11 +1,13 @@
 import type { GridPoint, GridRing } from '../model.js';
 
 /**
- * Pure integer-grid geometry helpers shared by the polygon boolean Adapter.
+ * Pure integer-grid ring helpers shared by the polygon boolean Adapter and by
+ * the vertex-editing commit path (issue #64, {@link cleanPolygon}).
  *
- * None of these functions know about `polygon-clipping`; they operate only on
- * Gridder's own {@link GridRing} values with implicit closure (the edge from the
- * last vertex back to the first is never stored as a repeated vertex).
+ * None of these functions know about `polygon-clipping`, pointer input, or
+ * Commands; they operate only on Gridder's own {@link GridRing} values with
+ * implicit closure (the edge from the last vertex back to the first is never
+ * stored as a repeated vertex).
  */
 
 /**

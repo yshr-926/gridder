@@ -4,7 +4,7 @@ import {
   doubleSignedArea,
   hasIntegerCoordinates,
   orientRing,
-} from './geometry.js';
+} from '../geometry/ring.js';
 
 /**
  * The multi-polygon shape produced by `polygon-clipping`: an array of polygons,

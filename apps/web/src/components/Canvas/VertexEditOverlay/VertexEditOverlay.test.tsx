@@ -32,6 +32,9 @@ vi.mock('react-konva', () => ({
   ),
 }));
 
+const ghostCircle = (container: HTMLElement): HTMLElement | null =>
+  container.querySelector('[data-name="vertex-insert-ghost-circle"]');
+
 const rectRing = (x: number, y: number, w: number, h: number): GridRing => [
   { x, y },
   { x: x + w, y },
@@ -186,5 +189,105 @@ describe('VertexEditOverlay', () => {
     );
     // VERTEX_RADIUS_SCREEN (4.5) / scale (2) = 2.25.
     expect(marker?.getAttribute('data-radius')).toBe('2.25');
+  });
+});
+
+describe('VertexEditOverlay — ghost vertex (issue #64)', () => {
+  it('test_VertexEditOverlay_insertGhost_onSelectedRectangle_drawsGhostButNoVertexMarkers', () => {
+    const document = documentOf([rectShape('r', 0, 0, 4, 4)]);
+    const { container, queryAllByTestId } = render(
+      <VertexEditOverlay
+        document={document}
+        selectedIds={['r']}
+        gridSize={10}
+        scale={1}
+        insertGhost={{ shapeId: 'r', point: { x: 2, y: 0 } }}
+      />
+    );
+    const ghost = ghostCircle(container);
+    expect(ghost?.getAttribute('data-x')).toBe('20');
+    expect(ghost?.getAttribute('data-y')).toBe('0');
+    expect(ghost?.getAttribute('data-radius')).toBe('6');
+    // Two "+" arms, no edge hit-line for a rectangle.
+    expect(container.querySelectorAll('[data-name^="vertex-insert-ghost-plus"]')).toHaveLength(2);
+    expect(
+      queryAllByTestId('konva-circle').filter((el) =>
+        el.getAttribute('data-name')?.startsWith('vertex-edit-marker-')
+      )
+    ).toHaveLength(0);
+  });
+
+  it('test_VertexEditOverlay_insertGhost_onPolygon_drawsGhostAlongsideVertexMarkers', () => {
+    const document = documentOf([lShape('l')]);
+    const { container, getAllByTestId } = render(
+      <VertexEditOverlay
+        document={document}
+        selectedIds={['l']}
+        gridSize={10}
+        scale={2}
+        insertGhost={{ shapeId: 'l', point: { x: 3, y: 0 } }}
+      />
+    );
+    expect(ghostCircle(container)?.getAttribute('data-x')).toBe('30');
+    // GHOST_RADIUS_SCREEN (6) / scale (2) = 3.
+    expect(ghostCircle(container)?.getAttribute('data-radius')).toBe('3');
+    const markers = getAllByTestId('konva-circle').filter((el) =>
+      el.getAttribute('data-name')?.startsWith('vertex-edit-marker-')
+    );
+    expect(markers).toHaveLength(lShapeRing.length);
+  });
+
+  it('test_VertexEditOverlay_insertGhost_forAnUnselectedShape_isNotDrawn', () => {
+    const document = documentOf([rectShape('r', 0, 0, 4, 4), rectShape('other', 10, 10, 4, 4)]);
+    const { container } = render(
+      <VertexEditOverlay
+        document={document}
+        selectedIds={['r']}
+        gridSize={10}
+        scale={1}
+        insertGhost={{ shapeId: 'other', point: { x: 12, y: 10 } }}
+      />
+    );
+    expect(ghostCircle(container)).toBeNull();
+  });
+
+  it('test_VertexEditOverlay_insertGhost_isHiddenWhileAVertexGestureIsLive', () => {
+    const document = documentOf([lShape('l')]);
+    const { container } = render(
+      <VertexEditOverlay
+        document={document}
+        selectedIds={['l']}
+        gridSize={10}
+        scale={1}
+        vertexPreview={{ shapeId: 'l', polygon: { outerRing: lShapeRing, innerRings: [] } }}
+        insertGhost={{ shapeId: 'l', point: { x: 3, y: 0 } }}
+      />
+    );
+    expect(ghostCircle(container)).toBeNull();
+  });
+
+  it('test_VertexEditOverlay_vertexPreview_onARectangle_drawsMarkersFromThePreview', () => {
+    // A ghost drag on a rectangle: the document shape is still a rectangle,
+    // but the live polygon has the inserted vertex, which must get a marker.
+    const document = documentOf([rectShape('r', 0, 0, 4, 4)]);
+    const previewPolygon = {
+      outerRing: [{ x: 0, y: 0 }, { x: 2, y: 1 }, ...rectRing(0, 0, 4, 4).slice(1)],
+      innerRings: [],
+    };
+    const { getAllByTestId } = render(
+      <VertexEditOverlay
+        document={document}
+        selectedIds={['r']}
+        gridSize={10}
+        scale={1}
+        vertexPreview={{ shapeId: 'r', polygon: previewPolygon }}
+      />
+    );
+    const markers = getAllByTestId('konva-circle').filter((el) =>
+      el.getAttribute('data-name')?.startsWith('vertex-edit-marker-')
+    );
+    expect(markers).toHaveLength(5);
+    expect(markers[1]?.getAttribute('data-x')).toBe('20');
+    expect(markers[1]?.getAttribute('data-y')).toBe('10');
   });
 });

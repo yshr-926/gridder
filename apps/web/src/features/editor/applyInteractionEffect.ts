@@ -1,4 +1,5 @@
 import {
+  cleanPolygon,
   CompositeCommand,
   CreateShapeCommand,
   doubleSignedArea,
@@ -29,16 +30,13 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
 });
 
 /**
- * Whether a vertex/edge edit (issue #50, spec §6.2 "自己交差や退化になる操作は確定
- * 時に拒否") can be committed: every ring — the outer boundary and every hole
- * — must stay a simple polygon (no self-intersection, no repeated vertex) and
- * the outer ring must keep a non-zero area (not degenerate). A hole's area
- * is not checked the same way: a hole can legitimately shrink toward (but
- * only its own self-intersection check, not an area-zero check, applies to
- * it) — a zero-area hole would just mean "no hole", which `isSimplePolygon`
- * already rejects via its "fewer than 3 distinct vertices" / repeated-vertex
- * checks before area ever comes into it for the degenerate cases that matter
- * here (a dragged hole vertex colliding with its neighbour).
+ * Whether a normalised vertex/edge edit (issue #50, spec §6.2 "自己交差や退化に
+ * なる操作は確定時に拒否") can be committed: every ring — the outer boundary and
+ * every hole — must be a simple polygon (no self-intersection, no repeated
+ * vertex) and the outer ring must keep a non-zero area. The caller runs
+ * {@link cleanPolygon} first, so adjacent duplicates and collinear vertices
+ * are already gone; what is left for this check is a genuine crossing, a
+ * non-adjacent self-touch, or a ring collapsed onto a line.
  */
 const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
   if (!isSimplePolygon(polygon.outerRing)) {
@@ -49,6 +47,18 @@ const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
   }
   return polygon.innerRings.every((ring) => isSimplePolygon(ring));
 };
+
+const sameRing = (a: GridRing, b: GridRing): boolean =>
+  a.length === b.length && a.every((point, index) => point.x === b[index]?.x && point.y === b[index]?.y);
+
+/** Structural equality of two polygons, ring by ring and vertex by vertex. */
+const samePolygon = (a: GridPolygon, b: GridPolygon): boolean =>
+  sameRing(a.outerRing, b.outerRing) &&
+  a.innerRings.length === b.innerRings.length &&
+  a.innerRings.every((ring, index) => {
+    const other = b.innerRings[index];
+    return other !== undefined && sameRing(ring, other);
+  });
 
 /**
  * Carry out one {@link InteractionEffect} produced by the interaction
@@ -67,9 +77,13 @@ const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
  * ring is refused with a toast rather than committed — then builds and
  * commits the shape through one {@link CreateShapeCommand}, same as
  * `createRect`. `updateShapeVertices` (issue #50, vertex/edge direct
- * manipulation) validates the proposed polygon the same way, additionally
- * rejecting a zero-area result, before committing one
- * {@link ReplaceShapeVerticesCommand}.
+ * manipulation; issue #64, ghost-vertex insertion) first normalises the
+ * proposed polygon with {@link cleanPolygon} — merging duplicate vertices and
+ * dropping collinear ones, so an L-shape dragged back into a rectangle really
+ * is a 4-vertex rectangle again and gets its resize handles back — then
+ * validates it the same way, additionally rejecting a zero-area result,
+ * before committing one {@link ReplaceShapeVerticesCommand}. An edit whose
+ * normalised result equals the shape's current geometry commits nothing.
  */
 export const applyInteractionEffect = (
   session: EditorSession,
@@ -192,21 +206,32 @@ export const applyInteractionEffect = (
     }
     case 'updateShapeVertices': {
       const document = session.getDocument();
-      if (document.shapes[effect.shapeId] === undefined) {
+      const shape = document.shapes[effect.shapeId];
+      if (shape === undefined) {
         return;
       }
+      // Normalise first (issue #64): a vertex dropped onto its neighbour
+      // merges into it, and a vertex left on the straight line between its
+      // neighbours is removed. A ring that collapses below three vertices or
+      // to zero area in the process is a degenerate edit.
+      const normalized = cleanPolygon(effect.polygon);
       // Reject a vertex/edge drag that would self-intersect or collapse to
       // zero area (issue #50, spec §6.2) by simply not committing — the
       // shape stays at its last valid geometry, matching `createPolygon`'s
       // reject-with-a-toast pattern rather than clamping the drag.
-      if (!isValidPolygonEdit(effect.polygon)) {
+      if (normalized === null || !isValidPolygonEdit(normalized)) {
         useToastStore.getState().addToast({
           type: 'error',
           message: '辺が交差する、または面積が0になる変形はできません。',
         });
         return;
       }
-      session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, effect.polygon));
+      // Normalisation can undo the whole edit (e.g. a ghost vertex dragged
+      // along its own edge): nothing to commit, and no empty undo step.
+      if (samePolygon(normalized, shape.polygon)) {
+        return;
+      }
+      session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, normalized));
       return;
     }
   }

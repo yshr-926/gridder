@@ -12,9 +12,21 @@ export {
   type ShapePolygonProps,
   type ShapeAnnotationProps,
 } from './ShapesLayer';
-export { EditorInteractionLayer } from './EditorInteractionLayer';
-export { SelectionOverlay } from './SelectionOverlay';
+export {
+  EditorInteractionLayer,
+  type EditorInteractionCursor,
+  type VertexInsertGhost,
+} from './EditorInteractionLayer';
+export {
+  SelectionOverlay,
+  type SelectionOverlayResizePreview,
+  type SelectionOverlayVertexPreview,
+} from './SelectionOverlay';
 export { DrawingRangeLayer } from './DrawingRangeLayer';
 export { DimensionLayer } from './DimensionLayer';
 export { PolygonDraftLayer } from './PolygonDraftLayer';
-export { VertexEditOverlay, type VertexEditOverlayPreview } from './VertexEditOverlay';
+export {
+  VertexEditOverlay,
+  type VertexEditOverlayPreview,
+  type VertexInsertGhostMarker,
+} from './VertexEditOverlay';

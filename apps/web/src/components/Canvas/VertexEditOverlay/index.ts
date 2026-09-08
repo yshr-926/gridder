@@ -1,1 +1,5 @@
-export { VertexEditOverlay, type VertexEditOverlayPreview } from './VertexEditOverlay';
+export {
+  VertexEditOverlay,
+  type VertexEditOverlayPreview,
+  type VertexInsertGhostMarker,
+} from './VertexEditOverlay';

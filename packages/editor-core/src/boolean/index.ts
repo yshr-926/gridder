@@ -25,11 +25,3 @@ export {
   type ClosedPolygon,
   type ClosedMultiPolygon,
 } from './normalize.js';
-export {
-  doubleSignedArea,
-  areCollinear,
-  cleanRing,
-  reverseRing,
-  orientRing,
-  hasIntegerCoordinates,
-} from './geometry.js';

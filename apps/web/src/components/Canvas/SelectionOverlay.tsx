@@ -42,6 +42,20 @@ interface SelectionOverlayProps {
    * gesture is in progress.
    */
   resizePreview?: SelectionOverlayResizePreview;
+  /**
+   * Live vertex/edge-gesture polygon (issues #50, #64). The frame follows
+   * the edited shape's preview geometry, and a rectangle's resize handles
+   * are hidden for the duration of the gesture — a ghost-vertex drag turns
+   * the rectangle into a polygon the moment it starts, so its handles must
+   * not linger at the old bounds.
+   */
+  vertexPreview?: SelectionOverlayVertexPreview;
+}
+
+/** A vertex/edge drag in progress on one shape, or `undefined` when idle. */
+export interface SelectionOverlayVertexPreview {
+  readonly shapeId: string;
+  readonly polygon: GridPolygon;
 }
 
 /** Selection frame colour (single accent per ui-principles §3). */
@@ -108,6 +122,7 @@ export const SelectionOverlay = ({
   scale,
   movePreview,
   resizePreview,
+  vertexPreview,
 }: SelectionOverlayProps) => {
   const safeScale = Math.max(scale, Number.EPSILON);
 
@@ -121,7 +136,10 @@ export const SelectionOverlay = ({
           return null;
         }
         const isResizing = resizePreview !== undefined && resizePreview.shapeId === shapeId;
-        const bounds = isResizing ? resizePreview.bounds : polygonBounds(shape.polygon);
+        const isVertexEditing = vertexPreview !== undefined && vertexPreview.shapeId === shapeId;
+        const bounds = isResizing
+          ? resizePreview.bounds
+          : polygonBounds(isVertexEditing ? vertexPreview.polygon : shape.polygon);
         const isMoving =
           !isResizing && movePreview !== undefined && movePreview.shapeIds.includes(shapeId);
         const offsetX = isMoving ? movePreview.delta.x * gridSize : 0;
@@ -135,7 +153,7 @@ export const SelectionOverlay = ({
         };
       })
       .filter((frame): frame is NonNullable<typeof frame> => frame !== null);
-  }, [document, selectedIds, gridSize, movePreview, resizePreview, safeScale]);
+  }, [document, selectedIds, gridSize, movePreview, resizePreview, vertexPreview, safeScale]);
 
   /**
    * The group bounding frame (issue #52, spec §7): drawn when the selection
@@ -203,6 +221,9 @@ export const SelectionOverlay = ({
     if (resizable === null) {
       return [];
     }
+    if (vertexPreview !== undefined && vertexPreview.shapeId === resizable.id) {
+      return [];
+    }
     const isResizing = resizePreview !== undefined && resizePreview.shapeId === resizable.id;
     const bounds = isResizing ? resizePreview.bounds : polygonBounds(resizable.polygon);
     const handleWorld = HANDLE_SIZE_SCREEN / safeScale;
@@ -218,7 +239,7 @@ export const SelectionOverlay = ({
         hitWorld,
       };
     });
-  }, [document, selectedIds, resizePreview, gridSize, safeScale]);
+  }, [document, selectedIds, resizePreview, vertexPreview, gridSize, safeScale]);
 
   if (frames.length === 0 && handles.length === 0 && groupFrame === null) {
     return null;

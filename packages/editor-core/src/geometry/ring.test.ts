@@ -7,7 +7,7 @@ import {
   hasIntegerCoordinates,
   orientRing,
   reverseRing,
-} from './geometry.js';
+} from './ring.js';
 
 describe('doubleSignedArea', () => {
   it('test_doubleSignedArea_counterClockwiseSquare_isPositive', () => {

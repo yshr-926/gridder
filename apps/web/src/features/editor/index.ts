@@ -75,13 +75,24 @@ export {
   vertexAtPoint,
   edgeAtPoint,
   isAxisAlignedPolygonEdge,
+  polygonEdgeAxis,
   withVertexMoved,
   withEdgeMoved,
+  vertexInsertionAtPoint,
+  withVertexInserted,
+  vertexInsertHitRadiusPx,
+  VERTEX_INSERT_MIN_CELL_PX,
   type PolygonRingRef,
   type PolygonVertexRef,
   type PolygonEdgeRef,
+  type VertexInsertionHit,
+  type EdgeAxis,
 } from './hitTest';
-export { vertexEditPreview } from './interactionController';
+export {
+  vertexEditPreview,
+  handleTargetAt,
+  type HandleTarget,
+} from './interactionController';
 export {
   groupContaining,
   expandSelectionForGroups,

@@ -3,28 +3,33 @@ import {
   edgeAtPoint,
   isAxisAlignedRect,
   polygonBounds,
+  polygonEdgeAxis,
   rectFromPoints,
   resizeHandleAtPoint,
   resizeRectBounds,
   shapeAtPoint,
   shapesWithinRegion,
   vertexAtPoint,
+  vertexInsertionAtPoint,
   withEdgeMoved,
+  withVertexInserted,
   withVertexMoved,
+  type EdgeAxis,
   type GridRect,
   type PolygonEdgeRef,
   type PolygonVertexRef,
   type ResizeHandleKind,
+  type VertexInsertionHit,
 } from './hitTest';
 
 /**
  * Pointer arbitration for the polygon editor's normal state (spec §6.1, §6.2,
- * §6.3, issues #42, #43, #44, #48, #50). One controller decides, from a
+ * §6.3, issues #42, #43, #44, #48, #50, #64). One controller decides, from a
  * stream of pointer and keyboard events, whether the gesture is a
  * click-select, a Shift-toggle, a blank-drag rectangle, a Shift-drag
- * marquee, a shape-drag move, a handle-drag resize, a vertex/edge drag, or a
- * click-by-click polygon creation — without adding tool modes for the
- * direct-manipulation gestures. Polygon creation (spec §6.3 "一時的なポリゴン
+ * marquee, a shape-drag move, a handle-drag resize, a vertex/edge drag, a
+ * ghost-vertex insert-and-drag, or a click-by-click polygon creation —
+ * without adding tool modes for the direct-manipulation gestures. Polygon creation (spec §6.3 "一時的なポリゴン
  * 作成") is the one modal exception ui-principles §2 allows, entered
  * explicitly (`P` / the top-bar button) and exited via confirm or `Esc`.
  * Cell editing (the former `editingShape` state of issue #49) was retired by
@@ -98,6 +103,13 @@ export type InteractionState =
       readonly cursorVertex: GridPoint | null;
     }
   | {
+      /**
+       * Dragging one vertex (issue #50) — either an existing one, or a vertex
+       * just inserted from a ghost (issue #64). For an insertion,
+       * `originPolygon` already contains the new vertex at its edge position,
+       * so "no net change" on pointer-up (a click that never moved) commits
+       * nothing and the ghost leaves no vertex behind.
+       */
       readonly kind: 'movingVertex';
       readonly shapeId: string;
       readonly vertex: PolygonVertexRef;
@@ -221,6 +233,97 @@ export const previewRegion = (state: InteractionState): GridRect | null => {
   return null;
 };
 
+/**
+ * What a pointer-down at a given point would grab on the single selected
+ * shape, before falling through to the shape body: a resize handle
+ * (issue #44), an existing vertex (issue #50), a ghost vertex on an edge
+ * (issue #64), or an edge (issue #50). Also what the idle hover cursor and
+ * the ghost marker are driven by, so hover and press can never disagree.
+ */
+export type HandleTarget =
+  | {
+      readonly kind: 'resizeHandle';
+      readonly shapeId: string;
+      readonly handle: ResizeHandleKind;
+      readonly bounds: GridRect;
+    }
+  | { readonly kind: 'vertex'; readonly shapeId: string; readonly vertex: PolygonVertexRef }
+  | {
+      readonly kind: 'insertVertex';
+      readonly shapeId: string;
+      readonly hit: VertexInsertionHit;
+    }
+  | {
+      readonly kind: 'edge';
+      readonly shapeId: string;
+      readonly edge: PolygonEdgeRef;
+      /** Orientation, for the hover cursor (`ns` for horizontal, `ew` for vertical, `move` for diagonal). */
+      readonly axis: EdgeAxis;
+    };
+
+/**
+ * Resolves the handle a pointer at `point` (grid units) is over, in the
+ * priority order every gesture and hover shares (issue #63's comparison,
+ * issue #64): resize handle > existing vertex > ghost vertex > edge.
+ *
+ * A single selected axis-aligned rectangle has resize handles and — when
+ * `insertHitRadius` is not `null` — ghost vertices on its edges, but no
+ * vertex / edge dragging (spec §6.2: rectangles resize by their handles). Any
+ * other single selected shape has vertex, ghost and edge targets instead.
+ * `insertHitRadius` is `null` when the caller has decided cells are drawn
+ * too small on screen to offer ghosts (`vertexInsertHitRadiusPx`).
+ */
+export const handleTargetAt = (
+  document: EditorDocument,
+  selectedIds: readonly string[],
+  point: GridPoint,
+  handleHitRadius: number,
+  insertHitRadius: number | null
+): HandleTarget | null => {
+  if (selectedIds.length !== 1) {
+    return null;
+  }
+  const shape = document.shapes[selectedIds[0]];
+  if (shape === undefined) {
+    return null;
+  }
+  const { polygon } = shape;
+  if (isAxisAlignedRect(polygon)) {
+    const bounds = polygonBounds(polygon);
+    const handle = resizeHandleAtPoint(bounds, point, handleHitRadius);
+    if (handle !== null) {
+      return { kind: 'resizeHandle', shapeId: shape.id, handle, bounds };
+    }
+    if (insertHitRadius !== null) {
+      const hit = vertexInsertionAtPoint(polygon, point, handleHitRadius, insertHitRadius);
+      if (hit !== null) {
+        return { kind: 'insertVertex', shapeId: shape.id, hit };
+      }
+    }
+    return null;
+  }
+  const vertex = vertexAtPoint(polygon, point, handleHitRadius);
+  if (vertex !== null) {
+    return { kind: 'vertex', shapeId: shape.id, vertex };
+  }
+  if (insertHitRadius !== null) {
+    const hit = vertexInsertionAtPoint(polygon, point, handleHitRadius, insertHitRadius);
+    if (hit !== null) {
+      return { kind: 'insertVertex', shapeId: shape.id, hit };
+    }
+  }
+  const edge = edgeAtPoint(polygon, point, handleHitRadius);
+  if (edge !== null) {
+    return {
+      kind: 'edge',
+      shapeId: shape.id,
+      edge,
+      axis: polygonEdgeAxis(polygon, edge),
+    };
+  }
+  return null;
+};
+
 export const reduceInteraction = (
   state: InteractionState,
   event: InteractionEvent,
@@ -238,7 +341,13 @@ export const reduceInteraction = (
    * priority over the shape-body hit-test below it, so grabbing a handle
    * never starts a move instead.
    */
-  handleHitRadius = 0
+  handleHitRadius = 0,
+  /**
+   * Ghost-vertex snap radius in grid units (issue #64), or `null` to offer
+   * no ghost vertices at all — the caller passes `null` when cells are
+   * drawn too small on screen for a ghost to coexist with the edge drag.
+   */
+  insertHitRadius: number | null = null
 ): InteractionResult => {
   // A stray pointer-cancel (e.g. losing capture mid-drag) resets any active
   // drag gesture, but never interrupts polygon creation (issue #48) — that
@@ -284,56 +393,74 @@ export const reduceInteraction = (
       }
       const { sample } = event;
 
-      // A resize handle only exists for a single selected axis-aligned
-      // rectangle (issue #44) and always wins over the shape body underneath
-      // it — grabbing a handle resizes, it never starts a move.
-      if (selectedIds.length === 1) {
-        const selectedShape = document.shapes[selectedIds[0]];
-        if (selectedShape !== undefined && isAxisAlignedRect(selectedShape.polygon)) {
-          const bounds = polygonBounds(selectedShape.polygon);
-          const handle = resizeHandleAtPoint(bounds, sample.precise, handleHitRadius);
-          if (handle !== null) {
+      // A handle on the single selected shape always wins over the shape
+      // body underneath it — grabbing a handle resizes, drags a vertex or
+      // edge, or inserts a vertex; it never starts a move. See
+      // `handleTargetAt` for the priority order.
+      const target = handleTargetAt(
+        document,
+        selectedIds,
+        sample.precise,
+        handleHitRadius,
+        insertHitRadius
+      );
+      if (target !== null) {
+        const selectedShape = document.shapes[target.shapeId];
+        if (selectedShape === undefined) {
+          return { state };
+        }
+        switch (target.kind) {
+          case 'resizeHandle':
             return {
               state: {
                 kind: 'resizing',
-                shapeId: selectedShape.id,
-                handle,
-                originBounds: bounds,
-                currentBounds: bounds,
+                shapeId: target.shapeId,
+                handle: target.handle,
+                originBounds: target.bounds,
+                currentBounds: target.bounds,
               },
             };
-          }
-        } else if (selectedShape !== undefined) {
-          // A single selected shape that is not a rectangle gets vertex/edge
-          // handles instead (issue #50, spec §6.2 "ポリゴンは...頂点・辺を直接動か
-          // して変形する" — no bounding-box handles for these). A vertex hit
-          // wins over an edge hit at the same point, matching the corners-
-          // before-edges priority resize handles already use.
-          const vertex = vertexAtPoint(selectedShape.polygon, sample.precise, handleHitRadius);
-          if (vertex !== null) {
+          case 'vertex':
             return {
               state: {
                 kind: 'movingVertex',
-                shapeId: selectedShape.id,
-                vertex,
+                shapeId: target.shapeId,
+                vertex: target.vertex,
                 originPolygon: selectedShape.polygon,
                 currentPolygon: selectedShape.polygon,
               },
             };
+          case 'insertVertex': {
+            // Insert the ghost as a real vertex now and drag it exactly like
+            // an existing one (issue #64, 1 ジェスチャ). The origin already
+            // holds the inserted vertex, so releasing without moving is a
+            // "no net change" and leaves the shape untouched.
+            const originPolygon = withVertexInserted(
+              selectedShape.polygon,
+              target.hit.edge,
+              target.hit.point
+            );
+            return {
+              state: {
+                kind: 'movingVertex',
+                shapeId: target.shapeId,
+                vertex: { ring: target.hit.edge.ring, vertexIndex: target.hit.edge.edgeIndex + 1 },
+                originPolygon,
+                currentPolygon: originPolygon,
+              },
+            };
           }
-          const edge = edgeAtPoint(selectedShape.polygon, sample.precise, handleHitRadius);
-          if (edge !== null) {
+          case 'edge':
             return {
               state: {
                 kind: 'movingEdge',
-                shapeId: selectedShape.id,
-                edge,
+                shapeId: target.shapeId,
+                edge: target.edge,
                 originVertex: sample.vertex,
                 originPolygon: selectedShape.polygon,
                 currentPolygon: selectedShape.polygon,
               },
             };
-          }
         }
       }
 

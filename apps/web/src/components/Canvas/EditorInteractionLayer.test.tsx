@@ -614,6 +614,142 @@ describe('EditorInteractionLayer', () => {
     });
   });
 
+  describe('ghost-vertex insertion (issue #64)', () => {
+    const rect = (id: string) => ({
+      id,
+      polygon: {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 6, y: 0 },
+          { x: 6, y: 4 },
+          { x: 0, y: 4 },
+        ],
+        innerRings: [],
+      },
+      style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+    });
+
+    const lShape = (id: string) => ({
+      id,
+      polygon: {
+        outerRing: [
+          { x: 0, y: 0 },
+          { x: 6, y: 0 },
+          { x: 6, y: 3 },
+          { x: 3, y: 3 },
+          { x: 3, y: 6 },
+          { x: 0, y: 6 },
+        ],
+        innerRings: [],
+      },
+      style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+    });
+
+    it('test_hoveringAnEdgeGridPoint_reportsCopyCursor_andTheGhost_andBetweenPointsReportsEdgeCursor', () => {
+      editorSession.dispatch(new CreateShapeCommand(lShape('ghost-hover')));
+      useSelectionStore.setState({ selectedIds: ['ghost-hover'], primaryId: 'ghost-hover' });
+
+      const onCursorChange = vi.fn();
+      const onInsertGhostChange = vi.fn();
+      const { container } = render(
+        <EditorInteractionLayer
+          {...defaultProps}
+          onCursorChange={onCursorChange}
+          onInsertGhostChange={onInsertGhostChange}
+        />
+      );
+      const node = surface(container);
+
+      // Grid (2, 0) on the bottom edge => px (40, 0): a ghost, `copy` cursor.
+      fireEvent.pointerMove(node, { clientX: 40, clientY: 1 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('copy');
+      expect(onInsertGhostChange).toHaveBeenLastCalledWith({
+        shapeId: 'ghost-hover',
+        point: { x: 2, y: 0 },
+      });
+
+      // Grid (2.5, 0) => px (50, 0): between grid points, the edge drag's
+      // `ns-resize` for a horizontal edge, and no ghost.
+      fireEvent.pointerMove(node, { clientX: 50, clientY: 1 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('ns-resize');
+      expect(onInsertGhostChange).toHaveBeenLastCalledWith(null);
+
+      // The right edge (6,0)-(6,3) is vertical => `ew-resize` between points.
+      fireEvent.pointerMove(node, { clientX: 120, clientY: 30 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('ew-resize');
+
+      // An existing vertex (0,0) => `move`.
+      fireEvent.pointerMove(node, { clientX: 1, clientY: 1 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('move');
+    });
+
+    it('test_ghostDragOnARectangle_insertsAndMovesTheVertex_asOneUndoStep', () => {
+      editorSession.dispatch(new CreateShapeCommand(rect('ghost-rect')));
+      useSelectionStore.setState({ selectedIds: ['ghost-rect'], primaryId: 'ghost-rect' });
+      const onCursorChange = vi.fn();
+      const { container } = render(
+        <EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />
+      );
+      const node = surface(container);
+
+      // Grid (2,0) on the top edge, away from the 'n' handle at (3,0).
+      fireEvent.pointerMove(node, { clientX: 40, clientY: 1 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('copy');
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 1 });
+      fireEvent.pointerMove(node, { clientX: 40, clientY: 40 });
+      expect(onCursorChange).toHaveBeenLastCalledWith('move');
+      fireEvent.pointerUp(node, { clientX: 40, clientY: 40 });
+
+      expect(editorSession.getDocument().shapes['ghost-rect'].polygon.outerRing).toEqual([
+        { x: 0, y: 0 },
+        { x: 2, y: 2 },
+        { x: 6, y: 0 },
+        { x: 6, y: 4 },
+        { x: 0, y: 4 },
+      ]);
+      editorSession.undo();
+      expect(editorSession.getDocument().shapes['ghost-rect'].polygon.outerRing).toHaveLength(4);
+    });
+
+    it('test_ghostClickWithoutMoving_leavesNoVertex_andNoUndoStep', () => {
+      editorSession.dispatch(new CreateShapeCommand(rect('ghost-click')));
+      useSelectionStore.setState({ selectedIds: ['ghost-click'], primaryId: 'ghost-click' });
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+      const before = editorSession.getDocument();
+
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 1 });
+      fireEvent.pointerUp(node, { clientX: 40, clientY: 1 });
+
+      expect(editorSession.getDocument()).toBe(before);
+    });
+
+    it('test_ghostDragThenNotchClosed_normalisesBackToAFourVertexRectangle', () => {
+      editorSession.dispatch(new CreateShapeCommand(rect('ghost-round-trip')));
+      useSelectionStore.setState({
+        selectedIds: ['ghost-round-trip'],
+        primaryId: 'ghost-round-trip',
+      });
+      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
+      const node = surface(container);
+
+      // Pull (2,0) down to (2,2): a V-notch, 5 vertices.
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 1 });
+      fireEvent.pointerMove(node, { clientX: 40, clientY: 40 });
+      fireEvent.pointerUp(node, { clientX: 40, clientY: 40 });
+      expect(editorSession.getDocument().shapes['ghost-round-trip'].polygon.outerRing).toHaveLength(5);
+
+      // Drag that vertex back onto the top edge: collinear, so it is removed
+      // and the shape is a 4-vertex rectangle again.
+      fireEvent.pointerDown(node, { clientX: 40, clientY: 40 });
+      fireEvent.pointerMove(node, { clientX: 60, clientY: 0 });
+      fireEvent.pointerUp(node, { clientX: 60, clientY: 0 });
+      expect(editorSession.getDocument().shapes['ghost-round-trip'].polygon.outerRing).toEqual(
+        rect('x').polygon.outerRing
+      );
+    });
+  });
+
   describe('polygon creation (issue #48)', () => {
     it('test_pKey_startsPolygonCreation_andSetsCrosshairCursor', () => {
       const onCursorChange = vi.fn();

@@ -8,18 +8,15 @@ import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
 import { applyInteractionEffect } from './applyInteractionEffect';
 import { editorSession } from './useEditorSession';
+import { vertexInsertHitRadiusPx, type PolygonRingRef } from './hitTest';
 import {
-  isAxisAlignedRect,
-  polygonBounds,
-  resizeHandleAtPoint,
-  type ResizeHandleKind,
-} from './hitTest';
-import {
+  handleTargetAt,
   IDLE_STATE,
   movePreview,
   reduceInteraction,
   resizePreview,
   vertexEditPreview,
+  type HandleTarget,
   type InteractionEvent,
   type InteractionState,
   type PointerSample,
@@ -38,6 +35,48 @@ const DRAG_THROTTLE_MS = 16;
  */
 const RESIZE_HANDLE_HIT_RADIUS_PX = 10;
 
+/**
+ * Structural equality for two hover targets, so a pointer sliding along the
+ * same handle never re-renders the caller (`setState` bails out on the same
+ * reference).
+ */
+const sameHandleTarget = (a: HandleTarget | null, b: HandleTarget | null): boolean => {
+  if (a === null || b === null) {
+    return a === b;
+  }
+  if (a.kind !== b.kind || a.shapeId !== b.shapeId) {
+    return false;
+  }
+  switch (a.kind) {
+    case 'resizeHandle':
+      return b.kind === 'resizeHandle' && a.handle === b.handle;
+    case 'vertex':
+      return (
+        b.kind === 'vertex' &&
+        a.vertex.vertexIndex === b.vertex.vertexIndex &&
+        sameRingRef(a.vertex.ring, b.vertex.ring)
+      );
+    case 'insertVertex':
+      return (
+        b.kind === 'insertVertex' &&
+        a.hit.point.x === b.hit.point.x &&
+        a.hit.point.y === b.hit.point.y &&
+        a.hit.edge.edgeIndex === b.hit.edge.edgeIndex &&
+        sameRingRef(a.hit.edge.ring, b.hit.edge.ring)
+      );
+    case 'edge':
+      return (
+        b.kind === 'edge' &&
+        a.edge.edgeIndex === b.edge.edgeIndex &&
+        a.axis === b.axis &&
+        sameRingRef(a.edge.ring, b.edge.ring)
+      );
+  }
+};
+
+const sameRingRef = (a: PolygonRingRef, b: PolygonRingRef): boolean =>
+  a.kind === 'outer' ? b.kind === 'outer' : b.kind === 'inner' && a.holeIndex === b.holeIndex;
+
 interface UseEditorInteractionArgs {
   /** Pixel size of one grid cell. */
   readonly gridSize: number;
@@ -52,10 +91,12 @@ interface UseEditorInteractionResult {
   /** Live state machine value, for rendering the drag preview. */
   readonly state: InteractionState;
   /**
-   * The resize handle currently under the pointer while idle (issue #44),
-   * for hover cursor feedback before a drag starts. `null` off any handle.
+   * The handle currently under the pointer while idle — a resize handle
+   * (issue #44), a vertex or edge (issue #50), or a ghost vertex (issue #64)
+   * — for hover cursor feedback and the ghost marker before a drag starts.
+   * `null` off any handle.
    */
-  readonly hoveredHandle: ResizeHandleKind | null;
+  readonly hoverTarget: HandleTarget | null;
   readonly onPointerDown: (screenPoint: Position, shiftKey: boolean) => void;
   readonly onPointerMove: (screenPoint: Position, shiftKey: boolean) => void;
   readonly onPointerUp: (screenPoint: Position, shiftKey: boolean) => void;
@@ -85,8 +126,8 @@ export const useEditorInteraction = ({
   const [state, setState] = useState<InteractionState>(IDLE_STATE);
   /** Timestamp (`performance.now()`) of the last processed move while dragging. */
   const lastDragThrottleRef = useRef(0);
-  /** Resize handle under the pointer while idle (issue #44 hover cursor). */
-  const [hoveredHandle, setHoveredHandle] = useState<ResizeHandleKind | null>(null);
+  /** Handle under the pointer while idle (issues #44 / #50 / #64 hover feedback). */
+  const [hoverTarget, setHoverTarget] = useState<HandleTarget | null>(null);
 
   const toSample = useCallback(
     (screenPoint: Position, shiftKey: boolean): PointerSample => {
@@ -109,6 +150,17 @@ export const useEditorInteraction = ({
     (): number => RESIZE_HANDLE_HIT_RADIUS_PX / (gridSize * readViewportTransform().scale),
     [gridSize]
   );
+
+  /**
+   * Ghost-vertex snap radius in grid units at the *current* zoom
+   * (issue #64), or `null` when cells are drawn too small on screen to offer
+   * ghosts at all — see `vertexInsertHitRadiusPx` for the thresholds.
+   */
+  const insertHitRadiusInGridUnits = useCallback((): number | null => {
+    const cellPx = gridSize * readViewportTransform().scale;
+    const radiusPx = vertexInsertHitRadiusPx(cellPx);
+    return radiusPx === null ? null : radiusPx / cellPx;
+  }, [gridSize]);
 
   // The Konva-only move preview (issue #43, spec §14) is transient UI state
   // owned by this hook; clear it whenever the gesture leaves `moving` for any
@@ -175,7 +227,8 @@ export const useEditorInteraction = ({
         event,
         editorSession.getDocument(),
         useSelectionStore.getState().selectedIds,
-        handleHitRadiusInGridUnits()
+        handleHitRadiusInGridUnits(),
+        insertHitRadiusInGridUnits()
       );
       if (nextState !== stateRef.current) {
         stateRef.current = nextState;
@@ -191,6 +244,7 @@ export const useEditorInteraction = ({
     [
       isViewportInteracting,
       handleHitRadiusInGridUnits,
+      insertHitRadiusInGridUnits,
       syncMovePreview,
       syncResizePreview,
       syncVertexPreview,
@@ -202,48 +256,41 @@ export const useEditorInteraction = ({
       if (isViewportInteracting) {
         return;
       }
-      setHoveredHandle(null);
+      setHoverTarget(null);
       dispatchEvent({ type: 'pointerDown', sample: toSample(screenPoint, shiftKey) });
     },
     [dispatchEvent, toSample, isViewportInteracting]
   );
 
-  // Resize-handle hover cursor (issue #44): while idle, check whether the
-  // pointer sits over the single selected rectangle's handle so the cursor
-  // can hint the resize direction before any drag begins.
-  const updateHoveredHandle = useCallback(
+  // Hover feedback while idle (issues #44, #50, #64): resolve the handle
+  // under the pointer with the same priority the pointer-down uses, so the
+  // cursor (and the ghost-vertex marker) can hint what a press would do
+  // before any drag begins.
+  const updateHoverTarget = useCallback(
     (screenPoint: Position) => {
-      const selectedIds = useSelectionStore.getState().selectedIds;
-      if (selectedIds.length !== 1) {
-        setHoveredHandle((previous) => (previous === null ? previous : null));
-        return;
-      }
-      const shape = editorSession.getDocument().shapes[selectedIds[0]];
-      if (shape === undefined || !isAxisAlignedRect(shape.polygon)) {
-        setHoveredHandle((previous) => (previous === null ? previous : null));
-        return;
-      }
       const { precise } = toSample(screenPoint, false);
-      const handle = resizeHandleAtPoint(
-        polygonBounds(shape.polygon),
+      const next = handleTargetAt(
+        editorSession.getDocument(),
+        useSelectionStore.getState().selectedIds,
         precise,
-        handleHitRadiusInGridUnits()
+        handleHitRadiusInGridUnits(),
+        insertHitRadiusInGridUnits()
       );
-      setHoveredHandle((previous) => (previous === handle ? previous : handle));
+      setHoverTarget((previous) => (sameHandleTarget(previous, next) ? previous : next));
     },
-    [toSample, handleHitRadiusInGridUnits]
+    [toSample, handleHitRadiusInGridUnits, insertHitRadiusInGridUnits]
   );
 
   const onPointerMove = useCallback(
     (screenPoint: Position, shiftKey: boolean) => {
       if (stateRef.current.kind === 'idle') {
         if (!isViewportInteracting) {
-          updateHoveredHandle(screenPoint);
+          updateHoverTarget(screenPoint);
         }
         return;
       }
-      if (hoveredHandle !== null) {
-        setHoveredHandle(null);
+      if (hoverTarget !== null) {
+        setHoverTarget(null);
       }
       // Throttle only the drag paths that redraw a shape's Konva node every
       // move — moving (issue #43), resizing (issue #44), and vertex/edge
@@ -270,7 +317,7 @@ export const useEditorInteraction = ({
         lastDragThrottleRef.current = performance.now();
       }
     },
-    [dispatchEvent, toSample, isViewportInteracting, updateHoveredHandle, hoveredHandle]
+    [dispatchEvent, toSample, isViewportInteracting, updateHoverTarget, hoverTarget]
   );
 
   const onPointerUp = useCallback(
@@ -341,7 +388,7 @@ export const useEditorInteraction = ({
 
   return {
     state,
-    hoveredHandle,
+    hoverTarget,
     onPointerDown,
     onPointerMove,
     onPointerUp,

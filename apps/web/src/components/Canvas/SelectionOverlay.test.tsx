@@ -250,6 +250,36 @@ describe('SelectionOverlay', () => {
       expect(eastX).toBeGreaterThan(80);
     });
 
+    it('test_SelectionOverlay_vertexPreview_onTheRect_hidesHandles_andFrameFollowsPreview_issue64', () => {
+      const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
+      // A ghost-vertex drag pulled a new vertex out to (2,-3): the live
+      // polygon is no longer a rectangle, so no handles, and the frame grows.
+      const { container } = render(
+        <SelectionOverlay
+          document={document}
+          selectedIds={['a']}
+          gridSize={10}
+          scale={1}
+          vertexPreview={{
+            shapeId: 'a',
+            polygon: {
+              outerRing: [
+                { x: 0, y: 0 },
+                { x: 2, y: -3 },
+                { x: 4, y: 0 },
+                { x: 4, y: 4 },
+                { x: 0, y: 4 },
+              ],
+              innerRings: [],
+            },
+          }}
+        />
+      );
+      expect(container.querySelectorAll('[data-name^="resize-handle-"]')).toHaveLength(0);
+      const frame = container.querySelector('[data-name="selection-frame-a"]');
+      expect(Number(frame?.getAttribute('data-y'))).toBeLessThan(-30 + 1);
+    });
+
     it('test_SelectionOverlay_handleSize_isZoomInvariant', () => {
       const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
       const zoomedIn = render(

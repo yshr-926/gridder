@@ -1,22 +1,26 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo } from 'react';
 import { Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import type { GridPoint } from '@gridder/editor-core';
 import type { Position } from '@/types';
 import {
   editorSession,
   groupContaining,
   polygonDraftPreview,
+  polygonEdgeAxis,
   previewRegion,
   resizeCursorForHandle,
   resolveDoubleClickTarget,
   shapeAtPoint,
   useEditorInteraction,
+  type EdgeAxis,
+  type HandleTarget,
 } from '@/features/editor';
 import { readViewportTransform, screenToGrid } from '@/features/viewport';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { PolygonDraftLayer } from './PolygonDraftLayer';
 
-/** Cursor values this layer can report (issues #43, #44, #48). */
+/** Cursor values this layer can report (issues #43, #44, #48, #50, #64). */
 export type EditorInteractionCursor =
   | 'grab'
   | 'grabbing'
@@ -24,7 +28,19 @@ export type EditorInteractionCursor =
   | 'ns-resize'
   | 'nwse-resize'
   | 'nesw-resize'
+  | 'move'
+  | 'copy'
   | 'crosshair';
+
+/**
+ * A ghost vertex under the pointer (issue #64): the grid point on the single
+ * selected shape's edge where a press would insert a vertex. Reported to
+ * `GridCanvas` so `VertexEditOverlay` can draw it.
+ */
+export interface VertexInsertGhost {
+  readonly shapeId: string;
+  readonly point: GridPoint;
+}
 
 /**
  * Imperative handle for starting polygon creation from outside this layer
@@ -56,6 +72,11 @@ interface EditorInteractionLayerProps {
    */
   onCursorChange?: (cursor: EditorInteractionCursor | null) => void;
   /**
+   * Reports the ghost vertex under the pointer (issue #64), or `null` when
+   * there is none, so the caller can draw it in `VertexEditOverlay`.
+   */
+  onInsertGhostChange?: (ghost: VertexInsertGhost | null) => void;
+  /**
    * Reports whether polygon creation (issue #48) is currently active, so the
    * top-bar button can show its pressed state.
    */
@@ -68,6 +89,34 @@ const RESIZE_CURSOR: Record<'ew' | 'ns' | 'nwse' | 'nesw', EditorInteractionCurs
   ns: 'ns-resize',
   nwse: 'nwse-resize',
   nesw: 'nesw-resize',
+};
+
+/**
+ * Cursor for dragging or hovering an edge (issue #50): an axis-aligned edge
+ * slides perpendicular to itself, so the `ns` / `ew` axis is the one the
+ * edge does *not* run along; a diagonal edge moves freely.
+ */
+const EDGE_CURSOR: Record<EdgeAxis, EditorInteractionCursor> = {
+  horizontal: 'ns-resize',
+  vertical: 'ew-resize',
+  diagonal: 'move',
+};
+
+/** Cursor for whatever handle is under the idle pointer, or `null` off any handle. */
+const hoverCursor = (target: HandleTarget | null): EditorInteractionCursor | null => {
+  if (target === null) {
+    return null;
+  }
+  switch (target.kind) {
+    case 'resizeHandle':
+      return RESIZE_CURSOR[resizeCursorForHandle(target.handle)];
+    case 'vertex':
+      return 'move';
+    case 'insertVertex':
+      return 'copy';
+    case 'edge':
+      return EDGE_CURSOR[target.axis];
+  }
 };
 
 /** Blank-drag rectangle preview fill / stroke (accent, low alpha). */
@@ -96,10 +145,18 @@ const MARQUEE_PREVIEW_STROKE = '#475569';
 export const EditorInteractionLayer = forwardRef<
   EditorInteractionLayerHandle,
   EditorInteractionLayerProps
->(({ zoom, gridSize, isViewportInteracting, onCursorChange, onCreatingPolygonChange }, ref) => {
+>((props, ref) => {
+  const {
+    zoom,
+    gridSize,
+    isViewportInteracting,
+    onCursorChange,
+    onInsertGhostChange,
+    onCreatingPolygonChange,
+  } = props;
   const {
     state,
-    hoveredHandle,
+    hoverTarget,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -185,15 +242,17 @@ export const EditorInteractionLayer = forwardRef<
   );
 
   // Cursor feedback for the move gesture (spec §6.1, issue #43), the resize
-  // gesture (spec §6.2, issue #44), and polygon creation (spec §6.3,
-  // issue #48): `grabbing` once the drag is moving a shape, `grab` while the
-  // pointer is down on a shape but hasn't crossed the drag threshold yet,
-  // the matching `*-resize` axis cursor while a resize handle is grabbed or
-  // merely hovered, and `crosshair` for the whole polygon-creation gesture
-  // (so "移動と伸縮の境界をカーソルだけで理解できる" — ui-principles §8 — extends
-  // to telling direct manipulation apart from that modal gesture).
-  // Reported to the parent so it can be applied to the Stage container,
-  // matching how `#40`'s pan cursor is set on `GridCanvas`.
+  // gesture (spec §6.2, issue #44), vertex / edge dragging (issue #50), ghost
+  // vertices (issue #64), and polygon creation (spec §6.3, issue #48):
+  // `grabbing` once the drag is moving a shape, `grab` while the pointer is
+  // down on a shape but hasn't crossed the drag threshold yet, the matching
+  // `*-resize` axis cursor while a resize handle — or an axis-aligned edge —
+  // is grabbed or merely hovered, `move` for a vertex or a diagonal edge,
+  // `copy` over a ghost vertex (so "移動と伸縮の境界をカーソルだけで理解できる" —
+  // ui-principles §8 — also tells inserting apart from sliding the same edge),
+  // and `crosshair` for the whole polygon-creation gesture. Reported to the
+  // parent so it can be applied to the Stage container, matching how `#40`'s
+  // pan cursor is set on `GridCanvas`.
   const cursor: EditorInteractionCursor | null =
     state.kind === 'creatingPolygon'
       ? 'crosshair'
@@ -201,15 +260,29 @@ export const EditorInteractionLayer = forwardRef<
         ? RESIZE_CURSOR[resizeCursorForHandle(state.handle)]
         : state.kind === 'moving'
           ? 'grabbing'
-          : state.kind === 'pending' && state.hitShapeId !== null
-            ? 'grab'
-            : hoveredHandle !== null
-              ? RESIZE_CURSOR[resizeCursorForHandle(hoveredHandle)]
-              : null;
+          : state.kind === 'movingVertex'
+            ? 'move'
+            : state.kind === 'movingEdge'
+              ? EDGE_CURSOR[polygonEdgeAxis(state.originPolygon, state.edge)]
+              : state.kind === 'pending' && state.hitShapeId !== null
+                ? 'grab'
+                : hoverCursor(hoverTarget);
 
   useEffect(() => {
     onCursorChange?.(cursor);
   }, [cursor, onCursorChange]);
+
+  const insertGhost = useMemo<VertexInsertGhost | null>(
+    () =>
+      hoverTarget !== null && hoverTarget.kind === 'insertVertex'
+        ? { shapeId: hoverTarget.shapeId, point: hoverTarget.hit.point }
+        : null,
+    [hoverTarget]
+  );
+
+  useEffect(() => {
+    onInsertGhostChange?.(insertGhost);
+  }, [insertGhost, onInsertGhostChange]);
 
   useEffect(() => {
     onCreatingPolygonChange?.(state.kind === 'creatingPolygon');
