@@ -18,12 +18,12 @@ import {
 } from './document-mutations.js';
 
 /**
- * Commands that add, remove, or edit a single shape. Every geometry-producing
- * Command (move, resize, vertex edit, cell add/remove, boolean split) is
- * expressed through {@link ReplaceShapeVerticesCommand}: callers compute the new
- * polygon — including results of polygon boolean operations from issue #37 —
- * and hand the finished {@link GridPolygon} to this Command. editor-core does
- * not run the boolean operation itself.
+ * Commands that add, remove, or edit a single shape. Every single-shape
+ * geometry edit (move, resize, vertex edit) is expressed through
+ * {@link ReplaceShapeVerticesCommand}: callers compute the new polygon and
+ * hand the finished {@link GridPolygon} to this Command. Combining and
+ * subtracting whole shapes live in `boolean-commands.ts`, since their result
+ * spans several shapes.
  */
 
 export class CreateShapeCommand implements EditorCommand {

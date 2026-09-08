@@ -2,6 +2,7 @@ import { RotateCcw, RotateCw } from 'lucide-react';
 import { IconButton, Tooltip, TooltipProvider } from '../ui';
 import { rotateSelection, useSelectedShapes } from '@/features/editor';
 import { ShapeAppearance } from './ShapeAppearance';
+import { ShapeBooleanActions } from './ShapeBooleanActions';
 import { ShapeDimensions } from './ShapeDimensions';
 import { ShapeNameField } from './ShapeNameField';
 import { ShapeStructureActions } from './ShapeStructureActions';
@@ -13,8 +14,9 @@ import { ShapeStructureActions } from './ShapeStructureActions';
  * `canvasStore` is no longer involved. It renders only when something is
  * selected; a single selection gets name, dimensions and appearance, a
  * multi-selection or a group (issue #52, spec §7 / ui-principles §7) gets the
- * common appearance controls only. Every edit goes through an editor-core
- * Command so each change is a single Undo step.
+ * common appearance controls plus the combine / subtract operations that
+ * only make sense for two or more shapes (issue #62). Every edit goes
+ * through an editor-core Command so each change is a single Undo step.
  *
  * The panel is an overlay-free fixed-width column so digit / label changes never
  * move the canvas. Its entrance transition is `animate-inspector-in`
@@ -77,6 +79,7 @@ export const PropertyPanel = () => {
           </>
         )}
         <ShapeAppearance shapes={shapes} />
+        {!isSingle && <ShapeBooleanActions />}
         <ShapeStructureActions />
       </div>
     </aside>

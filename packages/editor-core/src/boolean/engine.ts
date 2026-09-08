@@ -3,10 +3,11 @@ import type { GridPolygon } from '../model.js';
 /**
  * A boolean operation between grid polygons.
  *
- * `union` merges cells into a shape (ADR-0001: adding a cell is a union with a
- * unit square). `difference` subtracts cells from a shape and may leave several
- * disconnected pieces, which the caller turns into independent shapes.
- * `intersection` is intentionally absent until a feature needs it.
+ * `union` merges whole shapes into one (ADR-0006: combining shapes is the
+ * union of their polygons). `difference` subtracts one shape from another and
+ * may leave several disconnected pieces, which the caller turns into
+ * independent shapes (ADR-0001). `intersection` is intentionally absent until
+ * a feature needs it.
  */
 export interface PolygonBooleanEngine {
   /**

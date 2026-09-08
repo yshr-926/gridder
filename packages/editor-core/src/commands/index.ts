@@ -23,3 +23,9 @@ export {
   UngroupShapesCommand,
 } from './structure-commands.js';
 export { RotateShapesCommand, type RotationDirection } from './rotate-commands.js';
+export {
+  CombineShapesCommand,
+  SubtractShapesCommand,
+  frontmostShapeId,
+  unionOfShapes,
+} from './boolean-commands.js';

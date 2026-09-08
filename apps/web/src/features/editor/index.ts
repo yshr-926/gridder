@@ -91,3 +91,4 @@ export {
   type DoubleClickTarget,
 } from './groupSelection';
 export { groupSelection, ungroupSelection } from './groupCommands';
+export { combineSelection, subtractSelection } from './booleanCommands';

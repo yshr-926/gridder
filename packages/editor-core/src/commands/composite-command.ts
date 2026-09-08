@@ -2,9 +2,9 @@ import type { EditorDocument } from '../model.js';
 import type { EditorCommand } from './command.js';
 
 /**
- * Runs several Commands as one history entry (spec §11): a cell-edit that splits
- * a shape into pieces, or a group operation that moves every member, records a
- * single undo step. `apply` runs the children in order; `invert` runs their
+ * Runs several Commands as one history entry (spec §11): a multi-shape move
+ * that translates every selected shape, or a delete that first dissolves an
+ * under-sized group, records a single undo step. `apply` runs the children in order; `invert` runs their
  * inverses in reverse, each computed against the intermediate document so the
  * round-trip is exact.
  */

@@ -79,6 +79,19 @@ describe('PropertyPanel', () => {
     // Single-only controls are gone.
     expect(screen.queryByLabelText('名前')).not.toBeInTheDocument();
     expect(screen.queryByText('寸法')).not.toBeInTheDocument();
+    // Multi-only operations appear (issue #62).
+    expect(screen.getByRole('button', { name: '結合' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'くり抜き' })).toBeInTheDocument();
+  });
+
+  it('test_PropertyPanel_singleSelection_hidesCombineAndSubtract', () => {
+    editorSession.dispatch(new CreateShapeCommand(makeRect('shape-1', 4)));
+    useSelectionStore.getState().selectOnly('shape-1');
+
+    render(<PropertyPanel />);
+
+    expect(screen.queryByRole('button', { name: '結合' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'くり抜き' })).not.toBeInTheDocument();
   });
 
   it('test_PropertyPanel_wholeGroupSelected_showsGroupHeading_andCommonAppearanceOnly', () => {
