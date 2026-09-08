@@ -114,14 +114,14 @@ describe('resolveDoubleClickTarget', () => {
     expect(resolveDoubleClickTarget(document, null, 'a')).toBe('enter-group');
   });
 
-  it('test_resolveDoubleClickTarget_groupedShape_alreadyActive_editsShape', () => {
+  it('test_resolveDoubleClickTarget_groupedShape_alreadyActive_doesNothing', () => {
     const document = documentWith(['a', 'b'], { 'group-1': ['a', 'b'] });
-    expect(resolveDoubleClickTarget(document, 'group-1', 'a')).toBe('edit-shape');
+    expect(resolveDoubleClickTarget(document, 'group-1', 'a')).toBe('none');
   });
 
-  it('test_resolveDoubleClickTarget_ungroupedShape_editsShape', () => {
+  it('test_resolveDoubleClickTarget_ungroupedShape_doesNothing', () => {
     const document = documentWith(['a', 'b']);
-    expect(resolveDoubleClickTarget(document, null, 'a')).toBe('edit-shape');
+    expect(resolveDoubleClickTarget(document, null, 'a')).toBe('none');
   });
 
   it('test_resolveDoubleClickTarget_memberOfDifferentGroup_entersThatGroup', () => {

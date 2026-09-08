@@ -89,16 +89,17 @@ export const resolveClickSelection = (
 };
 
 /**
- * What a double-click on `shapeId` should do (issue #52 / #49, per the
- * coordinator's split): `'enter-group'` when the shape belongs to a group
- * that isn't already entered — group mode lets its members be selected
- * individually. `'edit-shape'` covers every other case (an ungrouped shape,
- * or one already in the entered group) and is issue #49's cell-editing
- * double-click; this function only decides the branch; #49 implements what
- * `'edit-shape'` actually does. `'none'` is currently unreachable but kept so
- * callers exhaustively switch rather than assume only two outcomes.
+ * What a double-click on `shapeId` should do (issue #52): `'enter-group'`
+ * when the shape belongs to a group that isn't already entered — group mode
+ * lets its members be selected individually. `'none'` covers every other
+ * case (an ungrouped shape, or one already in the entered group): the
+ * cell-editing double-click that used to live here (issue #49) was retired
+ * by issue #62, and no other double-click action has replaced it. The
+ * function is kept as the single place a future double-click action (e.g.
+ * an issue #50 extension) would be resolved, so callers keep switching on
+ * the result rather than assuming a single outcome.
  */
-export type DoubleClickTarget = 'enter-group' | 'edit-shape' | 'none';
+export type DoubleClickTarget = 'enter-group' | 'none';
 
 export const resolveDoubleClickTarget = (
   document: EditorDocument,
@@ -109,7 +110,5 @@ export const resolveDoubleClickTarget = (
   if (group !== null && group.id !== activeGroupId) {
     return 'enter-group';
   }
-  // TODO(#49): cell-editing double-click (double-clicking an ungrouped shape,
-  // or a shape already inside its entered group) belongs here.
-  return 'edit-shape';
+  return 'none';
 };

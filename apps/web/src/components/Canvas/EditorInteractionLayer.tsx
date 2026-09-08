@@ -105,7 +105,6 @@ export const EditorInteractionLayer = forwardRef<
     onPointerUp,
     onPointerCancel,
     startPolygon,
-    enterShapeEdit,
   } = useEditorInteraction({
     gridSize,
     isViewportInteracting,
@@ -126,7 +125,7 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerDown(point, event.evt.shiftKey, event.evt.altKey);
+        onPointerDown(point, event.evt.shiftKey);
       }
     },
     [pointerFromEvent, onPointerDown]
@@ -136,7 +135,7 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerMove(point, event.evt.shiftKey, event.evt.altKey);
+        onPointerMove(point, event.evt.shiftKey);
       }
     },
     [pointerFromEvent, onPointerMove]
@@ -146,21 +145,20 @@ export const EditorInteractionLayer = forwardRef<
     (event: KonvaEventObject<PointerEvent>) => {
       const point = pointerFromEvent(event);
       if (point) {
-        onPointerUp(point, event.evt.shiftKey, event.evt.altKey);
+        onPointerUp(point, event.evt.shiftKey);
       }
     },
     [pointerFromEvent, onPointerUp]
   );
 
   /**
-   * A double-click resolves through `resolveDoubleClickTarget` (issue #52 /
-   * #49, split by agreement): `'enter-group'` — the shape belongs to a group
-   * not currently entered — puts that group into individual-selection mode
-   * with the double-clicked shape selected alone (spec §7 "ダブルクリックで
-   * 構成図形を個別選択できる"). `'edit-shape'` (an ungrouped shape, or one
-   * already inside its entered group) is issue #49's cell-editing double-click
-   * (spec §6.3 "図形をダブルクリックすると一時的な図形編集状態へ入る"). `'none'` is
-   * currently unreachable.
+   * A double-click resolves through `resolveDoubleClickTarget` (issue #52):
+   * `'enter-group'` — the shape belongs to a group not currently entered —
+   * puts that group into individual-selection mode with the double-clicked
+   * shape selected alone (spec §7 "ダブルクリックで構成図形を個別選択できる").
+   * `'none'` (an ungrouped shape, or one already inside its entered group)
+   * does nothing: the cell-editing double-click of issue #49 was retired by
+   * issue #62.
    */
   const handleDoubleClick = useCallback(
     (event: KonvaEventObject<MouseEvent>) => {
@@ -181,28 +179,23 @@ export const EditorInteractionLayer = forwardRef<
         if (group !== null) {
           useSelectionStore.getState().enterGroup(group.id, [shape.id]);
         }
-        return;
-      }
-      if (target === 'edit-shape') {
-        enterShapeEdit(shape.id);
       }
     },
-    [pointerFromEvent, gridSize, enterShapeEdit]
+    [pointerFromEvent, gridSize]
   );
 
   // Cursor feedback for the move gesture (spec §6.1, issue #43), the resize
   // gesture (spec §6.2, issue #44), and polygon creation (spec §6.3,
-  // issue #48), and cell editing (spec §6.3, issue #49): `grabbing` once the
-  // drag is moving a shape, `grab` while the pointer is down on a shape but
-  // hasn't crossed the drag threshold yet, the matching `*-resize` axis
-  // cursor while a resize handle is grabbed or merely hovered, and
-  // `crosshair` for the whole polygon-creation or shape-editing gesture (so
-  // "移動と伸縮の境界をカーソルだけで理解できる" — ui-principles §8 — extends to
-  // telling direct manipulation apart from these modal gestures).
+  // issue #48): `grabbing` once the drag is moving a shape, `grab` while the
+  // pointer is down on a shape but hasn't crossed the drag threshold yet,
+  // the matching `*-resize` axis cursor while a resize handle is grabbed or
+  // merely hovered, and `crosshair` for the whole polygon-creation gesture
+  // (so "移動と伸縮の境界をカーソルだけで理解できる" — ui-principles §8 — extends
+  // to telling direct manipulation apart from that modal gesture).
   // Reported to the parent so it can be applied to the Stage container,
   // matching how `#40`'s pan cursor is set on `GridCanvas`.
   const cursor: EditorInteractionCursor | null =
-    state.kind === 'creatingPolygon' || state.kind === 'editingShape'
+    state.kind === 'creatingPolygon'
       ? 'crosshair'
       : state.kind === 'resizing'
         ? RESIZE_CURSOR[resizeCursorForHandle(state.handle)]

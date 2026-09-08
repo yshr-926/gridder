@@ -15,7 +15,6 @@ import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
-import { useShapeEditPreviewStore } from '@/stores/shapeEditPreviewStore';
 import { ViewportGridBackground } from './ViewportGridBackground';
 import { ShapesLayer } from './ShapesLayer';
 import {
@@ -25,7 +24,6 @@ import {
 } from './EditorInteractionLayer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { VertexEditOverlay } from './VertexEditOverlay';
-import { ShapeEditLayer } from './ShapeEditLayer';
 import { DrawingRangeLayer } from './DrawingRangeLayer';
 import { DimensionLayer } from './DimensionLayer';
 import { debounceResize } from '@/utils/performance';
@@ -95,8 +93,6 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
   const resizePreview = useResizePreviewStore((state) => state.preview) ?? undefined;
   // 頂点・辺ドラッグ中の Konva ノード限定プレビュー（#50, spec §14）
   const vertexPreview = useVertexPreviewStore((state) => state.preview) ?? undefined;
-  // セル編集（図形編集状態）中の Konva ノード限定プレビュー（#49, spec §14）
-  const shapeEditPreview = useShapeEditPreviewStore((state) => state.preview) ?? undefined;
   // #43 の移動ジェスチャーが要求する grab/grabbing カーソル、
   // #44 のハンドルドラッグが要求する方向別カーソル
   const [interactionCursor, setInteractionCursor] = useState<EditorInteractionCursor | null>(
@@ -232,19 +228,6 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
             vertexPreview={vertexPreview}
           />
         </Layer>
-
-        {/* Shape Edit Layer: セル編集中は編集対象以外を薄く表示し、編集対象のセル
-            境界を示す（#49）。document 上の他図形の描画は変更せず、上から重ねる */}
-        {shapeEditPreview !== undefined && (
-          <Layer listening={false}>
-            <ShapeEditLayer
-              document={editorDocument}
-              shapeId={shapeEditPreview.shapeId}
-              workingPolygons={shapeEditPreview.workingPolygons}
-              gridSize={gridSize}
-            />
-          </Layer>
-        )}
 
         {/* Interaction Layer: editor-core の interaction controller（#42） */}
         <Layer>

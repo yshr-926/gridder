@@ -1,14 +1,5 @@
+import type { EditorDocument, GridPoint, GridPolygon } from '@gridder/editor-core';
 import {
-  createPolygonClippingEngine,
-  type EditorDocument,
-  type GridPoint,
-  type GridPolygon,
-  type PolygonBooleanEngine,
-} from '@gridder/editor-core';
-import {
-  cellAtPoint,
-  cellPolygon,
-  cellsEqual,
   edgeAtPoint,
   isAxisAlignedRect,
   polygonBounds,
@@ -27,24 +18,18 @@ import {
 } from './hitTest';
 
 /**
- * The polygon boolean Adapter used for the live cell-edit preview
- * (issue #49). `PolygonBooleanEngine` is stateless, so one module-level
- * instance is enough — the reducer stays a plain function without threading
- * a fresh engine through every call site.
- */
-const booleanEngine: PolygonBooleanEngine = createPolygonClippingEngine();
-
-/**
  * Pointer arbitration for the polygon editor's normal state (spec §6.1, §6.2,
- * §6.3, issues #42, #43, #44, #48, #49). One controller decides, from a
+ * §6.3, issues #42, #43, #44, #48, #50). One controller decides, from a
  * stream of pointer and keyboard events, whether the gesture is a
  * click-select, a Shift-toggle, a blank-drag rectangle, a Shift-drag
- * marquee, a shape-drag move, a handle-drag resize, a click-by-click polygon
- * creation, or a cell-drag shape edit — without adding tool modes for the
+ * marquee, a shape-drag move, a handle-drag resize, a vertex/edge drag, or a
+ * click-by-click polygon creation — without adding tool modes for the
  * direct-manipulation gestures. Polygon creation (spec §6.3 "一時的なポリゴン
- * 作成") and shape editing (spec §6.3 "一時的な図形編集状態") are the modal
- * exceptions ui-principles §2 allows, each entered explicitly (`P` / the
- * top-bar button, or a double-click) and exited via confirm or `Esc`.
+ * 作成") is the one modal exception ui-principles §2 allows, entered
+ * explicitly (`P` / the top-bar button) and exited via confirm or `Esc`.
+ * Cell editing (the former `editingShape` state of issue #49) was retired by
+ * issue #62 in favour of combining / subtracting whole shapes, which are
+ * plain Commands on the selection and never pass through this reducer.
  *
  * It is a pure reducer: {@link reduceInteraction} takes the current
  * {@link InteractionState}, one {@link InteractionEvent}, the document, the
@@ -63,8 +48,6 @@ export interface PointerSample {
   readonly precise: GridPoint;
   /** Whether Shift was held for this event. */
   readonly shiftKey: boolean;
-  /** Whether Alt/Option was held for this event (issue #49 cell removal). */
-  readonly altKey?: boolean;
 }
 
 export type InteractionState =
@@ -133,39 +116,6 @@ export type InteractionState =
       readonly originPolygon: GridPolygon;
       /** Live polygon with both of `edge`'s endpoints translated by the drag delta. */
       readonly currentPolygon: GridPolygon;
-    }
-  | {
-      readonly kind: 'editingShape';
-      readonly shapeId: string;
-      /** The shape's polygon when editing began — restored on `Esc`. */
-      readonly originalPolygon: GridPolygon;
-      /**
-       * The live preview: every completed stroke so far, plus the
-       * in-progress stroke's cells applied on top (issue #49). Usually one
-       * polygon; a `difference` that disconnects the shape leaves more than
-       * one here, each previewed and eligible for further edits until
-       * confirm splits them into real shapes (ADR-0001). Nothing here is
-       * committed to the document until `confirmShapeEdit`.
-       */
-      readonly workingPolygons: readonly GridPolygon[];
-      /**
-       * `workingPolygons` as of the end of the *previous* stroke — the
-       * baseline the in-progress stroke's cells are replayed against on
-       * every pointer move, so recomputing never compounds the boolean op
-       * onto its own prior output. Equal to `workingPolygons` whenever
-       * `stroke` is `null`.
-       */
-      readonly strokeBaseline: readonly GridPolygon[];
-      /**
-       * The in-progress drag stroke, or `null` between strokes. `isRemoving`
-       * is fixed for the whole stroke from the pointer-down's Alt state;
-       * `cells` accumulates every distinct cell the pointer has crossed
-       * this stroke, in encounter order.
-       */
-      readonly stroke: {
-        readonly isRemoving: boolean;
-        readonly cells: readonly GridRect[];
-      } | null;
     };
 
 export type InteractionEvent =
@@ -182,17 +132,7 @@ export type InteractionEvent =
   /** `Enter`, only meaningful while `creatingPolygon`. */
   | { readonly type: 'confirmPolygon' }
   /** `Esc`, only meaningful while `creatingPolygon`. */
-  | { readonly type: 'cancelPolygon' }
-  /**
-   * Double-click on a shape (issue #49, spec §6.3): enters cell-edit mode
-   * for that shape. Only takes effect from `idle` — double-clicking during
-   * another gesture does nothing.
-   */
-  | { readonly type: 'doubleClickShape'; readonly shapeId: string }
-  /** `Enter`, only meaningful while `editingShape`. */
-  | { readonly type: 'confirmShapeEdit' }
-  /** `Esc`, only meaningful while `editingShape`. */
-  | { readonly type: 'cancelShapeEdit' };
+  | { readonly type: 'cancelPolygon' };
 
 export type InteractionEffect =
   | { readonly type: 'selectOnly'; readonly shapeId: string }
@@ -231,21 +171,6 @@ export type InteractionEffect =
        * the shape at its pre-gesture geometry.
        */
       readonly polygon: GridPolygon;
-    }
-  | {
-      readonly type: 'commitShapeEdit';
-      readonly shapeId: string;
-      /** The polygon the shape had before this cell-edit gesture began. */
-      readonly originalPolygon: GridPolygon;
-      /**
-       * The result polygons as of the last completed stroke (issue #49). One
-       * entry replaces the shape in place; more than one means a `difference`
-       * disconnected it and the caller splits it into that many shapes
-       * (ADR-0001), each inheriting the original name and style under a new
-       * id; zero entries means the shape was fully erased and the caller
-       * deletes it.
-       */
-      readonly resultPolygons: readonly GridPolygon[];
     };
 
 export interface InteractionResult {
@@ -275,50 +200,11 @@ const movedEnough = (from: GridPoint, to: GridPoint): boolean =>
 const boundsEqual = (a: GridRect, b: GridRect): boolean =>
   a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
 
-/**
- * A stable string key for a {@link GridPolygon}'s exact vertex data (issue
- * #49): used only to detect "no change at all" before committing a shape
- * edit, never to compare polygons that differ merely by vertex rotation or
- * winding — those already come out normalised and consistent from the
- * boolean engine within one editing session.
- */
-const polygonKey = (polygon: GridPolygon): string => {
-  const ringKey = (ring: readonly GridPoint[]): string =>
-    ring.map((point) => `${point.x},${point.y}`).join('|');
-  return [ringKey(polygon.outerRing), ...polygon.innerRings.map(ringKey)].join(';');
-};
-
 /** Whole-grid-unit offset from `origin` to `current` (issue #43 move delta). */
 const gridDelta = (origin: GridPoint, current: GridPoint): GridPoint => ({
   x: current.x - origin.x,
   y: current.y - origin.y,
 });
-
-/**
- * Applies one cell-drag stroke to the shape's current working polygons
- * (issue #49, ADR-0001): a plain drag unions every touched cell into the
- * shape; an Alt-drag subtracts them instead, applied independently to each
- * working polygon so a `difference` that disconnects one piece never
- * touches the others. `union` never disconnects a single starting polygon,
- * so it always collapses back to exactly one result; `difference` may leave
- * more than one (a split) or none at all (the shape fully erased).
- */
-const applyCellStroke = (
-  workingPolygons: readonly GridPolygon[],
-  strokeCells: readonly GridRect[],
-  isRemoving: boolean
-): readonly GridPolygon[] => {
-  if (strokeCells.length === 0) {
-    return workingPolygons;
-  }
-  const cellPolygons = strokeCells.map(cellPolygon);
-  if (isRemoving) {
-    return workingPolygons.flatMap((polygon) =>
-      booleanEngine.difference(polygon, cellPolygons)
-    );
-  }
-  return booleanEngine.union([...workingPolygons, ...cellPolygons]);
-};
 
 /**
  * The marquee / rectangle region currently being dragged, in grid units, or
@@ -355,19 +241,12 @@ export const reduceInteraction = (
   handleHitRadius = 0
 ): InteractionResult => {
   // A stray pointer-cancel (e.g. losing capture mid-drag) resets any active
-  // drag gesture, but never interrupts polygon creation (issue #48) or
-  // shape editing (issue #49) — those modes have no pointer capture of
-  // their own to lose, and only `Esc` / their `cancel*` event should
-  // discard them. Mid-stroke while `editingShape`, it drops just the
-  // in-progress stroke, matching a plain pointer-up with no further move.
+  // drag gesture, but never interrupts polygon creation (issue #48) — that
+  // mode has no pointer capture of its own to lose, and only `Esc` /
+  // `cancelPolygon` should discard it.
   if (event.type === 'pointerCancel') {
     if (state.kind === 'creatingPolygon') {
       return { state };
-    }
-    if (state.kind === 'editingShape') {
-      return {
-        state: { ...state, workingPolygons: state.strokeBaseline, stroke: null },
-      };
     }
     return { state: IDLE_STATE };
   }
@@ -396,57 +275,6 @@ export const reduceInteraction = (
       return { state };
     }
     return { state: IDLE_STATE, effect: { type: 'createPolygon', vertices: state.vertices } };
-  }
-
-  // `doubleClickShape` / `confirmShapeEdit` / `cancelShapeEdit` are the
-  // keyboard- and gesture-driven controls for cell editing (issue #49, spec
-  // §6.3), handled the same way as the polygon-creation triad above: entry
-  // only from `idle`, confirm / cancel only while already `editingShape`.
-  if (event.type === 'doubleClickShape') {
-    if (state.kind !== 'idle') {
-      return { state };
-    }
-    const shape = document.shapes[event.shapeId];
-    if (shape === undefined) {
-      return { state };
-    }
-    return {
-      state: {
-        kind: 'editingShape',
-        shapeId: shape.id,
-        originalPolygon: shape.polygon,
-        workingPolygons: [shape.polygon],
-        strokeBaseline: [shape.polygon],
-        stroke: null,
-      },
-    };
-  }
-  if (event.type === 'cancelShapeEdit') {
-    if (state.kind !== 'editingShape') {
-      return { state };
-    }
-    return { state: IDLE_STATE };
-  }
-  if (event.type === 'confirmShapeEdit') {
-    if (state.kind !== 'editingShape') {
-      return { state };
-    }
-    // No net change at all: nothing to commit, not even a no-op Command.
-    if (
-      state.workingPolygons.length === 1 &&
-      polygonKey(state.workingPolygons[0]) === polygonKey(state.originalPolygon)
-    ) {
-      return { state: IDLE_STATE };
-    }
-    return {
-      state: IDLE_STATE,
-      effect: {
-        type: 'commitShapeEdit',
-        shapeId: state.shapeId,
-        originalPolygon: state.originalPolygon,
-        resultPolygons: state.workingPolygons,
-      },
-    };
   }
 
   switch (state.kind) {
@@ -760,48 +588,6 @@ export const reduceInteraction = (
       }
       return { state };
     }
-
-    case 'editingShape': {
-      // Selecting another shape is disallowed while editing (issue #49
-      // "編集中は他の図形を選択できない"): a pointer-down starts a cell-drag stroke
-      // regardless of what is under the pointer, rather than hit-testing for
-      // a different shape to select.
-      if (event.type === 'pointerDown') {
-        const cell = cellAtPoint(event.sample.precise);
-        const isRemoving = event.sample.altKey ?? false;
-        const workingPolygons = applyCellStroke(state.strokeBaseline, [cell], isRemoving);
-        return {
-          state: { ...state, workingPolygons, stroke: { isRemoving, cells: [cell] } },
-        };
-      }
-      if (event.type === 'pointerMove') {
-        if (state.stroke === null) {
-          return { state };
-        }
-        const cell = cellAtPoint(event.sample.precise);
-        const lastCell = state.stroke.cells[state.stroke.cells.length - 1];
-        if (lastCell !== undefined && cellsEqual(lastCell, cell)) {
-          return { state };
-        }
-        const cells = [...state.stroke.cells, cell];
-        // Always replay every cell this stroke has touched against the
-        // pre-stroke baseline, rather than folding just this move's cell
-        // into the live preview — the boolean op is not associative enough
-        // to stack safely (e.g. a difference already covering a cell must
-        // stay idempotent), so a clean replay is the only way the preview
-        // matches what pointer-up will finalize.
-        const workingPolygons = applyCellStroke(state.strokeBaseline, cells, state.stroke.isRemoving);
-        return { state: { ...state, workingPolygons, stroke: { ...state.stroke, cells } } };
-      }
-      if (event.type === 'pointerUp') {
-        // The stroke's result (already the live preview) becomes the new
-        // baseline for the next stroke; a plain click with no drag leaves
-        // exactly one cell's worth of edit, matching the issue's "セルのドラッグ
-        // で領域を追加" for a single cell too.
-        return { state: { ...state, strokeBaseline: state.workingPolygons, stroke: null } };
-      }
-      return { state };
-    }
   }
 };
 
@@ -872,20 +658,4 @@ export const vertexEditPreview = (
     return null;
   }
   return { shapeId: state.shapeId, polygon: state.currentPolygon };
-};
-
-/**
- * Live cell-edit state, or `null` when not editing a shape (issue #49, spec
- * §6.3 / §14). The caller draws the edited shape from `workingPolygons`
- * instead of its document geometry, dims every other shape, and shows the
- * cell grid over the edited shape's footprint; the document is untouched
- * until confirm.
- */
-export const shapeEditPreview = (
-  state: InteractionState
-): { readonly shapeId: string; readonly workingPolygons: readonly GridPolygon[] } | null => {
-  if (state.kind !== 'editingShape') {
-    return null;
-  }
-  return { shapeId: state.shapeId, workingPolygons: state.workingPolygons };
 };

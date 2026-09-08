@@ -18,4 +18,3 @@ export { DrawingRangeLayer } from './DrawingRangeLayer';
 export { DimensionLayer } from './DimensionLayer';
 export { PolygonDraftLayer } from './PolygonDraftLayer';
 export { VertexEditOverlay, type VertexEditOverlayPreview } from './VertexEditOverlay';
-export { ShapeEditLayer } from './ShapeEditLayer';

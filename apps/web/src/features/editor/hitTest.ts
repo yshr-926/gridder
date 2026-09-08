@@ -312,27 +312,6 @@ export const ringFromRect = (bounds: GridRect): GridRing => [
 ];
 
 /**
- * The unit grid cell (a 1x1 {@link GridRect}) containing `point`, floored to
- * its lower-left corner (issue #49, spec §6.3 cell editing). Used to resolve
- * a precise pointer position to the cell a drag adds or removes.
- */
-export const cellAtPoint = (point: GridPoint): GridRect => {
-  const minX = Math.floor(point.x);
-  const minY = Math.floor(point.y);
-  return { minX, minY, maxX: minX + 1, maxY: minY + 1 };
-};
-
-/** The 4-vertex unit-square {@link GridPolygon} for one grid cell (issue #49). */
-export const cellPolygon = (cell: GridRect): GridPolygon => ({
-  outerRing: ringFromRect(cell),
-  innerRings: [],
-});
-
-/** Structural equality for two {@link GridRect} cells (issue #49 drag stroke). */
-export const cellsEqual = (a: GridRect, b: GridRect): boolean =>
-  a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
-
-/**
  * Identifies one ring of a {@link GridPolygon} — the outer boundary or one
  * numbered hole (issue #50, spec §6.2 "ポリゴンは...頂点・辺を直接動かして変形する").
  * A hole's vertices are edited exactly like the outer ring's; this is only how

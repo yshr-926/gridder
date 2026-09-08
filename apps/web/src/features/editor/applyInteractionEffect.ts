@@ -1,12 +1,10 @@
 import {
   CompositeCommand,
   CreateShapeCommand,
-  DeleteShapeCommand,
   doubleSignedArea,
   isSimplePolygon,
   ReplaceShapeVerticesCommand,
   type EditorCommand,
-  type EditorShape,
   type GridPoint,
   type GridPolygon,
   type GridRing,
@@ -71,14 +69,7 @@ const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
  * `createRect`. `updateShapeVertices` (issue #50, vertex/edge direct
  * manipulation) validates the proposed polygon the same way, additionally
  * rejecting a zero-area result, before committing one
- * {@link ReplaceShapeVerticesCommand}. `commitShapeEdit` (issue #49, cell
- * editing) reconciles the edited shape's original polygon against the
- * boolean-op result computed live by the interaction controller: one result
- * polygon replaces the shape in place, more than one splits it into that
- * many shapes (ADR-0001) each inheriting the original name and style under
- * a new id, and zero results deletes the shape — always as a single
- * {@link CompositeCommand} (or the lone Command when there is only one),
- * so the whole edit is one undo step back to the pre-edit shape.
+ * {@link ReplaceShapeVerticesCommand}.
  */
 export const applyInteractionEffect = (
   session: EditorSession,
@@ -216,58 +207,6 @@ export const applyInteractionEffect = (
         return;
       }
       session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, effect.polygon));
-      return;
-    }
-    case 'commitShapeEdit': {
-      const document = session.getDocument();
-      const shape = document.shapes[effect.shapeId];
-      if (shape === undefined) {
-        return;
-      }
-      const { resultPolygons } = effect;
-
-      if (resultPolygons.length === 0) {
-        // Every cell was removed: the shape is gone (spec §49 "図形が空になっ
-        // た場合の扱い"). One DeleteShapeCommand round-trips it on undo,
-        // same as any other delete.
-        session.dispatch(new DeleteShapeCommand(effect.shapeId));
-        selection.clear();
-        return;
-      }
-
-      if (resultPolygons.length === 1) {
-        // Grown, shrunk, or gained/lost a hole, but stayed one connected
-        // region: replace the shape's geometry in place, keeping its id,
-        // name, style, and z-order slot untouched.
-        session.dispatch(new ReplaceShapeVerticesCommand(effect.shapeId, resultPolygons[0]));
-        selection.selectOnly(effect.shapeId);
-        return;
-      }
-
-      // A `difference` disconnected the shape into several regions
-      // (ADR-0001 "差演算によって図形が複数の非連結領域へ分かれた場合は、それぞれ
-      // を独立した図形にする"): the original id keeps the first (largest,
-      // per the boolean engine's ordering) region so any other Command that
-      // still refers to this id keeps working, and every remaining region
-      // becomes a new shape with a fresh id, right above the original in
-      // z-order, inheriting its name and style. The whole split is one
-      // Command.
-      const [firstPolygon, ...restPolygons] = resultPolygons;
-      const zIndex = document.zOrder.indexOf(effect.shapeId);
-      const newShapes: EditorShape[] = restPolygons.map((polygon) => ({
-        id: generateId('shape'),
-        polygon,
-        style: shape.style,
-        ...(shape.name === undefined ? {} : { name: shape.name }),
-      }));
-      const commands: EditorCommand[] = [
-        new ReplaceShapeVerticesCommand(effect.shapeId, firstPolygon),
-        ...newShapes.map(
-          (newShape, index) => new CreateShapeCommand(newShape, zIndex + 1 + index)
-        ),
-      ];
-      session.dispatch(new CompositeCommand(commands, 'Edit shape (split)'));
-      selection.setSelection([effect.shapeId, ...newShapes.map((newShape) => newShape.id)]);
       return;
     }
   }

@@ -6,7 +6,6 @@ import { editorSession } from '@/features/editor';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
-import { useShapeEditPreviewStore } from '@/stores/shapeEditPreviewStore';
 import { useToastStore } from '@/hooks/useToast';
 
 /**
@@ -34,9 +33,8 @@ vi.mock('react-konva', () => ({
       clientX?: number;
       clientY?: number;
       shiftKey?: boolean;
-      altKey?: boolean;
     }) => ({
-      evt: { shiftKey: e.shiftKey ?? false, altKey: e.altKey ?? false },
+      evt: { shiftKey: e.shiftKey ?? false },
       target: {
         getStage: () => ({
           getPointerPosition: () => ({ x: e.clientX ?? 0, y: e.clientY ?? 0 }),
@@ -60,7 +58,6 @@ vi.mock('react-konva', () => ({
                       clientX: number;
                       clientY: number;
                       shiftKey: boolean;
-                      altKey: boolean;
                     }
                   )
                 )
@@ -75,7 +72,6 @@ vi.mock('react-konva', () => ({
                       clientX: number;
                       clientY: number;
                       shiftKey: boolean;
-                      altKey: boolean;
                     }
                   )
                 )
@@ -90,7 +86,6 @@ vi.mock('react-konva', () => ({
                       clientX: number;
                       clientY: number;
                       shiftKey: boolean;
-                      altKey: boolean;
                     }
                   )
                 )
@@ -152,7 +147,6 @@ describe('EditorInteractionLayer', () => {
     useSelectionStore.setState({ selectedIds: [], primaryId: null, activeGroupId: null });
     useMovePreviewStore.setState({ preview: null });
     useResizePreviewStore.setState({ preview: null });
-    useShapeEditPreviewStore.setState({ preview: null });
     useToastStore.setState({ toasts: [] });
   });
 
@@ -851,232 +845,11 @@ describe('EditorInteractionLayer', () => {
       const node = surface(container);
 
       // Double-clicking 'a' again — already the entered group's member —
-      // resolves to 'edit-shape' (issue #49 territory), not another
-      // enter-group; group mode simply stays as it was.
+      // resolves to 'none' (issue #62 retired the cell-editing branch), not
+      // another enter-group; group mode simply stays as it was.
       fireEvent.doubleClick(node, { clientX: 20, clientY: 20 });
 
       expect(useSelectionStore.getState().activeGroupId).toBe('group-1');
-    });
-  });
-
-  describe('shape cell editing (issue #49)', () => {
-    it('test_doubleClick_ungroupedShape_entersEditingShape_withCrosshairCursor', () => {
-      editorSession.dispatch(
-        new CreateShapeCommand({
-          id: 'a',
-          polygon: { outerRing: [
-            { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-          ], innerRings: [] },
-          style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-        })
-      );
-      const onCursorChange = vi.fn();
-      const { container } = render(
-        <EditorInteractionLayer {...defaultProps} onCursorChange={onCursorChange} />
-      );
-      const node = surface(container);
-
-      // Double-click inside shape 'a': grid (1,1) => px (20,20).
-      fireEvent.doubleClick(node, { clientX: 20, clientY: 20 });
-
-      expect(useShapeEditPreviewStore.getState().preview?.shapeId).toBe('a');
-      expect(onCursorChange).toHaveBeenLastCalledWith('crosshair');
-    });
-
-    it('test_cellDrag_addsACell_thenEnter_commitsOneCommand_growsTheShape', () => {
-      const shapesBefore = editorSession.shapeCount;
-      editorSession.dispatch(
-        new CreateShapeCommand({
-          id: 'a',
-          polygon: { outerRing: [
-            { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-          ], innerRings: [] },
-          style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-        })
-      );
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 20, clientY: 20 });
-      // Cell (2,0)-(3,1) at gridSize 20 => precise point (2.5, 0.5) => px (50, 10).
-      fireEvent.pointerDown(node, { clientX: 50, clientY: 10 });
-      fireEvent.pointerUp(node, { clientX: 50, clientY: 10 });
-      fireEvent.keyDown(window, { key: 'Enter' });
-
-      expect(editorSession.shapeCount).toBe(shapesBefore + 1);
-      expect(editorSession.getDocument().shapes['a'].polygon.outerRing).toEqual([
-        { x: 0, y: 0 },
-        { x: 3, y: 0 },
-        { x: 3, y: 1 },
-        { x: 2, y: 1 },
-        { x: 2, y: 2 },
-        { x: 0, y: 2 },
-      ]);
-      expect(useShapeEditPreviewStore.getState().preview).toBeNull();
-
-      // One undo restores the pre-edit 1-shape geometry.
-      editorSession.undo();
-      expect(editorSession.getDocument().shapes['a'].polygon.outerRing).toEqual([
-        { x: 0, y: 0 },
-        { x: 2, y: 0 },
-        { x: 2, y: 2 },
-        { x: 0, y: 2 },
-      ]);
-    });
-
-    it('test_altCellDrag_removesACellCreatingAHole_thenEnter_commitsOneShape_undoRestores', () => {
-      const original = {
-        id: 'a',
-        polygon: { outerRing: [
-          { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 3 }, { x: 0, y: 3 },
-        ], innerRings: [] },
-        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      editorSession.dispatch(new CreateShapeCommand(original));
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 30, clientY: 30 }); // inside, grid (1.5,1.5)
-      // Alt-drag over the centre cell (1,1)-(2,2): precise (1.5,1.5) => px (30,30).
-      fireEvent.pointerDown(node, { clientX: 30, clientY: 30, altKey: true });
-      fireEvent.pointerUp(node, { clientX: 30, clientY: 30, altKey: true });
-      fireEvent.keyDown(window, { key: 'Enter' });
-
-      const document = editorSession.getDocument();
-      expect(document.zOrder).toEqual(['a']);
-      expect(document.shapes['a'].polygon.innerRings).toHaveLength(1);
-
-      editorSession.undo();
-      expect(editorSession.getDocument().shapes['a'].polygon).toEqual(original.polygon);
-    });
-
-    it('test_altCellDrag_disconnectsTheShape_thenEnter_splitsIntoTwoShapes_oneUndoRestoresOne', () => {
-      const strip = {
-        id: 'a',
-        polygon: { outerRing: [
-          { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 1 }, { x: 0, y: 1 },
-        ], innerRings: [] },
-        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      editorSession.dispatch(new CreateShapeCommand(strip));
-      const shapesBefore = editorSession.shapeCount;
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 10, clientY: 10 }); // inside, grid (0.5, 0.5)
-      // Alt-drag over the middle cell (1,0)-(2,1): precise (1.5,0.5) => px (30,10).
-      fireEvent.pointerDown(node, { clientX: 30, clientY: 10, altKey: true });
-      fireEvent.pointerUp(node, { clientX: 30, clientY: 10, altKey: true });
-      fireEvent.keyDown(window, { key: 'Enter' });
-
-      const document = editorSession.getDocument();
-      expect(document.zOrder).toHaveLength(2);
-      expect(document.zOrder[0]).toBe('a');
-      expect(editorSession.shapeCount).toBe(shapesBefore + 1);
-
-      // One undo restores the single original strip.
-      editorSession.undo();
-      const reverted = editorSession.getDocument();
-      expect(reverted.zOrder).toEqual(['a']);
-      expect(reverted.shapes['a'].polygon).toEqual(strip.polygon);
-    });
-
-    it('test_altCellDrag_removingTheWholeShape_thenEnter_deletesIt_undoRestoresIt', () => {
-      const shapesBefore = editorSession.shapeCount;
-      const tiny = {
-        id: 'a',
-        polygon: { outerRing: [
-          { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
-        ], innerRings: [] },
-        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      editorSession.dispatch(new CreateShapeCommand(tiny));
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 10, clientY: 10 });
-      fireEvent.pointerDown(node, { clientX: 10, clientY: 10, altKey: true });
-      fireEvent.pointerUp(node, { clientX: 10, clientY: 10, altKey: true });
-      fireEvent.keyDown(window, { key: 'Enter' });
-
-      expect(editorSession.getDocument().zOrder).toEqual([]);
-      expect(editorSession.shapeCount).toBe(shapesBefore);
-
-      editorSession.undo();
-      const restored = editorSession.getDocument();
-      expect(restored.zOrder).toEqual(['a']);
-      expect(restored.shapes['a'].polygon).toEqual(tiny.polygon);
-    });
-
-    it('test_escapeKey_discardsTheEdit_documentUnchanged', () => {
-      const original = {
-        id: 'a',
-        polygon: { outerRing: [
-          { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-        ], innerRings: [] },
-        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      editorSession.dispatch(new CreateShapeCommand(original));
-      const shapesBefore = editorSession.shapeCount;
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 20, clientY: 20 });
-      fireEvent.pointerDown(node, { clientX: 50, clientY: 10 });
-      fireEvent.pointerUp(node, { clientX: 50, clientY: 10 });
-      fireEvent.keyDown(window, { key: 'Escape' });
-
-      expect(editorSession.shapeCount).toBe(shapesBefore);
-      expect(editorSession.getDocument().shapes['a'].polygon).toEqual(original.polygon);
-      expect(useShapeEditPreviewStore.getState().preview).toBeNull();
-    });
-
-    it('test_whileEditing_pointerDownOnAnotherShape_doesNotSelectIt_continuesTheStroke', () => {
-      const a = {
-        id: 'a',
-        polygon: { outerRing: [
-          { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-        ], innerRings: [] },
-        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      const b = {
-        id: 'b',
-        polygon: { outerRing: [
-          { x: 10, y: 10 }, { x: 12, y: 10 }, { x: 12, y: 12 }, { x: 10, y: 12 },
-        ], innerRings: [] },
-        style: { fill: '#ef4444' as const, opacity: 0.8, isBorderVisible: true },
-      };
-      editorSession.dispatch(new CreateShapeCommand(a));
-      editorSession.dispatch(new CreateShapeCommand(b));
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 20, clientY: 20 }); // enters editing 'a'
-      // Pointer down where 'b' lives — must not select it.
-      fireEvent.pointerDown(node, { clientX: 220, clientY: 220 });
-
-      expect(useSelectionStore.getState().selectedIds).not.toEqual(['b']);
-      expect(useShapeEditPreviewStore.getState().preview?.shapeId).toBe('a');
-    });
-
-    it('test_pKey_whileEditingAShape_doesNotStartPolygonCreation', () => {
-      editorSession.dispatch(
-        new CreateShapeCommand({
-          id: 'a',
-          polygon: { outerRing: [
-            { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-          ], innerRings: [] },
-          style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
-        })
-      );
-      const { container } = render(<EditorInteractionLayer {...defaultProps} />);
-      const node = surface(container);
-
-      fireEvent.doubleClick(node, { clientX: 20, clientY: 20 });
-      fireEvent.keyDown(window, { key: 'p' });
-
-      // Still editing the shape — P did not interrupt it or start a polygon.
-      expect(useShapeEditPreviewStore.getState().preview?.shapeId).toBe('a');
     });
   });
 });

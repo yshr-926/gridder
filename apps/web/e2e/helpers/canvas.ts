@@ -35,12 +35,11 @@ const readViewport = (page: Page): Promise<ViewportSnapshot> =>
  * A pause longer than the browser's own double-click detection window.
  * Two clicks (or a drag's mouseup followed by another mousedown) landing
  * within that window fire a native `dblclick` — which this app's canvas
- * treats as "enter cell-editing / group mode" (spec §6.3, issue #52) —
- * regardless of how far apart their coordinates are. Without a pause between
- * unrelated gestures, one test's rect-drag mouseup and the next gesture's
- * mousedown can land inside that window and silently switch to
- * `editingShape`, so every gesture below waits this long once it has
- * released the mouse button.
+ * treats as "enter group mode" (spec §7, issue #52) — regardless of how far
+ * apart their coordinates are. Without a pause between unrelated gestures,
+ * one test's rect-drag mouseup and the next gesture's mousedown can land
+ * inside that window and silently enter a group, so every gesture below
+ * waits this long once it has released the mouse button.
  */
 const DBLCLICK_CLEAR_MS = 500;
 
@@ -119,7 +118,7 @@ export class CanvasHelper {
     await this.page.waitForTimeout(DBLCLICK_CLEAR_MS);
   }
 
-  /** Double-click at a grid vertex (enters group / cell-editing mode). */
+  /** Double-click at a grid vertex (enters group mode). */
   async doubleClickGrid(gridX: number, gridY: number): Promise<void> {
     const { x, y } = await this.gridToScreen(gridX, gridY);
     await this.page.mouse.dblclick(x, y);
