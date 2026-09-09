@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridPolygon,
@@ -62,6 +63,7 @@ const holedPolygon: GridPolygon = {
 
 const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map(shape => [shape.id, shape])),
   zOrder: shapes.map(shape => shape.id),
   groups: {},

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridPolygon,
@@ -38,6 +39,7 @@ const rectangle = (id: string, offsetX: number): EditorShape => ({
 
 const baseDocument = (): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: {
     'shape-a': rectangle('shape-a', 0),
     'shape-b': rectangle('shape-b', 6),

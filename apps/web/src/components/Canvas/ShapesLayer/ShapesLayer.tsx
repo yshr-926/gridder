@@ -101,13 +101,26 @@ ShapeItem.displayName = 'ShapeItem';
 
 interface ShapeAnnotationItemProps extends ShapeItemProps {
   readonly scale: number;
+  /** The document's sketch-wide annotation font size (issue #66). */
+  readonly fontSize: number;
 }
 
-/** One shape's name annotation inside its move-preview group; see {@link ShapeItem}. */
+/**
+ * One shape's name annotation inside its move-preview group; see
+ * {@link ShapeItem}. `fontSize` is the one document-level value the label
+ * needs, handed over as a number so a document change that leaves the size
+ * alone (a move elsewhere, a rename of another shape) never reaches it.
+ */
 const ShapeAnnotationItem = memo(
-  ({ shape, gridSize, scale, theme, offsetX, offsetY }: ShapeAnnotationItemProps) => (
+  ({ shape, gridSize, scale, fontSize, theme, offsetX, offsetY }: ShapeAnnotationItemProps) => (
     <Group name={`shape-annotation-move-group-${shape.id}`} x={offsetX} y={offsetY}>
-      <ShapeAnnotation shape={shape} gridSize={gridSize} scale={scale} theme={theme} />
+      <ShapeAnnotation
+        shape={shape}
+        gridSize={gridSize}
+        scale={scale}
+        fontSize={fontSize}
+        theme={theme}
+      />
     </Group>
   )
 );
@@ -123,8 +136,9 @@ ShapeAnnotationItem.displayName = 'ShapeAnnotationItem';
  * Memoised end to end (issue #61, spec §14): the layer itself skips renders
  * whose props are unchanged (a pan never reaches it at all — see
  * `useStageViewport`), and every per-shape item is memoised so a zoom only
- * re-renders the annotations, and a move / resize / vertex-edit preview only
- * re-renders the shapes it names. Preview props are resolved *per shape* into
+ * re-renders the annotations, a change to the sketch-wide annotation font
+ * size (issue #66) re-renders every annotation but no polygon, and a move /
+ * resize / vertex-edit preview only re-renders the shapes it names. Preview props are resolved *per shape* into
  * plain values (a stable `shape` reference plus two numeric offsets) before
  * they reach an item, so a preview for one shape never invalidates another.
  */
@@ -139,6 +153,7 @@ export const ShapesLayer = memo(
     vertexPreview,
   }: ShapesLayerProps) => {
     const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
+    const annotationFontSize = document.annotationFontSize;
 
     const offsetFor = (shapeId: string): { x: number; y: number } => {
       if (movePreview === undefined || !movePreview.shapeIds.includes(shapeId)) {
@@ -190,6 +205,7 @@ export const ShapesLayer = memo(
               shape={shapeToRender(shape)}
               gridSize={gridSize}
               scale={scale}
+              fontSize={annotationFontSize}
               theme={theme}
               offsetX={offset.x}
               offsetY={offset.y}

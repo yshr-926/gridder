@@ -59,9 +59,8 @@ const isPhysicalScaleShaped = (value: unknown): boolean =>
   (value.unit === 'mm' || value.unit === 'cm' || value.unit === 'm');
 
 /**
- * Structural check only — does not verify `formatVersion`'s value, so a
- * differently-versioned-but-shaped document still passes here and is caught
- * by the version check in {@link deserializeDocument} instead.
+ * Structural check only — does not verify `formatVersion`'s value; that is
+ * {@link deserializeDocument}'s job, done before this guard runs.
  */
 export const isEditorDocumentShaped = (value: unknown): value is EditorDocument => {
   if (!isPlainObject(value)) {
@@ -83,6 +82,9 @@ export const isEditorDocumentShaped = (value: unknown): value is EditorDocument 
     return false;
   }
   if (value.physicalScale !== undefined && !isPhysicalScaleShaped(value.physicalScale)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.annotationFontSize)) {
     return false;
   }
   return true;

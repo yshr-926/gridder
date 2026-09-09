@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
 } from '../model.js';
@@ -22,6 +23,7 @@ const rectangle = (id: string, minX: number, minY: number, maxX: number, maxY: n
 
 const baseDocument = (overrides: Partial<EditorDocument> = {}): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: {},
   zOrder: [],
   groups: {},

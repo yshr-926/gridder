@@ -20,6 +20,12 @@ export interface ShapeAnnotationProps {
    * re-measuring the text.
    */
   scale: number;
+  /**
+   * Screen-pixel font size — the sketch-wide `EditorDocument.annotationFontSize`
+   * (issue #66). Passed as a plain number, not the document, so the memoised
+   * label re-renders only when the size itself changes.
+   */
+  fontSize: number;
   /** Renderer theme; defaults to {@link DEFAULT_SHAPES_LAYER_THEME}. */
   theme?: ShapesLayerTheme;
 }
@@ -34,7 +40,7 @@ const estimateLabelWidth = (text: string, fontSize: number): number => text.leng
  * re-render the 499 labels that did not change.
  */
 export const ShapeAnnotation = memo(
-  ({ shape, gridSize, scale, theme = DEFAULT_SHAPES_LAYER_THEME }: ShapeAnnotationProps) => {
+  ({ shape, gridSize, scale, fontSize, theme = DEFAULT_SHAPES_LAYER_THEME }: ShapeAnnotationProps) => {
     const name = shape.name;
 
     const box = useMemo(() => polygonBoundingBox(shape.polygon), [shape.polygon]);
@@ -44,7 +50,6 @@ export const ShapeAnnotation = memo(
     }
 
     const safeScale = Math.max(scale, Number.EPSILON);
-    const fontSize = theme.annotationFontSize;
     if (!isAnnotationLegible(box.width, box.height, gridSize, safeScale, fontSize)) {
       return null;
     }

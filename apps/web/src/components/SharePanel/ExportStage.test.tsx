@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridRing,
@@ -88,6 +89,7 @@ vi.mock('react-konva', async () => {
         data-testid="konva-text"
         data-name={String(props.name ?? '')}
         data-text={String(props.text ?? '')}
+        data-font-size={String(props.fontSize ?? '')}
       />
     ),
     Shape: (props: Record<string, unknown>) => (
@@ -112,6 +114,7 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 
 const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups: {},
@@ -215,6 +218,27 @@ describe('ExportStage', () => {
       el.getAttribute('data-name')?.startsWith('dimension-label-'),
     );
     expect(dimensionLabels).toHaveLength(2);
+  });
+
+  it('test_ExportStage_usesDocumentAnnotationFontSize_forNamesAndDimensions_issue66', () => {
+    // 10x8-cell shape at gridSize 20 is 200px on screen, so a 24px name stays legible.
+    const document = { ...documentOf([rectShape('a', 0, 0, 10, 8)]), annotationFontSize: 24 };
+    const { getAllByTestId } = render(
+      <ExportStage
+        document={document}
+        gridSize={20}
+        cropRect={cropRect}
+        includeGrid={false}
+        includeDimensions={true}
+      />,
+    );
+    const fontSizes = getAllByTestId('konva-text').map((text) =>
+      Number(text.getAttribute('data-font-size')),
+    );
+    // The name label (24) and its dimension label (24 * 11 / 12 = 22).
+    expect(fontSizes).toHaveLength(2);
+    expect(fontSizes).toContain(24);
+    expect(fontSizes.some((size) => Math.abs(size - 22) < 1e-9)).toBe(true);
   });
 
   it('test_ExportStage_toDataUrl_passesMimeTypeQualityAndPixelRatio', () => {

@@ -90,6 +90,9 @@ export const saveSketchAs = async (adapter: FileAdapter): Promise<boolean> => {
 
 const openErrorMessage = (error: unknown): string => {
   if (error instanceof DocumentDeserializationError) {
+    if (error.code === 'unsupported-format-version') {
+      return 'このファイルは古い形式の Gridder スケッチのため開けません。';
+    }
     return 'ファイルを読み込めませんでした。Gridder のスケッチファイルではない可能性があります。';
   }
   return 'ファイルを開けませんでした。';

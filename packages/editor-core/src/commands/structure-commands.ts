@@ -1,12 +1,15 @@
-import type {
-  DrawingBounds,
-  EditorDocument,
-  GroupId,
-  PhysicalScale,
-  ShapeGroup,
-  ShapeId,
+import {
+  MAX_ANNOTATION_FONT_SIZE,
+  MIN_ANNOTATION_FONT_SIZE,
+  isValidAnnotationFontSize,
+  type DrawingBounds,
+  type EditorDocument,
+  type GroupId,
+  type PhysicalScale,
+  type ShapeGroup,
+  type ShapeId,
 } from '../model.js';
-import type { EditorCommand } from './command.js';
+import { CommandApplicationError, type EditorCommand } from './command.js';
 import { CompositeCommand } from './composite-command.js';
 import {
   dropGroup,
@@ -14,6 +17,7 @@ import {
   putGroup,
   requireGroup,
   requireShape,
+  withAnnotationFontSize,
   withDrawingBounds,
   withPhysicalScale,
   withZOrder,
@@ -96,6 +100,34 @@ export class SetPhysicalScaleCommand implements EditorCommand {
 
   invert(documentBeforeApply: EditorDocument): EditorCommand {
     return new SetPhysicalScaleCommand(documentBeforeApply.physicalScale);
+  }
+}
+
+/**
+ * Set the sketch-wide annotation font size (issue #66, spec §8). Like
+ * {@link SetPhysicalScaleCommand} this is document-level state — one size for
+ * every shape name and dimension label, never per shape — so it lives here.
+ * An out-of-range size is refused at `apply` time rather than silently
+ * clamped: the caller (the settings panel) already clamps its input, so a bad
+ * value reaching a Command is a programming error, not user input.
+ */
+export class SetAnnotationFontSizeCommand implements EditorCommand {
+  readonly type = 'set-annotation-font-size';
+  readonly label = 'Change annotation font size';
+
+  constructor(private readonly annotationFontSize: number) {}
+
+  apply(document: EditorDocument): EditorDocument {
+    if (!isValidAnnotationFontSize(this.annotationFontSize)) {
+      throw new CommandApplicationError(
+        `Annotation font size must be an integer from ${MIN_ANNOTATION_FONT_SIZE} through ${MAX_ANNOTATION_FONT_SIZE}; received ${this.annotationFontSize}.`,
+      );
+    }
+    return withAnnotationFontSize(document, this.annotationFontSize);
+  }
+
+  invert(documentBeforeApply: EditorDocument): EditorCommand {
+    return new SetAnnotationFontSizeCommand(documentBeforeApply.annotationFontSize);
   }
 }
 

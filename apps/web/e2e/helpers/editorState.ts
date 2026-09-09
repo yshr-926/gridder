@@ -33,9 +33,11 @@ export interface E2eDocumentSnapshot {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly groupCount: number;
+  /** Sketch-wide annotation font size in screen pixels (issue #66). */
+  readonly annotationFontSize: number;
 }
 
-/** The full document snapshot (shape count, shapes in z-order, undo/redo flags, group count). */
+/** The full document snapshot (shape count, shapes in z-order, undo/redo flags, group count, annotation font size). */
 export const readDocument = (page: Page): Promise<E2eDocumentSnapshot> =>
   page.evaluate(() => {
     const session = (
@@ -48,6 +50,7 @@ export const readDocument = (page: Page): Promise<E2eDocumentSnapshot> =>
             shapes: Record<string, E2eShape>;
             zOrder: readonly string[];
             groups: Record<string, unknown>;
+            annotationFontSize: number;
           };
         };
       }
@@ -60,6 +63,7 @@ export const readDocument = (page: Page): Promise<E2eDocumentSnapshot> =>
       canUndo: session.canUndo,
       canRedo: session.canRedo,
       groupCount: Object.keys(document.groups).length,
+      annotationFontSize: document.annotationFontSize,
     };
   });
 

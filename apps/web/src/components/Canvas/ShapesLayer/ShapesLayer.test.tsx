@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
 } from '@gridder/editor-core';
 import { ShapesLayer } from './ShapesLayer';
@@ -186,6 +187,30 @@ describe('ShapesLayer', () => {
     expect(zoomedOut.group * 0.5).toBeCloseTo(1);
   });
 
+  it('test_ShapesLayer_annotationFontSize_comesFromTheDocument_issue66', () => {
+    const document = { ...createConcaveHoleDocument(), annotationFontSize: 20 };
+
+    const { getByTestId } = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
+
+    expect(getByTestId('konva-text').getAttribute('data-fontsize')).toBe('20');
+  });
+
+  it('test_ShapesLayer_largerAnnotationFontSize_hidesNamesOnShapesShorterThanOneLine_issue66', () => {
+    // 3x3-cell shapes at gridSize 10 are 30px on screen at zoom 1: legible
+    // at 12px, but a 32px label would outgrow them.
+    const base = createDummyDocument({ shapeCount: 2, cellsPerShape: 9, withName: true });
+
+    const small = render(<ShapesLayer document={base} gridSize={10} scale={1} />);
+    expect(small.getAllByTestId('konva-text')).toHaveLength(2);
+    small.unmount();
+
+    const large = render(
+      <ShapesLayer document={{ ...base, annotationFontSize: 32 }} gridSize={10} scale={1} />
+    );
+    expect(large.queryAllByTestId('konva-text')).toHaveLength(0);
+    large.unmount();
+  });
+
   it('test_ShapesLayer_annotation_isOmittedWhenShapeIsSmallerThanOneLineOnScreen', () => {
     // 3x3-cell shapes at gridSize 10: 30px on screen at zoom 1, 3px at zoom 0.1.
     const document = createDummyDocument({ shapeCount: 2, cellsPerShape: 9, withName: true });
@@ -279,6 +304,7 @@ describe('ShapesLayer', () => {
   it('test_ShapesLayer_emptyDocument_rendersNoShapeNodes', () => {
     const empty: EditorDocument = {
       formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+      annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
       shapes: {},
       zOrder: [],
       groups: {},

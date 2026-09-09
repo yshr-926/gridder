@@ -71,6 +71,7 @@ export {
   fitDrawingBoundsToContent,
 } from './drawingBoundsCommands';
 export { setPhysicalScale, clearPhysicalScale } from './physicalScaleCommands';
+export { setAnnotationFontSize } from './annotationFontSizeCommands';
 export {
   vertexAtPoint,
   edgeAtPoint,

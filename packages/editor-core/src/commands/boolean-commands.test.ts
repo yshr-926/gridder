@@ -4,6 +4,7 @@ import { createPolygonClippingEngine } from '../boolean/index.js';
 import { polygonKey } from '../boolean/test-helpers.js';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridPolygon,
@@ -50,6 +51,7 @@ const documentOf = (
   groups: EditorDocument['groups'] = {},
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups,

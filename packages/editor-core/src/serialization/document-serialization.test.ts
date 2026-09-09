@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CURRENT_DOCUMENT_FORMAT_VERSION, type EditorDocument, type EditorShape } from '../model.js';
+import { CURRENT_DOCUMENT_FORMAT_VERSION, DEFAULT_ANNOTATION_FONT_SIZE, type EditorDocument, type EditorShape } from '../model.js';
 import { DocumentDeserializationError } from './errors.js';
 import { deserializeDocument, serializeDocument } from './document-serialization.js';
 
@@ -42,6 +42,7 @@ const shapeWithHole = (id: string): EditorShape => ({
 
 const baseDocument = (): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: {
     'shape-a': rectangle('shape-a', 0),
     'shape-b': shapeWithHole('shape-b'),
@@ -62,6 +63,7 @@ describe('serializeDocument / deserializeDocument', () => {
   it('test_roundTrip_documentWithGroupsAndNoPhysicalScale_matchesExactly', () => {
     const document: EditorDocument = {
       formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+      annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
       shapes: {
         'shape-a': rectangle('shape-a', 0),
         'shape-b': rectangle('shape-b', 6),
@@ -78,7 +80,15 @@ describe('serializeDocument / deserializeDocument', () => {
     const document = baseDocument();
     const json = JSON.parse(serializeDocument(document)) as Record<string, unknown>;
     expect(Object.keys(json).sort()).toEqual(
-      ['drawingBounds', 'formatVersion', 'groups', 'physicalScale', 'shapes', 'zOrder'].sort(),
+      [
+        'annotationFontSize',
+        'drawingBounds',
+        'formatVersion',
+        'groups',
+        'physicalScale',
+        'shapes',
+        'zOrder',
+      ].sort(),
     );
   });
 
@@ -123,6 +133,46 @@ describe('serializeDocument / deserializeDocument', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(DocumentDeserializationError);
       expect((error as DocumentDeserializationError).code).toBe('unsupported-format-version');
+    }
+  });
+
+  it('test_deserializeDocument_formatVersion1_throwsWithUnsupportedFormatVersionCode', () => {
+    // A pre-#66 file: version 1 and no `annotationFontSize`. Spec §9 offers
+    // no migration, so it is refused by version before its shape is judged.
+    const document: Record<string, unknown> = { ...baseDocument(), formatVersion: 1 };
+    delete document.annotationFontSize;
+    try {
+      deserializeDocument(JSON.stringify(document));
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(DocumentDeserializationError);
+      expect((error as DocumentDeserializationError).code).toBe('unsupported-format-version');
+    }
+  });
+
+  it('test_deserializeDocument_missingAnnotationFontSize_throwsWithMalformedDocumentCode', () => {
+    const document: Record<string, unknown> = { ...baseDocument() };
+    delete document.annotationFontSize;
+    try {
+      deserializeDocument(JSON.stringify(document));
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(DocumentDeserializationError);
+      expect((error as DocumentDeserializationError).code).toBe('malformed-document');
+    }
+  });
+
+  it('test_deserializeDocument_outOfRangeAnnotationFontSize_throwsWithInvalidDocumentCode', () => {
+    const document = { ...baseDocument(), annotationFontSize: 40 };
+    try {
+      deserializeDocument(JSON.stringify(document));
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(DocumentDeserializationError);
+      expect((error as DocumentDeserializationError).code).toBe('invalid-document');
+      expect((error as DocumentDeserializationError).issues.map((issue) => issue.code)).toEqual([
+        'invalid-annotation-font-size',
+      ]);
     }
   });
 

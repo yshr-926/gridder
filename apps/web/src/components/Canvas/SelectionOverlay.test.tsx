@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridRing,
@@ -46,6 +47,7 @@ const documentOf = (
   groups: Record<string, readonly string[]> = {},
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups: Object.fromEntries(

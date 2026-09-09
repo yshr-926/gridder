@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { CURRENT_DOCUMENT_FORMAT_VERSION, type EditorDocument, type EditorShape } from '@gridder/editor-core';
+import { CURRENT_DOCUMENT_FORMAT_VERSION, DEFAULT_ANNOTATION_FONT_SIZE, type EditorDocument, type EditorShape } from '@gridder/editor-core';
 import { ShapesLayer } from './ShapesLayer';
 
 /**
@@ -56,6 +56,7 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 
 const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups: {},

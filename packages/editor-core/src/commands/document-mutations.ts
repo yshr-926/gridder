@@ -138,6 +138,11 @@ export const withPhysicalScale = (
   return { ...document, physicalScale };
 };
 
+export const withAnnotationFontSize = (
+  document: EditorDocument,
+  annotationFontSize: number,
+): EditorDocument => ({ ...document, annotationFontSize });
+
 export const putGroup = (
   document: EditorDocument,
   group: ShapeGroup,

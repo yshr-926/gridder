@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DEFAULT_ANNOTATION_FONT_SIZE } from '@gridder/editor-core';
 import { editorSession } from '@/features/editor';
 import { useSettingsStore } from '@/stores';
 import { SettingsPanel } from './SettingsPanel';
@@ -84,6 +85,87 @@ describe('SettingsPanel', () => {
     await user.click(screen.getByRole('button', { name: 'm' }));
 
     expect(editorSession.getDocument().physicalScale?.unit).toBe('m');
+  });
+
+  it('test_SettingsPanel_fontSize_showsDocumentValue_withPxUnit', async () => {
+    await openPanel();
+
+    expect(screen.getByLabelText('文字サイズ')).toHaveValue(DEFAULT_ANNOTATION_FONT_SIZE);
+    expect(screen.getByText('px')).toBeInTheDocument();
+  });
+
+  it('test_SettingsPanel_changingFontSize_onBlur_dispatchesCommand_andIsUndoable', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.clear(input);
+    await user.type(input, '18');
+    await user.tab();
+
+    expect(editorSession.getDocument().annotationFontSize).toBe(18);
+    expect(editorSession.canUndo).toBe(true);
+
+    act(() => {
+      editorSession.undo();
+    });
+
+    expect(editorSession.getDocument().annotationFontSize).toBe(DEFAULT_ANNOTATION_FONT_SIZE);
+    expect(input).toHaveValue(DEFAULT_ANNOTATION_FONT_SIZE);
+  });
+
+  it('test_SettingsPanel_changingFontSize_onEnter_commits', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.clear(input);
+    await user.type(input, '9{Enter}');
+
+    expect(editorSession.getDocument().annotationFontSize).toBe(9);
+  });
+
+  it('test_SettingsPanel_fontSizeAboveRange_isClampedToMax', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.clear(input);
+    await user.type(input, '99');
+    await user.tab();
+
+    expect(editorSession.getDocument().annotationFontSize).toBe(32);
+    expect(input).toHaveValue(32);
+  });
+
+  it('test_SettingsPanel_fontSizeBelowRange_isClampedToMin', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.clear(input);
+    await user.type(input, '1');
+    await user.tab();
+
+    expect(editorSession.getDocument().annotationFontSize).toBe(8);
+    expect(input).toHaveValue(8);
+  });
+
+  it('test_SettingsPanel_emptyFontSize_onBlur_resetsToCommittedValue_withoutCommand', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.clear(input);
+    await user.tab();
+
+    expect(input).toHaveValue(DEFAULT_ANNOTATION_FONT_SIZE);
+    expect(editorSession.canUndo).toBe(false);
+  });
+
+  it('test_SettingsPanel_unchangedFontSize_onBlur_addsNoUndoEntry', async () => {
+    const user = await openPanel();
+    const input = screen.getByLabelText('文字サイズ');
+
+    await user.click(input);
+    await user.tab();
+
+    expect(editorSession.canUndo).toBe(false);
   });
 
   it('test_SettingsPanel_toggleIncludeDimensions_updatesSettingsStore', async () => {

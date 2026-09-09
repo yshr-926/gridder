@@ -18,6 +18,7 @@ export {
 export {
   GroupShapesCommand,
   ReorderShapeCommand,
+  SetAnnotationFontSizeCommand,
   SetDrawingBoundsCommand,
   SetPhysicalScaleCommand,
   UngroupShapesCommand,

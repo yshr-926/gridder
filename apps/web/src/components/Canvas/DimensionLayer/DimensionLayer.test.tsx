@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   type GridRing,
@@ -39,6 +40,7 @@ const documentOf = (
   physicalScale?: EditorDocument['physicalScale'],
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups: {},
@@ -96,6 +98,27 @@ describe('DimensionLayer', () => {
       <DimensionLayer document={document} selectedIds={['a', 'ghost']} gridSize={10} scale={1} />,
     );
     expect(getAllByTestId('konva-text')).toHaveLength(1);
+  });
+
+  it('test_DimensionLayer_fontSize_followsDocumentAnnotationFontSize_atElevenTwelfths_issue66', () => {
+    const base = documentOf([rectShape('a', 0, 0, 4, 3)]);
+
+    const atDefault = render(
+      <DimensionLayer document={base} selectedIds={['a']} gridSize={10} scale={1} />,
+    );
+    expect(Number(atDefault.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(11);
+    atDefault.unmount();
+
+    const enlarged = render(
+      <DimensionLayer
+        document={{ ...base, annotationFontSize: 24 }}
+        selectedIds={['a']}
+        gridSize={10}
+        scale={1}
+      />,
+    );
+    expect(Number(enlarged.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(22);
+    enlarged.unmount();
   });
 
   it('test_DimensionLayer_fontSize_isZoomInvariant', () => {

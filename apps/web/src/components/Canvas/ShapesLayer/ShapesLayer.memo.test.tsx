@@ -104,6 +104,34 @@ describe('ShapesLayer memoisation (issue #61)', () => {
     }
   });
 
+  it('test_ShapesLayer_annotationFontSizeChange_rerendersAnnotationsButNotPolygons_issue66', () => {
+    const { rerender } = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
+
+    rerender(
+      <ShapesLayer document={{ ...document, annotationFontSize: 20 }} gridSize={10} scale={1} />
+    );
+
+    expect([...renders.polygon.values()]).toEqual([1, 1, 1, 1, 1]);
+    expect([...renders.annotation.values()]).toEqual([2, 2, 2, 2, 2]);
+  });
+
+  it('test_ShapesLayer_documentChangeWithSameFontSize_doesNotRerenderAnnotations', () => {
+    const { rerender } = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
+
+    // A new document object (e.g. a physical-scale change) whose shapes and
+    // font size are unchanged must not touch any per-shape item.
+    rerender(
+      <ShapesLayer
+        document={{ ...document, physicalScale: { valuePerCell: 1, unit: 'm' } }}
+        gridSize={10}
+        scale={1}
+      />
+    );
+
+    expect([...renders.polygon.values()]).toEqual([1, 1, 1, 1, 1]);
+    expect([...renders.annotation.values()]).toEqual([1, 1, 1, 1, 1]);
+  });
+
   it('test_ShapesLayer_sameProps_doesNotRerenderAnything', () => {
     const props = { document, gridSize: 10, scale: 1 };
     const { rerender } = render(<ShapesLayer {...props} />);

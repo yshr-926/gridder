@@ -1,5 +1,6 @@
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   SHAPE_FILL_PALETTE,
   type EditorDocument,
   type EditorShape,
@@ -19,6 +20,7 @@ import {
 /** An empty sketch: no shapes, an arbitrary but valid auto drawing-bounds box. */
 export const createEmptyDocument = (): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: {},
   zOrder: [],
   groups: {},

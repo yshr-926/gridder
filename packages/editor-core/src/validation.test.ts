@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   type EditorDocument,
   type EditorShape,
   isDocumentValid,
@@ -55,6 +56,7 @@ const shapeWithHole: EditorShape = {
 
 const createValidDocument = (): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+  annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: {
     'shape-a': rectangle,
     'shape-b': shapeWithHole,
@@ -226,11 +228,35 @@ describe('validateDocument', () => {
     ]);
   });
 
+  it('test_validateDocument_annotationFontSize_acceptsRangeBoundsOnly', () => {
+    const document = createValidDocument();
+
+    expect(issueCodes({ ...document, annotationFontSize: 8 })).toEqual([]);
+    expect(issueCodes({ ...document, annotationFontSize: 32 })).toEqual([]);
+    expect(issueCodes({ ...document, annotationFontSize: 7 })).toEqual([
+      'invalid-annotation-font-size',
+    ]);
+    expect(issueCodes({ ...document, annotationFontSize: 33 })).toEqual([
+      'invalid-annotation-font-size',
+    ]);
+  });
+
+  it('test_validateDocument_annotationFontSize_rejectsFractionalAndNonFinite', () => {
+    const document = createValidDocument();
+
+    expect(issueCodes({ ...document, annotationFontSize: 12.5 })).toEqual([
+      'invalid-annotation-font-size',
+    ]);
+    expect(issueCodes({ ...document, annotationFontSize: Number.NaN })).toEqual([
+      'invalid-annotation-font-size',
+    ]);
+  });
+
   it('rejects mismatched record IDs and an unsupported format version', () => {
     const document = createValidDocument();
     const invalidDocument = {
       ...document,
-      formatVersion: 2,
+      formatVersion: 999,
       shapes: {
         'shape-key': rectangle,
       },

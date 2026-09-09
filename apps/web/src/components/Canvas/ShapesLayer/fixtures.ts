@@ -1,5 +1,6 @@
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   SHAPE_FILL_PALETTE,
   type EditorDocument,
   type EditorShape,
@@ -79,6 +80,7 @@ export const createDummyDocument = (options: DummyDocumentOptions): EditorDocume
 
   return {
     formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+    annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
     shapes,
     zOrder,
     groups: {},
@@ -121,6 +123,7 @@ export const createConcaveHoleDocument = (): EditorDocument => {
 
   return {
     formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+    annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
     shapes: { [shape.id]: shape },
     zOrder: [shape.id],
     groups: {},

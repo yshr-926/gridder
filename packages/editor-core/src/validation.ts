@@ -1,6 +1,9 @@
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  MAX_ANNOTATION_FONT_SIZE,
+  MIN_ANNOTATION_FONT_SIZE,
   SHAPE_FILL_PALETTE,
+  isValidAnnotationFontSize,
   type EditorDocument,
   type GridPoint,
   type GridRing,
@@ -27,7 +30,8 @@ export type DocumentValidationIssueCode =
   | 'unknown-group-shape'
   | 'shape-in-multiple-groups'
   | 'invalid-drawing-bounds'
-  | 'invalid-physical-scale';
+  | 'invalid-physical-scale'
+  | 'invalid-annotation-font-size';
 
 export interface DocumentValidationIssue {
   readonly code: DocumentValidationIssueCode;
@@ -268,6 +272,14 @@ export const validateDocument = (
       code: 'invalid-physical-scale',
       path: 'physicalScale.valuePerCell',
       message: 'Physical scale must be a finite number greater than zero.',
+    });
+  }
+
+  if (!isValidAnnotationFontSize(document.annotationFontSize)) {
+    issues.push({
+      code: 'invalid-annotation-font-size',
+      path: 'annotationFontSize',
+      message: `Annotation font size must be an integer from ${MIN_ANNOTATION_FONT_SIZE} through ${MAX_ANNOTATION_FONT_SIZE}.`,
     });
   }
 

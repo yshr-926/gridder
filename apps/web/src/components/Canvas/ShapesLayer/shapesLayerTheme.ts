@@ -3,9 +3,12 @@
  *
  * Per `docs/spec.md` §8 the border colour and width are decided by the theme,
  * never by the document: `ShapeStyle` only carries `isBorderVisible`. The name
- * annotation is likewise a renderer concern. Keeping these values here (rather
- * than inline in the components) makes the single source obvious and leaves one
- * place to swap when a real theming system lands.
+ * annotation's colour and font family are likewise renderer concerns; its
+ * *size* is not — it is the sketch-wide `EditorDocument.annotationFontSize`
+ * (issue #66), so it has no theme entry and no theme default. Keeping the
+ * remaining values here (rather than inline in the components) makes the
+ * single source obvious and leaves one place to swap when a real theming
+ * system lands.
  */
 export interface ShapesLayerTheme {
   /** Stroke colour for a shape whose border is visible. */
@@ -19,8 +22,6 @@ export interface ShapesLayerTheme {
   readonly hitStrokeWidth: number;
   /** Name annotation colour. */
   readonly annotationColor: string;
-  /** Name annotation font size in screen pixels (constant regardless of zoom). */
-  readonly annotationFontSize: number;
   /** Name annotation font family. */
   readonly annotationFontFamily: string;
 }
@@ -30,7 +31,6 @@ export const DEFAULT_SHAPES_LAYER_THEME: ShapesLayerTheme = {
   borderWidth: 1.5,
   hitStrokeWidth: 12,
   annotationColor: '#1f2937',
-  annotationFontSize: 12,
   annotationFontFamily:
     "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
 };

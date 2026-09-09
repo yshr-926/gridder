@@ -154,6 +154,21 @@ describe('fileSession', () => {
       expect(useToastStore.getState().toasts[0]?.type).toBe('error');
     });
 
+    it('test_openSketchFile_formatVersion1_throws_showsOldFormatToast_leavesDocumentUnchanged', async () => {
+      const before = editorSession.getDocument();
+      // A pre-#66 save: version 1 and no `annotationFontSize`.
+      const legacy: Record<string, unknown> = { ...before, formatVersion: 1 };
+      delete legacy.annotationFontSize;
+      const openResult: OpenResult = { fileName: 'old.json', content: JSON.stringify(legacy) };
+      const adapter = mockAdapter({ open: vi.fn(async () => openResult) });
+
+      await expect(openSketchFile(adapter)).rejects.toThrow();
+
+      expect(editorSession.getDocument()).toBe(before);
+      expect(useToastStore.getState().toasts[0]?.type).toBe('error');
+      expect(useToastStore.getState().toasts[0]?.message).toContain('古い形式');
+    });
+
     it('test_openSketchFile_adapterThrows_propagates_showsErrorToast', async () => {
       const adapter = mockAdapter({
         open: vi.fn(async () => {

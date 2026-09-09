@@ -1,5 +1,6 @@
 import {
   CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
   SHAPE_FILL_PALETTE,
   type EditorDocument,
   type EditorShape,
@@ -253,6 +254,7 @@ export const generateBenchmarkDocument = (
 
   const document: EditorDocument = {
     formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
+    annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
     shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
     zOrder,
     groups: {},

@@ -1,5 +1,37 @@
-/** The only document format understood by this first editor-core release. */
-export const CURRENT_DOCUMENT_FORMAT_VERSION = 1 as const;
+/**
+ * The only document format this release understands. Version 2 (issue #66)
+ * added the sketch-wide `annotationFontSize`; version 1 files are rejected
+ * outright, since spec §9 provides no compatibility with older Gridder JSON.
+ */
+export const CURRENT_DOCUMENT_FORMAT_VERSION = 2 as const;
+
+/**
+ * Annotation font size (issue #66, spec §8): one sketch-wide value, in screen
+ * pixels, shared by every shape name and dimension label. Kept in the document
+ * — not the renderer theme — because the annotations are part of the sketch
+ * (CONTEXT.md「注釈」) and a share image must reproduce them exactly.
+ *
+ * Range rationale:
+ * - 8 px is the smallest size that stays legible on a 1x desktop display;
+ *   below it, glyphs collapse to a few pixels of height and the legibility
+ *   rule in the renderer (a shape shorter on screen than one line hides its
+ *   name) would show labels nobody can read.
+ * - 32 px is about 1.5 grid cells at the default cell size (20 px, zoom 1).
+ *   Beyond that a name outgrows any shape narrower than two cells, so the
+ *   setting would mostly hide names rather than enlarge them.
+ * - 12 px is the pre-#66 fixed size, so a new sketch looks as it always did.
+ * Whole pixels only: the stepper moves in 1 px steps and a fractional size
+ * would only blur text.
+ */
+export const MIN_ANNOTATION_FONT_SIZE = 8;
+export const MAX_ANNOTATION_FONT_SIZE = 32;
+export const DEFAULT_ANNOTATION_FONT_SIZE = 12;
+
+/** Whether `value` is an annotation font size the document accepts. */
+export const isValidAnnotationFontSize = (value: number): boolean =>
+  Number.isInteger(value) &&
+  value >= MIN_ANNOTATION_FONT_SIZE &&
+  value <= MAX_ANNOTATION_FONT_SIZE;
 
 /** Fill colors available to a shape. Arbitrary colors are not document data. */
 export const SHAPE_FILL_PALETTE = [
@@ -86,4 +118,11 @@ export interface EditorDocument {
   readonly drawingBounds: DrawingBounds;
   /** When absent, dimensions are expressed as cell counts. */
   readonly physicalScale?: PhysicalScale;
+  /**
+   * Screen-pixel font size for shape names and dimension labels, shared by
+   * the whole sketch (spec §8). Always present: unlike `physicalScale` there
+   * is no meaningful "unset" state, so every document carries an explicit
+   * value within [{@link MIN_ANNOTATION_FONT_SIZE}, {@link MAX_ANNOTATION_FONT_SIZE}].
+   */
+  readonly annotationFontSize: number;
 }

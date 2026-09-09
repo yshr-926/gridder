@@ -14,9 +14,16 @@ interface DimensionLayerProps {
   scale: number;
 }
 
-/** Label colour and size, matching `ShapesLayer`'s name annotation (screen pixels, zoom-invariant). */
+/** Label colour, matching `ShapesLayer`'s name annotation. */
 const LABEL_COLOR = '#1f2937';
-const LABEL_FONT_SIZE_SCREEN = 11;
+/**
+ * Dimension labels follow the sketch-wide annotation font size (issue #66,
+ * spec §8 treats names and dimensions together) at this ratio, so they stay
+ * one step smaller than the name — the pre-#66 relation of 11 px to 12 px —
+ * whatever size the user picks. The result is not rounded: the label is drawn
+ * inside a `1 / scale` world, so it is fractional on screen anyway.
+ */
+const DIMENSION_TO_ANNOTATION_FONT_RATIO = 11 / 12;
 const LABEL_FONT_FAMILY =
   "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif";
 /** Gap between a shape's bottom edge and its dimension label, in screen pixels. */
@@ -37,10 +44,11 @@ const estimateLabelWidth = (text: string, fontSize: number): number => text.leng
  */
 export const DimensionLayer = ({ document, selectedIds, gridSize, scale }: DimensionLayerProps) => {
   const physicalScale: PhysicalScale | undefined = document.physicalScale;
+  const annotationFontSize = document.annotationFontSize;
 
   const labels = useMemo(() => {
     const safeScale = Math.max(scale, Number.EPSILON);
-    const fontSize = LABEL_FONT_SIZE_SCREEN / safeScale;
+    const fontSize = (annotationFontSize * DIMENSION_TO_ANNOTATION_FONT_RATIO) / safeScale;
     const offset = LABEL_OFFSET_SCREEN / safeScale;
 
     return selectedIds
@@ -58,7 +66,7 @@ export const DimensionLayer = ({ document, selectedIds, gridSize, scale }: Dimen
         return { id: shapeId, text, x: centerX - width / 2, y, fontSize, width };
       })
       .filter((label): label is NonNullable<typeof label> => label !== null);
-  }, [document, selectedIds, gridSize, scale, physicalScale]);
+  }, [document, selectedIds, gridSize, scale, physicalScale, annotationFontSize]);
 
   if (labels.length === 0) {
     return null;

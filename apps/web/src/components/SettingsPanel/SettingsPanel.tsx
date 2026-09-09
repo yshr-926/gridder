@@ -4,9 +4,14 @@ import { Switch } from '@base-ui/react/switch';
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Settings2 } from 'lucide-react';
-import type { PhysicalUnit } from '@gridder/editor-core';
+import {
+  MAX_ANNOTATION_FONT_SIZE,
+  MIN_ANNOTATION_FONT_SIZE,
+  type PhysicalUnit,
+} from '@gridder/editor-core';
 import {
   clearPhysicalScale,
+  setAnnotationFontSize,
   setPhysicalScale,
   useEditorDocument,
 } from '@/features/editor';
@@ -32,18 +37,36 @@ const popupClassName = cn(
 
 const rowLabelClassName = 'text-sm text-ui';
 const sectionLabelClassName = 'text-xs font-medium uppercase tracking-wide text-ui-muted';
+const numberInputClassName = cn(
+  'h-control w-20 shrink-0 rounded-control border border-ui-border bg-surface px-2 text-sm tabular-nums text-ui',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+);
+
+/**
+ * Clamp a typed annotation font size into the document's range, rounding to
+ * whole pixels; `null` when the text is not a number at all (the input is
+ * then reset to the committed value instead of guessing).
+ */
+const parseAnnotationFontSize = (raw: string): number | null => {
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return Math.min(MAX_ANNOTATION_FONT_SIZE, Math.max(MIN_ANNOTATION_FONT_SIZE, Math.round(parsed)));
+};
 
 /**
  * Global sketch settings panel (issue #53, spec §8 / §12): real-world scale
- * (enable / value / unit) and the two share-image export flags. Opens from a
- * `Settings2` trigger the caller places in the top bar — `Header`'s wiring is
- * added in a later change, once its own concurrent edit (issue #54) settles.
+ * (enable / value / unit), the sketch-wide annotation font size (issue #66),
+ * and the two share-image export flags. Opens from a `Settings2` trigger the
+ * caller places in the top bar.
  *
- * The real-world scale is document data, so every change goes through
- * {@link setPhysicalScale} / {@link clearPhysicalScale} — each exactly one
- * `SetPhysicalScaleCommand`, so it is a single Undo step. The two export flags
- * are not document data (spec: they only affect share-image rendering, #56),
- * so they live in `useSettingsStore` with no history.
+ * The real-world scale and the annotation font size are document data, so
+ * every change goes through {@link setPhysicalScale} / {@link clearPhysicalScale}
+ * / {@link setAnnotationFontSize} — each exactly one Command, so it is a
+ * single Undo step. The two export flags are not document data (spec: they
+ * only affect share-image rendering, #56), so they live in `useSettingsStore`
+ * with no history.
  *
  * The value column has a fixed width (`tabular-nums` + `min-w`) so typing a
  * longer number or switching units never shifts the row layout, and the
@@ -68,6 +91,17 @@ export const SettingsPanel = () => {
     setValueDraft(String(committedValue));
   }
 
+  // Same draft-and-sync pattern for the annotation font size: the number
+  // input holds interim text and commits (clamped to the document's range)
+  // on blur / Enter; Undo/Redo re-syncs the draft from the document.
+  const committedFontSize = document.annotationFontSize;
+  const [fontSizeDraft, setFontSizeDraft] = useState(String(committedFontSize));
+  const [syncedFontSize, setSyncedFontSize] = useState(committedFontSize);
+  if (syncedFontSize !== committedFontSize) {
+    setSyncedFontSize(committedFontSize);
+    setFontSizeDraft(String(committedFontSize));
+  }
+
   const includeDimensions = useSettingsStore((state) => state.includeDimensionsInShareImage);
   const setIncludeDimensions = useSettingsStore(
     (state) => state.setIncludeDimensionsInShareImage,
@@ -89,6 +123,18 @@ export const SettingsPanel = () => {
     } else {
       clearPhysicalScale();
     }
+  };
+
+  const commitFontSize = (raw: string) => {
+    const next = parseAnnotationFontSize(raw);
+    if (next === null) {
+      setFontSizeDraft(String(committedFontSize));
+      return;
+    }
+    // Reflect the clamped value even when it equals the committed one (the
+    // document does not change, so the render-time sync would not fire).
+    setFontSizeDraft(String(next));
+    setAnnotationFontSize(next);
   };
 
   const handleUnitChange = (values: readonly PhysicalUnit[]) => {
@@ -152,10 +198,7 @@ export const SettingsPanel = () => {
                       event.currentTarget.blur();
                     }
                   }}
-                  className={cn(
-                    'h-control w-20 shrink-0 rounded-control border border-ui-border bg-surface px-2 text-sm tabular-nums text-ui',
-                    'disabled:cursor-not-allowed disabled:opacity-50',
-                  )}
+                  className={numberInputClassName}
                 />
                 <ToggleGroup
                   value={[unit]}
@@ -178,6 +221,37 @@ export const SettingsPanel = () => {
                     </Toggle>
                   ))}
                 </ToggleGroup>
+              </div>
+            </div>
+
+            {/* 注釈（図形名と寸法）の文字サイズ。スケッチ全体で一つの値（#66、spec §8） */}
+            <div className="mt-4 border-t border-ui-border pt-4">
+              <span className={sectionLabelClassName}>注釈</span>
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <label htmlFor="settings-panel-annotation-font-size" className={rowLabelClassName}>
+                  文字サイズ
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    id="settings-panel-annotation-font-size"
+                    type="number"
+                    min={MIN_ANNOTATION_FONT_SIZE}
+                    max={MAX_ANNOTATION_FONT_SIZE}
+                    step={1}
+                    inputMode="numeric"
+                    value={fontSizeDraft}
+                    onChange={(event) => setFontSizeDraft(event.target.value)}
+                    onBlur={(event) => commitFontSize(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.currentTarget.blur();
+                      }
+                    }}
+                    className={numberInputClassName}
+                  />
+                  {/* 単位は入力に隣接表示し、幅を固定してレイアウトを動かさない（ui-principles §3, §4） */}
+                  <span className="w-5 shrink-0 text-sm text-ui-muted">px</span>
+                </div>
               </div>
             </div>
 
