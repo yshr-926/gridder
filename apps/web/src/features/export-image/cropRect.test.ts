@@ -18,3 +18,15 @@ describe('drawingBoundsToCropRect', () => {
     expect(drawingBoundsToCropRect(bounds, 32)).toEqual({ x: 0, y: 0, width: 128, height: 128 });
   });
 });
+
+describe('drawingBoundsToCropRect with margin (issue #67)', () => {
+  it('test_drawingBoundsToCropRect_marginCells_growsEverySideByWholeCells', () => {
+    const bounds: ResolvedDrawingBounds = { min: { x: 2, y: 3 }, max: { x: 6, y: 5 } };
+    expect(drawingBoundsToCropRect(bounds, 20, 2)).toEqual({ x: 0, y: 20, width: 160, height: 120 });
+  });
+
+  it('test_drawingBoundsToCropRect_zeroMargin_matchesDefault', () => {
+    const bounds: ResolvedDrawingBounds = { min: { x: 2, y: 3 }, max: { x: 6, y: 5 } };
+    expect(drawingBoundsToCropRect(bounds, 20, 0)).toEqual(drawingBoundsToCropRect(bounds, 20));
+  });
+});

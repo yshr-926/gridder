@@ -18,6 +18,7 @@ vi.mock('react-konva', () => ({
       data-y={String(props.y ?? '')}
       data-text={String(props.text ?? '')}
       data-font-size={String(props.fontSize ?? '')}
+      data-wrap={String(props.wrap ?? '')}
     />
   ),
 }));
@@ -74,6 +75,14 @@ describe('DimensionLayer', () => {
       <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
     );
     expect(getByTestId('konva-text').getAttribute('data-text')).toBe('40 cm × 30 cm');
+  });
+
+  it('test_DimensionLayer_label_neverWraps_evenWhenWiderThanEstimate_issue67', () => {
+    const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
+    const { getByTestId } = render(
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
+    );
+    expect(getByTestId('konva-text').getAttribute('data-wrap')).toBe('none');
   });
 
   it('test_DimensionLayer_multipleSelectedShapes_drawsOneLabelPerShape', () => {

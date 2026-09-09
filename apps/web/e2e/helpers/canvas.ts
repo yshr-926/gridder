@@ -50,10 +50,9 @@ export class CanvasHelper {
   constructor(page: Page) {
     this.page = page;
     // Scoped to `[data-testid="grid-canvas-container"]` (`GridCanvas.tsx`),
-    // not a bare `page.locator('canvas').first()`: the off-screen
-    // `ExportStage` Konva Stage (issue #56) mounts its own `<canvas>` the
-    // moment a selection exists (a drawing range to export), and it can
-    // outrank the real one in DOM order.
+    // not a bare `page.locator('canvas').first()`: the share panel's preview
+    // `ExportStage` Konva Stage (issue #56 / #67) mounts its own `<canvas>`
+    // while the panel is open, and a dev-only prototype page can add more.
     this.canvas = page.locator('[data-testid="grid-canvas-container"] canvas').first();
   }
 

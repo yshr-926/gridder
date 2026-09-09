@@ -50,6 +50,13 @@ describe('GridBackground', () => {
     expect(background).toHaveAttribute('data-fill', '#ffffff');
   });
 
+  it('test_GridBackground_isBackgroundVisibleFalse_omitsBackgroundRect_keepsLines_issue67', () => {
+    render(<GridBackground {...defaultProps} isBackgroundVisible={false} />);
+
+    expect(screen.queryByTestId('konva-rect')).toBeNull();
+    expect(screen.getAllByTestId('konva-line').length).toBeGreaterThan(0);
+  });
+
   it('renders grid lines', () => {
     render(<GridBackground {...defaultProps} />);
 

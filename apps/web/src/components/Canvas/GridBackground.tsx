@@ -17,6 +17,11 @@ interface GridBackgroundProps {
   gridSize: number;
   /** ズーム倍率（線の太さを画面上で一定に保つために使う） */
   zoom: number;
+  /**
+   * 白い背景矩形を描くか。既定は true。透明背景の共有画像（#67）では
+   * グリッド線だけを描くため false にする。
+   */
+  isBackgroundVisible?: boolean;
 }
 
 /**
@@ -27,9 +32,12 @@ const MAJOR_GRID_COLOR = '#d1d5db'; // Tailwind gray-300
 const BACKGROUND_COLOR = '#ffffff';
 
 /**
- * 5マスごとの太線の太さ
+ * グリッド線の太さ（画面ピクセル、zoom=1 のとき）。通常線は 0.5px、5マスごとの
+ * 太線は 1px。通常線の値は共有画像（#67）が最小 1 デバイスピクセルを保証する
+ * ための補正に使うので公開する。
  */
-const NORMAL_STROKE_WIDTH = 0.5;
+export const GRID_NORMAL_STROKE_WIDTH = 0.5;
+const NORMAL_STROKE_WIDTH = GRID_NORMAL_STROKE_WIDTH;
 const MAJOR_STROKE_WIDTH = 1;
 
 /**
@@ -42,7 +50,15 @@ const MAJOR_STROKE_WIDTH = 1;
  * Stage の変換で表現されるので、ここでは扱わない。
  */
 export const GridBackground = memo(
-  ({ startX, startY, endX, endY, gridSize, zoom }: GridBackgroundProps) => {
+  ({
+    startX,
+    startY,
+    endX,
+    endY,
+    gridSize,
+    zoom,
+    isBackgroundVisible = true,
+  }: GridBackgroundProps) => {
     /**
      * 表示領域の計算とグリッド線の生成
      */
@@ -87,7 +103,7 @@ export const GridBackground = memo(
       }
 
       return {
-        background: (
+        background: isBackgroundVisible ? (
           <Rect
             x={left}
             y={top}
@@ -96,10 +112,10 @@ export const GridBackground = memo(
             fill={BACKGROUND_COLOR}
             listening={false}
           />
-        ),
+        ) : null,
         lines: gridLines,
       };
-    }, [startX, startY, endX, endY, gridSize, zoom]);
+    }, [startX, startY, endX, endY, gridSize, zoom, isBackgroundVisible]);
 
     return (
       <Group listening={false}>

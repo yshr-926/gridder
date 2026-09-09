@@ -1,6 +1,6 @@
 export { GridCanvas } from './GridCanvas';
 export type { GridCanvasRef } from './GridCanvas';
-export { GridBackground } from './GridBackground';
+export { GridBackground, GRID_NORMAL_STROKE_WIDTH } from './GridBackground';
 export {
   ShapesLayer,
   ShapePolygon,

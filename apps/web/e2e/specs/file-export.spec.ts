@@ -3,7 +3,7 @@ import { test, expect } from '../helpers';
 
 /**
  * Sketch save (JSON, fallback download path) and share-image export
- * (issue #54 / #56, spec §3 basic workflow step 5 / §9 / §10).
+ * (issue #54 / #56 / #67, spec §3 basic workflow step 5 / §9 / §10).
  *
  * Chromium in a Playwright-driven browser exposes `showSaveFilePicker` /
  * `showOpenFilePicker`, but a real picker dialog can't be automated, so the
@@ -101,5 +101,66 @@ test.describe('share image export', () => {
   test('the export button is disabled with no shapes on the sketch', async ({ page }) => {
     await page.getByRole('button', { name: '共有' }).click();
     await expect(page.getByRole('button', { name: '書き出す' })).toBeDisabled();
+  });
+
+  test('the panel previews the image and shows the output size for the chosen scale (issue #67)', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 7, 6); // 5 × 4 cells → 100 × 80 px at 1x
+
+    await page.getByRole('button', { name: '共有' }).click();
+    await expect(page.getByTestId('share-image-preview').locator('canvas')).toBeVisible();
+    await expect(page.getByTestId('share-image-output-size')).toHaveText('200 × 160 px');
+
+    await page.getByRole('button', { name: '3x' }).click();
+    await expect(page.getByTestId('share-image-output-size')).toHaveText('300 × 240 px');
+
+    await page.getByRole('button', { name: '中' }).click(); // +2 cells each side → 9 × 8 cells
+    await expect(page.getByTestId('share-image-output-size')).toHaveText('540 × 480 px');
+  });
+
+  test('the exported PNG has exactly the displayed pixel size (issue #67)', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 7, 6);
+
+    await page.getByRole('button', { name: '共有' }).click();
+    await page.getByRole('button', { name: '3x' }).click();
+    await page.getByRole('button', { name: '小' }).click(); // 7 × 6 cells × 20 px × 3
+    await expect(page.getByTestId('share-image-output-size')).toHaveText('420 × 360 px');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '書き出す' }).click();
+    const download = await downloadPromise;
+
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    if (path) {
+      const fs = await import('node:fs/promises');
+      const bytes = await fs.readFile(path);
+      // PNG IHDR: width at byte 16, height at byte 20, both big-endian.
+      expect(bytes.readUInt32BE(16)).toBe(420);
+      expect(bytes.readUInt32BE(20)).toBe(360);
+    }
+  });
+
+  test('transparent background is only offered for PNG (issue #67)', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 7, 6);
+
+    await page.getByRole('button', { name: '共有' }).click();
+    await page.getByRole('button', { name: '透明', exact: true }).click();
+    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute('data-pressed', '');
+
+    await page.getByRole('button', { name: 'JPEG' }).click();
+    await expect(page.getByRole('button', { name: '透明', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute('data-pressed', '');
+
+    await page.getByRole('button', { name: 'PNG' }).click();
+    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute('data-pressed', '');
   });
 });

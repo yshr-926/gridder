@@ -17,17 +17,31 @@ export const generateShareImageFilename = (format: ShareImageFormat): string => 
 };
 
 /**
- * Trigger a browser download of a data URL.
+ * Trigger a browser download of a Blob through a temporary object URL.
+ *
+ * A Blob rather than a data URL (issue #67): `canvas.toBlob` encodes off the
+ * main thread and hands back the bytes directly, whereas `toDataURL`
+ * encodes synchronously and then base64-expands a raster that, at the
+ * sizes `MAX_SHARE_IMAGE_AREA_PX` allows, would be a string of tens of
+ * megabytes held in memory for the lifetime of the anchor.
  *
  * TODO(#54 follow-up): route this through the `features/file` `FileAdapter`
- * once it grows a binary/data-URL save path — that interface is currently
- * shaped for JSON `content: string` only (`save` / `saveAs` write text), so a
- * share image can't go through it without changing that file, which is out
- * of this issue's scope. This is a minimal, self-contained substitute.
+ * once it grows a binary save path — that interface is currently shaped for
+ * JSON `content: string` only (`save` / `saveAs` write text), so a share
+ * image can't go through it without changing that file, which is out of
+ * this issue's scope. This is a minimal, self-contained substitute.
  */
-export const downloadDataUrl = (dataUrl: string, filename: string): void => {
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = filename;
-  link.click();
+export const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+  } finally {
+    // The click has already handed the URL to the download machinery; the
+    // revoke is deferred a tick so a browser that resolves the anchor
+    // asynchronously still finds the object alive.
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
 };

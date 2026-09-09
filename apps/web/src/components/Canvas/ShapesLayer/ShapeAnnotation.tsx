@@ -3,6 +3,7 @@ import { Group, Text } from 'react-konva';
 import type { EditorShape } from '@gridder/editor-core';
 import { polygonBoundingBox } from './shapeGeometry';
 import { isAnnotationLegible } from './annotationLegibility';
+import { estimateLabelWidth } from './labelWidth';
 import { DEFAULT_SHAPES_LAYER_THEME, type ShapesLayerTheme } from './shapesLayerTheme';
 
 /**
@@ -29,9 +30,6 @@ export interface ShapeAnnotationProps {
   /** Renderer theme; defaults to {@link DEFAULT_SHAPES_LAYER_THEME}. */
   theme?: ShapesLayerTheme;
 }
-
-/** Rough on-screen width of the label, used only to centre it horizontally. */
-const estimateLabelWidth = (text: string, fontSize: number): number => text.length * fontSize * 0.6;
 
 /**
  * ShapeAnnotation draws a shape's name at the centre of its bounding box, at a

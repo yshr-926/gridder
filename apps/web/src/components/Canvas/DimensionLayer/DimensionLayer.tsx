@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Text } from 'react-konva';
 import type { EditorDocument, PhysicalScale } from '@gridder/editor-core';
 import { formatDimension, polygonBounds, shapeCellSize } from '@/features/editor';
+import { estimateLabelWidth } from '../ShapesLayer/labelWidth';
 
 interface DimensionLayerProps {
   /** Current document snapshot. */
@@ -29,8 +30,15 @@ const LABEL_FONT_FAMILY =
 /** Gap between a shape's bottom edge and its dimension label, in screen pixels. */
 const LABEL_OFFSET_SCREEN = 6;
 
-/** Rough on-screen width of the label, used only to centre it horizontally. */
-const estimateLabelWidth = (text: string, fontSize: number): number => text.length * fontSize * 0.6;
+/**
+ * The `Text` below is given a box this much wider than the estimated label
+ * width, centred on the shape, with `wrap="none"`. Konva centres the real
+ * glyphs inside the box, so centring is exact whatever the estimate; the
+ * slack only guards against a font wider than `estimateLabelWidth` assumes.
+ * Before issue #67 the box was the bare 0.6-em-per-character estimate and
+ * Konva wrapped "10 セル × 6 セル" onto two lines in the share image.
+ */
+const LABEL_BOX_SLACK = 1.25;
 
 /**
  * Draws each selected shape's width × height beneath its bounding box (issue
@@ -62,7 +70,7 @@ export const DimensionLayer = ({ document, selectedIds, gridSize, scale }: Dimen
         const text = `${formatDimension(widthCells, physicalScale)} × ${formatDimension(heightCells, physicalScale)}`;
         const centerX = ((bounds.minX + bounds.maxX) / 2) * gridSize;
         const y = bounds.maxY * gridSize + offset;
-        const width = estimateLabelWidth(text, fontSize);
+        const width = estimateLabelWidth(text, fontSize) * LABEL_BOX_SLACK;
         return { id: shapeId, text, x: centerX - width / 2, y, fontSize, width };
       })
       .filter((label): label is NonNullable<typeof label> => label !== null);
@@ -86,6 +94,7 @@ export const DimensionLayer = ({ document, selectedIds, gridSize, scale }: Dimen
           fontFamily={LABEL_FONT_FAMILY}
           fill={LABEL_COLOR}
           align="center"
+          wrap="none"
           listening={false}
         />
       ))}

@@ -22,7 +22,8 @@ const readAnnotationFontSizesOnCanvas = (page: Page): Promise<number[]> =>
         Konva?: { stages: readonly { find: (selector: string) => readonly KonvaTextLike[] }[] };
       }
     ).Konva;
-    // The first Stage is the live editor; `ExportStage` (#56) is a later one.
+    // The first Stage is the live editor; the share panel's preview `ExportStage`
+    // (#56 / #67) is a later one whenever that panel is open.
     const stage = konva?.stages[0];
     if (stage === undefined) {
       return [];
