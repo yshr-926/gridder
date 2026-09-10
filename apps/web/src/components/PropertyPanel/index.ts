@@ -1,6 +1,6 @@
 export { PropertyPanel } from './PropertyPanel';
-export { DecorationSettings } from './DecorationSettings';
-export { ObjectNameEditor } from './ObjectNameEditor';
-export { TextDisplaySettings } from './TextDisplaySettings';
-export { DimensionDisplaySettings } from './DimensionDisplaySettings';
-export { GroupPanel } from './GroupPanel';
+export { ShapeNameField } from './ShapeNameField';
+export { ShapeDimensions } from './ShapeDimensions';
+export { ShapeAppearance } from './ShapeAppearance';
+export { ShapeStructureActions } from './ShapeStructureActions';
+export { ShapeBooleanActions } from './ShapeBooleanActions';

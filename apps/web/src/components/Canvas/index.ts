@@ -1,12 +1,32 @@
 export { GridCanvas } from './GridCanvas';
 export type { GridCanvasRef } from './GridCanvas';
-export { GridBackground } from './GridBackground';
-export { ObjectsLayer } from './ObjectsLayer';
-export { GridObjectShape } from './GridObjectShape';
-export { InteractionLayer } from './InteractionLayer';
-export { VertexMarker } from './VertexMarker';
-export { PolygonPreview } from './PolygonPreview';
-export { CursorOverlay } from './CursorOverlay';
-export { RemoteCursor } from './RemoteCursor';
-export { RemoteCursors } from './RemoteCursors';
-export { RemoteSelection } from './RemoteSelection';
+export { GridBackground, GRID_NORMAL_STROKE_WIDTH } from './GridBackground';
+export {
+  ShapesLayer,
+  ShapePolygon,
+  ShapeAnnotation,
+  DEFAULT_SHAPES_LAYER_THEME,
+  type ShapesLayerTheme,
+  type ShapesLayerProps,
+  type ShapesLayerMovePreview,
+  type ShapePolygonProps,
+  type ShapeAnnotationProps,
+} from './ShapesLayer';
+export {
+  EditorInteractionLayer,
+  type EditorInteractionCursor,
+  type VertexInsertGhost,
+} from './EditorInteractionLayer';
+export {
+  SelectionOverlay,
+  type SelectionOverlayResizePreview,
+  type SelectionOverlayVertexPreview,
+} from './SelectionOverlay';
+export { DrawingRangeLayer } from './DrawingRangeLayer';
+export { DimensionLayer } from './DimensionLayer';
+export { PolygonDraftLayer } from './PolygonDraftLayer';
+export {
+  VertexEditOverlay,
+  type VertexEditOverlayPreview,
+  type VertexInsertGhostMarker,
+} from './VertexEditOverlay';

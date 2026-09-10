@@ -1,0 +1,41 @@
+{
+  "name": "@gridder/editor-core",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./model": {
+      "types": "./dist/model.d.ts",
+      "import": "./dist/model.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "clean": "rm -rf dist coverage"
+  },
+  "devDependencies": {
+    "@gridder/eslint-config": "workspace:*",
+    "@gridder/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "polygon-clipping": "0.15.7"
+  }
+}

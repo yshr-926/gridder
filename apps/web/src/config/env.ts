@@ -1,7 +1,5 @@
 /**
  * 環境変数の型定義と検証
- *
- * Phase 8 で追加された環境変数を含む統合的な環境変数管理
  */
 
 /**
@@ -10,38 +8,15 @@
 export type AppEnvironment = 'development' | 'staging' | 'production';
 
 /**
- * Plausible Analytics 設定
- */
-export interface PlausibleConfig {
-  /** トラッキング対象ドメイン */
-  domain: string;
-  /** API ホスト（セルフホスト時） */
-  apiHost?: string;
-}
-
-/**
  * 環境変数の型定義
  */
 export interface EnvConfig {
-  // アプリケーション設定
   /** アプリケーション環境 */
   appEnv: AppEnvironment;
   /** デバッグモード */
   debug: boolean;
   /** アプリケーションバージョン */
   appVersion: string;
-
-  // Sentry エラー追跡
-  /** Sentry DSN（オプション） */
-  sentryDsn?: string;
-
-  // Plausible Analytics（推奨）
-  /** Plausible 設定（オプション） */
-  plausible?: PlausibleConfig;
-
-  // Google Analytics 4（代替）
-  /** GA4 測定 ID（オプション） */
-  ga4MeasurementId?: string;
 }
 
 /**
@@ -54,17 +29,6 @@ const VALID_ENVIRONMENTS: readonly AppEnvironment[] = [
 ] as const;
 
 /**
- * オプショナルな環境変数の検証
- * 空文字列や "undefined" は undefined に変換
- */
-const validateOptional = (value: string | undefined): string | undefined => {
-  if (!value || value === 'undefined' || value.trim() === '') {
-    return undefined;
-  }
-  return value;
-};
-
-/**
  * 環境変数を検証して取得する
  */
 function validateEnv(): EnvConfig {
@@ -72,20 +36,8 @@ function validateEnv(): EnvConfig {
   const debug = import.meta.env.VITE_DEBUG;
   const appVersion = import.meta.env.VITE_APP_VERSION;
 
-  // Sentry
-  const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
-
-  // Plausible Analytics
-  const plausibleDomain = import.meta.env.VITE_PLAUSIBLE_DOMAIN;
-  const plausibleApiHost = import.meta.env.VITE_PLAUSIBLE_API_HOST;
-
-  // Google Analytics 4
-  const ga4MeasurementId = import.meta.env.VITE_GA4_MEASUREMENT_ID;
-
   // 環境の検証
-  const validatedAppEnv: AppEnvironment = VALID_ENVIRONMENTS.includes(
-    appEnv as AppEnvironment
-  )
+  const validatedAppEnv: AppEnvironment = VALID_ENVIRONMENTS.includes(appEnv as AppEnvironment)
     ? (appEnv as AppEnvironment)
     : 'development';
 
@@ -94,26 +46,12 @@ function validateEnv(): EnvConfig {
 
   // バージョンの検証
   const validatedVersion =
-    typeof appVersion === 'string' && appVersion.length > 0
-      ? appVersion
-      : '0.0.0';
-
-  // Plausible 設定の構築
-  const validatedPlausibleDomain = validateOptional(plausibleDomain);
-  const plausibleConfig: PlausibleConfig | undefined = validatedPlausibleDomain
-    ? {
-        domain: validatedPlausibleDomain,
-        apiHost: validateOptional(plausibleApiHost),
-      }
-    : undefined;
+    typeof appVersion === 'string' && appVersion.length > 0 ? appVersion : '0.0.0';
 
   return {
     appEnv: validatedAppEnv,
     debug: validatedDebug,
     appVersion: validatedVersion,
-    sentryDsn: validateOptional(sentryDsn),
-    plausible: plausibleConfig,
-    ga4MeasurementId: validateOptional(ga4MeasurementId),
   };
 }
 
@@ -156,32 +94,4 @@ export const isViteDev = (): boolean => {
  */
 export const isViteProd = (): boolean => {
   return import.meta.env.PROD;
-};
-
-/**
- * Sentry が設定されているかどうか
- */
-export const isSentryConfigured = (): boolean => {
-  return env.sentryDsn !== undefined;
-};
-
-/**
- * Plausible が設定されているかどうか
- */
-export const isPlausibleConfigured = (): boolean => {
-  return env.plausible !== undefined;
-};
-
-/**
- * GA4 が設定されているかどうか
- */
-export const isGA4Configured = (): boolean => {
-  return env.ga4MeasurementId !== undefined;
-};
-
-/**
- * いずれかのアナリティクスが設定されているかどうか
- */
-export const isAnalyticsConfigured = (): boolean => {
-  return isPlausibleConfigured() || isGA4Configured();
 };

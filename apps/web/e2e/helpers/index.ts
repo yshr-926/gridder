@@ -1,38 +1,20 @@
 // Test setup and fixtures
+export { test, expect, GRID_SIZE } from './setup';
+
+// Canvas helper (grid-vertex <-> screen conversion, zoom/pan gestures)
+export { CanvasHelper } from './canvas';
+
+// Editor-core runtime readers (document / selection snapshots)
 export {
-  test,
-  expect,
-  TEST_DATA,
-  TIMEOUTS,
-  waitFor,
-  waitForAnimationFrame,
-  retryUntil,
-} from './setup';
+  readDocument,
+  readShapeCount,
+  readSelection,
+  requireShape,
+  type E2eDocumentSnapshot,
+  type E2eSelectionSnapshot,
+  type E2eShape,
+  type E2eShapeStyle,
+} from './editorState';
 
 // Custom assertions
-export {
-  customExpect,
-  expectCanvasHasContent,
-  expectCanvasIsEmpty,
-  expectLocalStorageHasProject,
-  expectDownload,
-  expectElementFocused,
-  expectTabNavigation,
-  expectObjectCount,
-  expectToolbarVisible,
-  expectPropertyPanelVisible,
-  expectStatusBarVisible,
-  expectNoConsoleErrors,
-  expectModalVisible,
-  expectNoModal,
-} from './assertions';
-
-// Canvas helpers
-export {
-  CanvasHelper,
-  getCanvasPixelColor,
-  isCellFilled,
-  drawCellLine,
-  clickGridCell,
-  getFilledCellCount,
-} from './canvas';
+export { expectModalVisible, expectNoModal, expectNoConsoleErrors } from './assertions';

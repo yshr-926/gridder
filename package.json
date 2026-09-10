@@ -2,6 +2,7 @@
   "name": "gridder",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@8.15.0",
   "scripts": {
     "dev": "turbo run dev",
@@ -17,7 +18,7 @@
   },
   "devDependencies": {
     "prettier": "^3.2.0",
-    "turbo": "^2.7.5"
+    "turbo": "^2.7.1"
   },
   "engines": {
     "node": ">=20.0.0",

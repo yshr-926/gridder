@@ -52,11 +52,11 @@
 2. すべてのテストが通ることを確認
 
    ```bash
-   npm run lint
-   npm run type-check
-   npm run test:run
-   npm run test:e2e
-   npm run build
+   pnpm lint
+   pnpm type-check
+   pnpm test
+   pnpm test:e2e
+   pnpm build
    ```
 
 3. 変更内容を確認
@@ -182,14 +182,13 @@ git push origin main --tags
 
 ### 将来的な拡張（検討事項）
 
-- ビルドアーティファクトの添付（Docker イメージのリンク等）
+- ビルドアーティファクトの添付（静的Webバンドル等）
 - リリース自動化（GitHub Actions による自動リリース）
 - リリースノートの自動生成
 
 ## 関連ドキュメント
 
 - [CHANGELOG.md](../CHANGELOG.md)
-- [デプロイ手順書](./deployment-guide.md)
-- [デプロイ後チェックリスト](./deployment-checklist.md)
+- [第一リリース仕様](./spec.md)
 - [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - [Semantic Versioning](https://semver.org/spec/v2.0.0.html)

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  FPSMeter,
+  DragLatencyMeter,
   throttle,
   throttleMouseMove,
   debounce,
@@ -15,6 +17,128 @@ describe('performance utilities', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('FPSMeter', () => {
+    it('should start with 60fps', () => {
+      const meter = new FPSMeter();
+      expect(meter.getFPS()).toBe(60);
+    });
+
+    it('should calculate FPS after 1 second', () => {
+      const meter = new FPSMeter();
+
+      // Simulate 60 frames over 1 second
+      for (let i = 0; i < 60; i++) {
+        vi.advanceTimersByTime(16);
+        meter.update();
+      }
+
+      // After ~1 second with 60 frames, FPS should be close to 60
+      const fps = meter.getFPS();
+      expect(fps).toBeGreaterThanOrEqual(55);
+      expect(fps).toBeLessThanOrEqual(65);
+    });
+
+    it('should reset correctly', () => {
+      const meter = new FPSMeter();
+
+      // Advance time and update
+      vi.advanceTimersByTime(1000);
+      meter.update();
+
+      // Reset
+      meter.reset();
+      expect(meter.getFPS()).toBe(60);
+    });
+  });
+
+  describe('DragLatencyMeter', () => {
+    it('should start with 0 average latency', () => {
+      const meter = new DragLatencyMeter();
+      expect(meter.getAverageLatency()).toBe(0);
+      expect(meter.getSampleCount()).toBe(0);
+    });
+
+    it('should record latency between start and end', () => {
+      const meter = new DragLatencyMeter();
+
+      meter.start();
+      vi.advanceTimersByTime(10);
+      meter.end();
+
+      expect(meter.getSampleCount()).toBe(1);
+      expect(meter.getAverageLatency()).toBeCloseTo(10, 0);
+    });
+
+    it('should calculate average of multiple samples', () => {
+      const meter = new DragLatencyMeter();
+
+      // Record 10ms latency
+      meter.start();
+      vi.advanceTimersByTime(10);
+      meter.end();
+
+      // Record 20ms latency
+      meter.start();
+      vi.advanceTimersByTime(20);
+      meter.end();
+
+      expect(meter.getSampleCount()).toBe(2);
+      expect(meter.getAverageLatency()).toBeCloseTo(15, 0);
+    });
+
+    it('should track min and max latency', () => {
+      const meter = new DragLatencyMeter();
+
+      meter.start();
+      vi.advanceTimersByTime(5);
+      meter.end();
+
+      meter.start();
+      vi.advanceTimersByTime(25);
+      meter.end();
+
+      meter.start();
+      vi.advanceTimersByTime(15);
+      meter.end();
+
+      expect(meter.getMinLatency()).toBeCloseTo(5, 0);
+      expect(meter.getMaxLatency()).toBeCloseTo(25, 0);
+    });
+
+    it('should respect maxSamples limit', () => {
+      const meter = new DragLatencyMeter(3);
+
+      for (let i = 0; i < 5; i++) {
+        meter.start();
+        vi.advanceTimersByTime(10 * (i + 1));
+        meter.end();
+      }
+
+      expect(meter.getSampleCount()).toBe(3);
+    });
+
+    it('should reset correctly', () => {
+      const meter = new DragLatencyMeter();
+
+      meter.start();
+      vi.advanceTimersByTime(10);
+      meter.end();
+
+      meter.reset();
+
+      expect(meter.getSampleCount()).toBe(0);
+      expect(meter.getAverageLatency()).toBe(0);
+    });
+
+    it('should ignore end without start', () => {
+      const meter = new DragLatencyMeter();
+
+      meter.end();
+
+      expect(meter.getSampleCount()).toBe(0);
+    });
   });
 
   describe('throttle', () => {

@@ -1,4 +1,4 @@
-import { chromium, FullConfig } from '@playwright/test';
+import { chromium, type FullConfig } from '@playwright/test';
 
 /**
  * Global setup for Playwright tests
@@ -47,17 +47,17 @@ async function globalSetup(config: FullConfig): Promise<void> {
       console.warn('Warning: Canvas not found, but page loaded. Tests may fail.');
     }
 
-    // Verify basic page structure
-    const hasHeader = await page.locator('header').count() > 0;
-    const hasToolbar = await page.getByRole('toolbar').count() > 0;
-    const hasFooter = await page.locator('footer').count() > 0;
+    // Verify basic page structure (issue #58, polygon-document UI, spec §12):
+    // a compact top bar and the canvas application region — no left toolbar,
+    // no status-bar footer in this UI.
+    const hasHeader = (await page.locator('header').count()) > 0;
+    const hasApplicationRegion = (await page.locator('[role="application"]').count()) > 0;
 
     console.log(`Page structure check:`);
     console.log(`  - Header: ${hasHeader ? 'present' : 'missing'}`);
-    console.log(`  - Toolbar: ${hasToolbar ? 'present' : 'missing'}`);
-    console.log(`  - Footer: ${hasFooter ? 'present' : 'missing'}`);
+    console.log(`  - Canvas application region: ${hasApplicationRegion ? 'present' : 'missing'}`);
 
-    if (!hasHeader || !hasToolbar || !hasFooter) {
+    if (!hasHeader || !hasApplicationRegion) {
       console.warn('Warning: Some page elements are missing. Tests may fail.');
     }
 

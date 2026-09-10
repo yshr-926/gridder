@@ -17,14 +17,11 @@ interface ImportMetaEnv {
   readonly VITE_DEBUG: string;
   /** アプリケーションバージョン */
   readonly VITE_APP_VERSION: string;
-
-  // ===========================================
-  // Rust バックエンド接続設定
-  // ===========================================
-  /** WebSocket 接続 URL（オプション、デフォルト: ws://localhost:3001/ws） */
-  readonly VITE_WS_URL?: string;
-  /** REST API 接続 URL（オプション、デフォルト: http://localhost:3001） */
-  readonly VITE_API_URL?: string;
+  /**
+   * Playwright ビルド時のみ 'true'。開発ツール用の `window.__GRIDDER_*` を
+   * 本番バンドルへ含めず E2E ビルドでだけ公開するためのフラグ（#45）。
+   */
+  readonly VITE_E2E?: string;
 
   // ===========================================
   // Sentry エラー追跡

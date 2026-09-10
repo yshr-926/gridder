@@ -95,7 +95,12 @@ const ToastIcon = ({ type }: { type: ToastType }) => {
   };
 
   return (
-    <div className={cn('flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', style.iconBg)}>
+    <div
+      className={cn(
+        'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
+        style.iconBg
+      )}
+    >
       <span className={style.icon}>{icons[type]}</span>
     </div>
   );
@@ -166,10 +171,7 @@ export const ToastContainer = ({ toasts, onRemove }: ToastContainerProps) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div
-      className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full"
-      aria-label="通知"
-    >
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full" aria-label="通知">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onRemove={onRemove} />
       ))}

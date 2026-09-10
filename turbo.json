@@ -1,19 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": [
-    "**/.env.*local",
-    "**/.env"
-  ],
+  "globalDependencies": ["**/.env.*local", "**/.env"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": [
-        "NODE_ENV",
-        "VITE_WS_URL",
-        "VITE_API_URL"
-      ]
+      "env": ["NODE_ENV"]
     },
     "dev": {
       "cache": false,
@@ -30,18 +23,12 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "env": [
-        "CI",
-        "NODE_ENV"
-      ]
+      "env": ["CI", "NODE_ENV"]
     },
     "test:e2e": {
       "dependsOn": ["build"],
       "outputs": [],
-      "env": [
-        "CI",
-        "PLAYWRIGHT_*"
-      ]
+      "env": ["CI", "PLAYWRIGHT_*"]
     },
     "clean": {
       "cache": false
