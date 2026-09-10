@@ -1,8 +1,11 @@
-# Cloudflare Pages headers configuration
-# https://developers.cloudflare.com/pages/platform/headers/
+# Cloudflare 向けレスポンスヘッダー設定
+# https://developers.cloudflare.com/workers/static-assets/headers/
+#
+# 値は apps/web/src/config/security.ts と一致させること。
+# 不一致は src/config/securityHeaders.test.ts が検出する。
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.ingest.sentry.io https://plausible.io; frame-ancestors 'none'; object-src 'none'; base-uri 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   X-XSS-Protection: 1; mode=block

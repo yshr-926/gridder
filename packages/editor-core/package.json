@@ -31,9 +31,9 @@
   "devDependencies": {
     "@gridder/eslint-config": "workspace:*",
     "@gridder/typescript-config": "workspace:*",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.5",
     "typescript": "~5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "polygon-clipping": "0.15.7"
