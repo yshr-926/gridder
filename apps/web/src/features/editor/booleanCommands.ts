@@ -10,7 +10,7 @@ import {
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useToastStore } from '@/hooks/useToast';
 import { editorSession } from './useEditorSession';
-import { expandSelectionForGroups } from './groupSelection';
+import { resolveSelectionForGroupActions } from './groupSelection';
 
 /**
  * Combine / subtract the current selection (issue #62, spec §7, ADR-0006).
@@ -30,7 +30,7 @@ const MIN_OPERAND_COUNT = 2;
  */
 const selectedOperandIds = (document: EditorDocument): readonly string[] => {
   const { selectedIds, activeGroupId } = useSelectionStore.getState();
-  return expandSelectionForGroups(document, selectedIds, activeGroupId).filter(
+  return resolveSelectionForGroupActions(document, selectedIds, activeGroupId).filter(
     (id) => document.shapes[id] !== undefined
   );
 };

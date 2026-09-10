@@ -26,8 +26,14 @@ const showToast = (type: 'success' | 'error', message: string): void => {
   useToastStore.getState().addToast({ type, message });
 };
 
-/** Start a brand-new empty sketch, discarding the in-memory document and its history. */
-export const startNewSketch = (): void => {
+/**
+ * Start a brand-new empty sketch, discarding the in-memory document and its
+ * history. The adapter's save destination goes with it: a new sketch has never
+ * been saved anywhere, so the next `save` must ask where to put it rather than
+ * silently overwriting the file the previous sketch was saved to.
+ */
+export const startNewSketch = (adapter: FileAdapter): void => {
+  adapter.clearAssociation();
   editorSession.reset(createEmptyDocument());
   markSaved();
 };
@@ -53,10 +59,14 @@ export const openSketchFile = async (adapter: FileAdapter): Promise<boolean> => 
   try {
     document = deserializeDocument(result.content);
   } catch (error) {
+    // The file was read but rejected, so it does not become the save
+    // destination: overwriting an unrelated JSON file the user merely tried to
+    // open would destroy it.
     showToast('error', openErrorMessage(error));
     throw error;
   }
 
+  adapter.confirmAssociation();
   editorSession.reset(document);
   markSaved();
   showToast('success', `"${result.fileName}" を開きました`);
@@ -70,24 +80,26 @@ export const openSketchFile = async (adapter: FileAdapter): Promise<boolean> => 
  * picker that was needed.
  */
 export const saveSketch = async (adapter: FileAdapter): Promise<boolean> => {
-  const content = serializeDocument(editorSession.getDocument());
-  const result = await adapter.save(content, DEFAULT_SKETCH_FILENAME);
+  const document = editorSession.getDocument();
+  const result = await adapter.save(serializeDocument(document), DEFAULT_SKETCH_FILENAME);
   if (result === null) {
     return false;
   }
-  markSaved();
+  // `document`, not the current one: edits made while the write was in flight
+  // are not in the file and must keep the document dirty.
+  markSaved(document);
   showToast('success', `"${result.fileName}" に保存しました`);
   return true;
 };
 
 /** Like {@link saveSketch}, but always prompts for a destination (spec §12 "名前を付けて保存"). */
 export const saveSketchAs = async (adapter: FileAdapter): Promise<boolean> => {
-  const content = serializeDocument(editorSession.getDocument());
-  const result = await adapter.saveAs(content, DEFAULT_SKETCH_FILENAME);
+  const document = editorSession.getDocument();
+  const result = await adapter.saveAs(serializeDocument(document), DEFAULT_SKETCH_FILENAME);
   if (result === null) {
     return false;
   }
-  markSaved();
+  markSaved(document);
   showToast('success', `"${result.fileName}" に保存しました`);
   return true;
 };

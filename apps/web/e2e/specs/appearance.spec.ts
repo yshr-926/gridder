@@ -65,6 +65,43 @@ test.describe('opacity', () => {
       .poll(async () => (await readDocument(page)).shapes[0].style.opacity)
       .toBeCloseTo(0.5, 2);
   });
+
+  test('dragging the slider across several values is one undo step', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 7, 6);
+    const initialOpacity = (await readDocument(page)).shapes[0].style.opacity;
+
+    // Drag the handle left across the track in several moves, all within one
+    // pointer gesture — the document must see only the final value, once.
+    const slider = page.getByRole('slider', { name: '透明度' });
+    const box = await slider.boundingBox();
+    if (box === null) {
+      throw new Error('opacity slider has no bounding box');
+    }
+    const centerY = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width * 0.9, centerY);
+    await page.mouse.down();
+    for (const fraction of [0.7, 0.5, 0.3, 0.2]) {
+      await page.mouse.move(box.x + box.width * fraction, centerY);
+    }
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await readDocument(page)).shapes[0].style.opacity)
+      .not.toBe(initialOpacity);
+
+    // A single Undo returns all the way to where the drag started: the whole
+    // drag committed one Command, not one per slider step. The slider keeps
+    // focus after the drag and the Undo shortcut ignores keys typed into an
+    // input, so move focus off it first.
+    await slider.blur();
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect
+      .poll(async () => (await readDocument(page)).shapes[0].style.opacity)
+      .toBeCloseTo(initialOpacity, 5);
+  });
 });
 
 test.describe('border visibility', () => {

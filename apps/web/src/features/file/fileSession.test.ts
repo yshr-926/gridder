@@ -35,6 +35,8 @@ const mockAdapter = (overrides: Partial<FileAdapter> = {}): FileAdapter => ({
   save: vi.fn(async () => null),
   saveAs: vi.fn(async () => null),
   open: vi.fn(async () => null),
+  confirmAssociation: vi.fn(),
+  clearAssociation: vi.fn(),
   ...overrides,
 });
 
@@ -56,11 +58,22 @@ describe('fileSession', () => {
     it('test_startNewSketch_resetsToEmptyDocument_andMarksSaved', () => {
       editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
 
-      startNewSketch();
+      startNewSketch(mockAdapter());
 
       expect(editorSession.getDocument()).toEqual(createEmptyDocument());
       expect(editorSession.canUndo).toBe(false);
       expect(isDirty()).toBe(false);
+    });
+
+    it('test_startNewSketch_releasesTheAdaptersSaveDestination', () => {
+      // Otherwise saving the new sketch would overwrite the file the previous
+      // one was saved to, without asking.
+      const clearAssociation = vi.fn();
+      const adapter = mockAdapter({ hasAssociatedFile: true, clearAssociation });
+
+      startNewSketch(adapter);
+
+      expect(clearAssociation).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -80,6 +93,35 @@ describe('fileSession', () => {
         type: 'success',
         message: '"sketch.json" に保存しました',
       });
+    });
+
+    it('test_saveSketch_editDuringTheWrite_staysDirty', async () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      // The adapter edits the document while its write is in flight, standing
+      // in for a user edit during a slow save: that change is not in the file.
+      const save = vi.fn<FileAdapter['save']>(async () => {
+        editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+        return { fileName: 'sketch.json' };
+      });
+      const adapter = mockAdapter({ save });
+
+      const result = await saveSketch(adapter);
+
+      expect(result).toBe(true);
+      expect(isDirty()).toBe(true);
+    });
+
+    it('test_saveSketch_writesTheDocumentAsItWasWhenTheSaveStarted', async () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      const atStart = serializeDocument(editorSession.getDocument());
+      const save = vi.fn<FileAdapter['save']>(async () => {
+        editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+        return { fileName: 'sketch.json' };
+      });
+
+      await saveSketch(mockAdapter({ save }));
+
+      expect(save).toHaveBeenCalledWith(atStart, 'sketch');
     });
 
     it('test_saveSketch_userCancelsPicker_resolvesFalse_andStaysDirty', async () => {
@@ -131,6 +173,33 @@ describe('fileSession', () => {
         type: 'success',
         message: '"loaded.json" を開きました',
       });
+    });
+
+    it('test_openSketchFile_validDocument_adoptsTheFileAsTheSaveDestination', async () => {
+      const loaded = { ...createEmptyDocument(), shapes: {}, zOrder: [] };
+      const confirmAssociation = vi.fn();
+      const adapter = mockAdapter({
+        open: vi.fn(async () => ({ fileName: 'loaded.json', content: serializeDocument(loaded) })),
+        confirmAssociation,
+      });
+
+      await openSketchFile(adapter);
+
+      expect(confirmAssociation).toHaveBeenCalledTimes(1);
+    });
+
+    it('test_openSketchFile_unparsableFile_doesNotBecomeTheSaveDestination', async () => {
+      // Otherwise the next save would overwrite the unrelated file the user
+      // merely tried to open.
+      const confirmAssociation = vi.fn();
+      const adapter = mockAdapter({
+        open: vi.fn(async () => ({ fileName: 'notes.json', content: '{"unrelated":true}' })),
+        confirmAssociation,
+      });
+
+      await expect(openSketchFile(adapter)).rejects.toThrow();
+
+      expect(confirmAssociation).not.toHaveBeenCalled();
     });
 
     it('test_openSketchFile_userCancelsPicker_resolvesFalse_leavesDocumentUnchanged', async () => {

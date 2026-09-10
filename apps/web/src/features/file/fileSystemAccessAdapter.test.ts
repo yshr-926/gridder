@@ -107,7 +107,7 @@ describe('FileSystemAccessAdapter', () => {
   });
 
   describe('open', () => {
-    it('test_open_returnsFileNameAndContent_andHoldsTheHandleForLaterSave', async () => {
+    it('test_open_confirmedByCaller_holdsTheHandleForLaterSave', async () => {
       const handle = createMockHandle('loaded.json', '{"b":2}');
       window.showOpenFilePicker = vi.fn(async () => [handle as unknown as FileSystemFileHandle]);
       const adapter = new FileSystemAccessAdapter();
@@ -115,6 +115,10 @@ describe('FileSystemAccessAdapter', () => {
       const result = await adapter.open();
 
       expect(result).toEqual({ fileName: 'loaded.json', content: '{"b":2}' });
+      // Reading it is not enough — the caller has to accept the content first.
+      expect(adapter.hasAssociatedFile).toBe(false);
+
+      adapter.confirmAssociation();
       expect(adapter.hasAssociatedFile).toBe(true);
 
       // A later save overwrites the opened file without prompting again.
@@ -122,6 +126,38 @@ describe('FileSystemAccessAdapter', () => {
       expect(window.showSaveFilePicker).toBeUndefined();
       expect(handle.getWrittenContent()).toBe('{"b":3}');
       expect(saveResult).toEqual({ fileName: 'loaded.json' });
+    });
+
+    it('test_open_notConfirmed_leavesThePreviousSaveDestinationInPlace', async () => {
+      // Opening a file that turns out to be unreadable must not redirect a
+      // later save onto it.
+      const saveHandle = createMockHandle('sketch.json', '{"a":1}');
+      window.showSaveFilePicker = vi.fn(async () => saveHandle as unknown as FileSystemFileHandle);
+      const adapter = new FileSystemAccessAdapter();
+      await adapter.saveAs('{"a":1}');
+
+      const otherHandle = createMockHandle('notes.json', '{"unrelated":true}');
+      window.showOpenFilePicker = vi.fn(async () => [
+        otherHandle as unknown as FileSystemFileHandle,
+      ]);
+      await adapter.open();
+
+      await adapter.save('{"a":2}');
+
+      expect(saveHandle.getWrittenContent()).toBe('{"a":2}');
+      expect(otherHandle.getWrittenContent()).toBe('{"unrelated":true}');
+    });
+
+    it('test_clearAssociation_dropsTheHandle_soTheNextSavePrompts', async () => {
+      const handle = createMockHandle('sketch.json', '{"a":1}');
+      window.showSaveFilePicker = vi.fn(async () => handle as unknown as FileSystemFileHandle);
+      const adapter = new FileSystemAccessAdapter();
+      await adapter.saveAs('{"a":1}');
+      expect(adapter.hasAssociatedFile).toBe(true);
+
+      adapter.clearAssociation();
+
+      expect(adapter.hasAssociatedFile).toBe(false);
     });
 
     it('test_open_userCancelsPicker_resolvesNull', async () => {

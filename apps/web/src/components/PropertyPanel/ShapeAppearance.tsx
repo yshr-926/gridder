@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SHAPE_FILL_PALETTE, type EditorShape, type ShapeFillColor } from '@gridder/editor-core';
 import { setShapesBorderVisible, setShapesFill, setShapesOpacity } from '@/features/editor';
+import { useOpacityPreviewStore } from '@/stores/opacityPreviewStore';
 import { cn } from '@/utils/cn';
 
 interface ShapeAppearanceProps {
@@ -27,6 +28,18 @@ const sharedValue = <T,>(
  * These are the common appearance operations, so they render for a single shape
  * and for a multi-selection alike. When selected shapes disagree on a value the
  * control shows a mixed state (no swatch selected, opacity blank).
+ *
+ * Dragging the opacity slider is one gesture, so it commits one Command
+ * (AGENTS.md "commit one Command when the gesture ends"): while the pointer is
+ * down, every intermediate step only writes {@link useOpacityPreviewStore},
+ * which `ShapesLayer` renders directly on the Konva nodes, and the value
+ * reaches the document once on release. A 70→60→50 drag is therefore a single
+ * Undo step.
+ *
+ * A change that arrives with no pointer gesture in progress — an arrow key, or
+ * a programmatic set — is already a complete interaction and commits at once,
+ * so the document never depends on a release event that may not come. The −/+
+ * buttons are each their own discrete gesture and commit immediately too.
  */
 export const ShapeAppearance = ({ shapes }: ShapeAppearanceProps) => {
   const currentFill = useMemo(() => sharedValue(shapes, (shape) => shape.style.fill), [shapes]);
@@ -39,11 +52,52 @@ export const ShapeAppearance = ({ shapes }: ShapeAppearanceProps) => {
     [shapes]
   );
 
-  const opacityPercent = currentOpacity === null ? null : Math.round(currentOpacity * 100);
+  // Set while the slider is being dragged; `null` once the gesture has ended
+  // and the document holds the value again.
+  const [draggingPercent, setDraggingPercent] = useState<number | null>(null);
+  // Whether the pointer is currently held down on the slider. Only then is a
+  // change part of a longer gesture worth coalescing.
+  const isPointerDownRef = useRef(false);
+  const setPreview = useOpacityPreviewStore((state) => state.setPreview);
+  const clearPreview = useOpacityPreviewStore((state) => state.clearPreview);
+
+  const committedPercent = currentOpacity === null ? null : Math.round(currentOpacity * 100);
+  const opacityPercent = draggingPercent ?? committedPercent;
 
   const stepOpacity = (deltaPercent: number) => {
     const basePercent = opacityPercent ?? 100;
     setShapesOpacity(shapes, (basePercent + deltaPercent) / 100);
+  };
+
+  const changeOpacity = (percent: number) => {
+    if (!isPointerDownRef.current) {
+      // Not a drag: commit straight away rather than waiting for a release.
+      setDraggingPercent(null);
+      clearPreview();
+      setShapesOpacity(shapes, percent / 100);
+      return;
+    }
+    setDraggingPercent(percent);
+    setPreview(
+      shapes.map((shape) => shape.id),
+      percent / 100
+    );
+  };
+
+  // A gesture cut short by the panel closing or the selection changing must
+  // not leave a stale preview painted on the canvas; the uncommitted value is
+  // simply abandoned, the same way an interrupted drag elsewhere is.
+  useEffect(() => clearPreview, [clearPreview]);
+
+  /** End of the slider gesture: drop the preview and commit one Command. */
+  const commitOpacity = () => {
+    isPointerDownRef.current = false;
+    if (draggingPercent === null) {
+      return;
+    }
+    setDraggingPercent(null);
+    clearPreview();
+    setShapesOpacity(shapes, draggingPercent / 100);
   };
 
   return (
@@ -102,7 +156,13 @@ export const ShapeAppearance = ({ shapes }: ShapeAppearanceProps) => {
             max={100}
             step={OPACITY_STEP}
             value={opacityPercent ?? 100}
-            onChange={(event) => setShapesOpacity(shapes, Number(event.target.value) / 100)}
+            onChange={(event) => changeOpacity(Number(event.target.value))}
+            onPointerDown={() => {
+              isPointerDownRef.current = true;
+            }}
+            onPointerUp={commitOpacity}
+            onPointerCancel={commitOpacity}
+            onBlur={commitOpacity}
             className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-gray-200"
             aria-label="透明度"
             aria-valuetext={opacityPercent === null ? '混在' : `${opacityPercent}%`}

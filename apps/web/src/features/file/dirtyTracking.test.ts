@@ -111,6 +111,49 @@ describe('dirty tracking', () => {
     expect(result.current).toBe(false);
   });
 
+  it('test_isDirty_createSaveUndoCreateOther_isDirty_atTheSameHistoryDepth', () => {
+    // The reported defect: create → save → undo → create something else ends
+    // at the depth the save was taken at, but the document is not the saved
+    // one, so the unsaved-changes prompt must still appear.
+    act(() => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      markSaved();
+      editorSession.undo();
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+    });
+
+    expect(isDirty()).toBe(true);
+  });
+
+  it('test_isDirty_editsBeyondTheHistoryLimit_areStillDirty', () => {
+    // Past the 100-entry limit the undo depth stops growing; content must
+    // still be what decides.
+    act(() => {
+      for (let index = 0; index < 100; index += 1) {
+        editorSession.dispatch(new CreateShapeCommand(rectShape(`shape-${index}`)));
+      }
+      markSaved();
+      editorSession.dispatch(new CreateShapeCommand(rectShape('one-more')));
+    });
+
+    expect(editorSession.undoDepth).toBe(100);
+    expect(isDirty()).toBe(true);
+  });
+
+  it('test_markSaved_withAnEarlierDocument_leavesLaterEditsDirty', () => {
+    // An asynchronous save records the version it wrote, not whatever the
+    // document became while the write was in flight.
+    let inFlight = editorSession.getDocument();
+    act(() => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      inFlight = editorSession.getDocument();
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      markSaved(inFlight);
+    });
+
+    expect(isDirty()).toBe(true);
+  });
+
   it('test_markDirty_afterReset_isDirty_evenThoughUndoDepthIsZeroAgain', () => {
     // issue #55: restoring a crash-recovery draft resets history back to
     // depth 0 — the same depth a fresh session starts at — so `markDirty`

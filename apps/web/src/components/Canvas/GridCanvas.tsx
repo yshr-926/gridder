@@ -21,6 +21,7 @@ import {
 import { useCanvasZoom } from '@/hooks/useCanvasZoom';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useMovePreviewStore } from '@/stores/movePreviewStore';
+import { useOpacityPreviewStore } from '@/stores/opacityPreviewStore';
 import { useResizePreviewStore } from '@/stores/resizePreviewStore';
 import { useVertexPreviewStore } from '@/stores/vertexPreviewStore';
 import { ViewportGridBackground } from './ViewportGridBackground';
@@ -106,6 +107,8 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
     const resizePreview = useResizePreviewStore((state) => state.preview) ?? undefined;
     // 頂点・辺ドラッグ中の Konva ノード限定プレビュー（#50, spec §14）
     const vertexPreview = useVertexPreviewStore((state) => state.preview) ?? undefined;
+    // 透明度スライダードラッグ中の Konva ノード限定プレビュー（#45）
+    const opacityPreview = useOpacityPreviewStore((state) => state.preview) ?? undefined;
     // #43 の移動ジェスチャーが要求する grab/grabbing カーソル、
     // #44 のハンドルドラッグが要求する方向別カーソル
     const [interactionCursor, setInteractionCursor] = useState<EditorInteractionCursor | null>(
@@ -240,6 +243,7 @@ export const GridCanvas = forwardRef<GridCanvasRef, GridCanvasProps>(
               movePreview={movePreview}
               resizePreview={resizePreview}
               vertexPreview={vertexPreview}
+              opacityPreview={opacityPreview}
             />
           </Layer>
 

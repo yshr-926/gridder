@@ -6,6 +6,7 @@ export {
   useViewportStore,
 } from './viewportStore';
 export { useMovePreviewStore } from './movePreviewStore';
+export { useOpacityPreviewStore } from './opacityPreviewStore';
 export { useResizePreviewStore } from './resizePreviewStore';
 export { useSettingsStore } from './settingsStore';
 export { useVertexPreviewStore } from './vertexPreviewStore';

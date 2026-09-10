@@ -25,7 +25,17 @@ describe('clipboard', () => {
 
   it('test_copyToClipboard_storesShapes_withPasteCountZero', () => {
     copyToClipboard([rectShape('a')]);
-    expect(readClipboard()).toEqual({ shapes: [rectShape('a')], pasteCount: 0 });
+    expect(readClipboard()).toEqual({ shapes: [rectShape('a')], groupings: [], pasteCount: 0 });
+  });
+
+  it('test_copyToClipboard_storesGroupings_alongsideTheShapes', () => {
+    copyToClipboard([rectShape('a'), rectShape('b')], [['a', 'b']]);
+    expect(readClipboard()?.groupings).toEqual([['a', 'b']]);
+  });
+
+  it('test_copyToClipboard_withoutGroupings_defaultsToNone', () => {
+    copyToClipboard([rectShape('a')]);
+    expect(readClipboard()?.groupings).toEqual([]);
   });
 
   it('test_copyToClipboard_emptyList_leavesClipboardUnchanged', () => {
@@ -42,10 +52,10 @@ describe('clipboard', () => {
   });
 
   it('test_copyToClipboard_afterPreviousCopy_resetsPasteCount', () => {
-    copyToClipboard([rectShape('a')]);
+    copyToClipboard([rectShape('a')], [['a', 'b']]);
     notePasted();
     copyToClipboard([rectShape('b')]);
-    expect(readClipboard()).toEqual({ shapes: [rectShape('b')], pasteCount: 0 });
+    expect(readClipboard()).toEqual({ shapes: [rectShape('b')], groupings: [], pasteCount: 0 });
   });
 
   it('test_notePasted_withEmptyClipboard_isNoOp', () => {

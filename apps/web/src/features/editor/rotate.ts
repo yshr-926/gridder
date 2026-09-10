@@ -1,7 +1,7 @@
 import { RotateShapesCommand, type RotationDirection } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { editorSession } from './useEditorSession';
-import { expandSelectionForGroups } from './groupSelection';
+import { resolveSelectionForGroupActions } from './groupSelection';
 
 /**
  * Rotate the current selection 90° as one rigid group (issue #47, spec §6.2 /
@@ -9,7 +9,7 @@ import { expandSelectionForGroups } from './groupSelection';
  * dispatch a single {@link RotateShapesCommand} so the change is one Undo step.
  *
  * A group's members rotate together because {@link RotateShapesCommand} pivots
- * on the whole selection's bounding box: `expandSelectionForGroups` (issue #52)
+ * on the whole selection's bounding box: `resolveSelectionForGroupActions` (issue #52)
  * makes sure every member is in that bounding box even when `selectedIds`
  * only holds one of them — normally a no-op, since a click already expands
  * the selection to the whole group, but this stays correct even if
@@ -26,6 +26,6 @@ export const rotateSelection = (direction: RotationDirection): void => {
     return;
   }
   const document = editorSession.getDocument();
-  const expanded = expandSelectionForGroups(document, selectedIds, activeGroupId);
+  const expanded = resolveSelectionForGroupActions(document, selectedIds, activeGroupId);
   editorSession.dispatch(new RotateShapesCommand(expanded, direction));
 };

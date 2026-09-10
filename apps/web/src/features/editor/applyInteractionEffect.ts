@@ -17,7 +17,7 @@ import { createRectShape, defaultShapeStyle } from './document';
 import type { EditorSession } from './editorSession';
 import type { InteractionEffect } from './interactionController';
 import { ringFromRect } from './hitTest';
-import { expandSelectionForGroups, resolveClickSelection } from './groupSelection';
+import { resolveClickSelection, resolveSelectionForGroupActions } from './groupSelection';
 
 /** Translate every vertex of a ring by a whole-grid-unit offset. */
 const translateRing = (ring: GridRing, delta: GridPoint): GridRing =>
@@ -144,8 +144,15 @@ export const applyInteractionEffect = (session: EditorSession, effect: Interacti
       // A group moves as a rigid whole (spec §7): if the drag started on one
       // member without the group already fully selected (`interactionController`
       // only knows the single hit shape at that point), expand it here so
-      // every member gets the same delta in the same Command.
-      const shapeIds = expandSelectionForGroups(document, effect.shapeIds, selection.activeGroupId);
+      // every member gets the same delta in the same Command. A group the user
+      // has Shift-clicked part of moves as just that part — the drag carries
+      // the store selection whenever it starts on an already-selected shape,
+      // so the same rule that governs delete applies here.
+      const shapeIds = resolveSelectionForGroupActions(
+        document,
+        effect.shapeIds,
+        selection.activeGroupId
+      );
       const commands: EditorCommand[] = [];
       for (const shapeId of shapeIds) {
         const shape = document.shapes[shapeId];

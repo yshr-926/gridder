@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { EditorShape } from '@gridder/editor-core';
 import { renameShape } from '@/features/editor';
 
@@ -24,6 +24,11 @@ export const ShapeNameField = ({ shape }: ShapeNameFieldProps) => {
     shapeId: shape.id,
     name: committedName,
   });
+  // Escape reverts and then blurs, but `setDraft` is asynchronous: the blur
+  // handler that runs next still closes over the pre-Escape `draft` and would
+  // commit the abandoned name. This flag — a ref, so it is visible to that
+  // same-tick blur — tells `commit` the edit was cancelled.
+  const isCancellingRef = useRef(false);
 
   if (syncedFor.shapeId !== shape.id || syncedFor.name !== committedName) {
     setSyncedFor({ shapeId: shape.id, name: committedName });
@@ -31,6 +36,10 @@ export const ShapeNameField = ({ shape }: ShapeNameFieldProps) => {
   }
 
   const commit = () => {
+    if (isCancellingRef.current) {
+      isCancellingRef.current = false;
+      return;
+    }
     if (draft.trim() === committedName.trim()) {
       return;
     }
@@ -58,6 +67,7 @@ export const ShapeNameField = ({ shape }: ShapeNameFieldProps) => {
             event.currentTarget.blur();
           } else if (event.key === 'Escape') {
             event.preventDefault();
+            isCancellingRef.current = true;
             setDraft(committedName);
             event.currentTarget.blur();
           }

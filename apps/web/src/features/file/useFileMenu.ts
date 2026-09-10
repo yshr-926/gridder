@@ -41,7 +41,7 @@ export const useFileMenu = (): FileMenuControls => {
       setPendingConfirmAction('new');
       return;
     }
-    startNewSketch();
+    startNewSketch(adapter);
   };
 
   const requestOpen = (): void => {
@@ -56,7 +56,7 @@ export const useFileMenu = (): FileMenuControls => {
     const action = pendingConfirmAction;
     setPendingConfirmAction(null);
     if (action === 'new') {
-      startNewSketch();
+      startNewSketch(adapter);
     } else if (action === 'open') {
       void openSketchFile(adapter);
     }

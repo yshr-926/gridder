@@ -231,6 +231,51 @@ describe('editCommands', () => {
       expect(editorSession.getDocument().zOrder).toEqual(['b', 'a', 'd', 'c']);
     });
 
+    it('test_bringForward_multiSelection_contiguous_movesPastTheNextShape', () => {
+      // The reported defect: [a, b, c] with a and b selected left the order
+      // untouched, because b's move undid a's.
+      setupThree();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+      bringForward();
+      expect(editorSession.getDocument().zOrder).toEqual(['c', 'a', 'b']);
+    });
+
+    it('test_sendBackward_multiSelection_contiguous_movesPastThePreviousShape', () => {
+      setupThree();
+      useSelectionStore.getState().setSelection(['b', 'c']);
+      sendBackward();
+      expect(editorSession.getDocument().zOrder).toEqual(['b', 'c', 'a']);
+    });
+
+    it('test_bringForward_multiSelection_atFront_isANoOp', () => {
+      setupThree();
+      useSelectionStore.getState().setSelection(['b', 'c']);
+      bringForward();
+      expect(editorSession.getDocument().zOrder).toEqual(['a', 'b', 'c']);
+    });
+
+    it('test_bringForward_multiSelection_nonAdjacent_eachRunMovesOnItsOwn', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('c')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('d')));
+      // zOrder: [a, b, c, d]
+      useSelectionStore.getState().setSelection(['a', 'c']);
+      bringForward();
+      expect(editorSession.getDocument().zOrder).toEqual(['b', 'a', 'd', 'c']);
+    });
+
+    it('test_bringForward_multiSelection_isOneUndoStep', () => {
+      setupThree();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+      const depthBefore = editorSession.undoDepth;
+      bringForward();
+      expect(editorSession.undoDepth).toBe(depthBefore + 1);
+
+      editorSession.undo();
+      expect(editorSession.getDocument().zOrder).toEqual(['a', 'b', 'c']);
+    });
+
     it('test_zOrder_isUndoable', () => {
       setupThree();
       useSelectionStore.getState().selectOnly('a');
@@ -307,6 +352,109 @@ describe('editCommands', () => {
       const document = editorSession.getDocument();
       expect(document.shapes['a']).toBeUndefined();
       expect(document.shapes['b']).toBeDefined();
+    });
+
+    /** A three-member group, so a single deletion still leaves a valid group. */
+    const setupGroupOfThree = () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('c')));
+      editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b', 'c']));
+    };
+
+    it('test_deleteSelection_shiftDeselectedMember_isNotDeleted', () => {
+      // Select the whole group, then Shift-click one member out of it: the
+      // deselected shape must survive the delete (spec §7).
+      setupGroupOfThree();
+      useSelectionStore.getState().setSelection(['a', 'b', 'c']);
+      useSelectionStore.getState().toggle('c');
+
+      deleteSelection();
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']).toBeUndefined();
+      expect(document.shapes['b']).toBeUndefined();
+      expect(document.shapes['c']).toBeDefined();
+    });
+
+    it('test_deleteSelection_oneMemberOfSurvivingGroup_undo_restoresGroupMembership', () => {
+      setupGroupOfThree();
+      useSelectionStore.getState().enterGroup('group-1', ['a']);
+
+      deleteSelection();
+
+      // The group survives the delete with its two remaining members.
+      expect(editorSession.getDocument().groups['group-1']?.shapeIds).toEqual(['b', 'c']);
+
+      editorSession.undo();
+
+      const restored = editorSession.getDocument();
+      expect(restored.shapes['a']).toBeDefined();
+      expect(restored.groups['group-1']?.shapeIds).toEqual(['a', 'b', 'c']);
+    });
+
+    it('test_duplicateSelection_wholeGroup_groupsTheCopiesToo', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      duplicateSelection();
+
+      const document = editorSession.getDocument();
+      const copyIds = useSelectionStore.getState().selectedIds;
+      expect(copyIds).toHaveLength(2);
+      const copyGroup = Object.values(document.groups).find((group) => group.id !== 'group-1');
+      expect(copyGroup?.shapeIds).toEqual([...copyIds]);
+    });
+
+    it('test_duplicateSelection_group_isOneUndoStep', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+      const depthBefore = editorSession.undoDepth;
+
+      duplicateSelection();
+      expect(editorSession.undoDepth).toBe(depthBefore + 1);
+
+      editorSession.undo();
+      const document = editorSession.getDocument();
+      expect(document.zOrder).toHaveLength(3);
+      expect(Object.keys(document.groups)).toEqual(['group-1']);
+    });
+
+    it('test_pasteClipboard_copiedGroup_groupsThePastedShapes', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+      copySelection();
+
+      pasteClipboard();
+
+      const document = editorSession.getDocument();
+      const pastedIds = useSelectionStore.getState().selectedIds;
+      expect(pastedIds).toHaveLength(2);
+      const pastedGroup = Object.values(document.groups).find((group) => group.id !== 'group-1');
+      expect(pastedGroup?.shapeIds).toEqual([...pastedIds]);
+    });
+
+    it('test_pasteClipboard_ungroupedShapes_createsNoGroup', () => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      useSelectionStore.getState().selectOnly('a');
+      copySelection();
+
+      pasteClipboard();
+
+      expect(Object.keys(editorSession.getDocument().groups)).toEqual([]);
+    });
+
+    it('test_duplicateSelection_twiceInARow_eachCopyGetsItsOwnGroup', () => {
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+
+      duplicateSelection();
+      duplicateSelection();
+
+      const groups = Object.values(editorSession.getDocument().groups);
+      expect(groups).toHaveLength(3);
+      const memberIds = groups.flatMap((group) => group.shapeIds);
+      expect(new Set(memberIds).size).toBe(memberIds.length);
     });
   });
 });

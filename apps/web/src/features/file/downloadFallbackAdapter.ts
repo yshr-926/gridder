@@ -56,6 +56,12 @@ const pickJsonFile = (): Promise<File | null> =>
 export class DownloadFallbackAdapter implements FileAdapter {
   readonly hasAssociatedFile = false;
 
+  /** No handle to adopt: every save downloads a new file. */
+  confirmAssociation(): void {}
+
+  /** Nothing is ever associated, so there is nothing to forget. */
+  clearAssociation(): void {}
+
   async save(content: string, suggestedName?: string): Promise<SaveResult | null> {
     return this.saveAs(content, suggestedName);
   }

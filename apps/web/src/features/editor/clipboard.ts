@@ -7,22 +7,42 @@ import type { EditorShape } from '@gridder/editor-core';
  * they have been pasted since. `pasteCount` drives the "shift by one more
  * cell" behaviour: the first paste offsets by one cell, the second by two,
  * and so on, until the next copy resets it.
+ *
+ * `groupings` carries the copied shapes' grouping alongside them, so a paste
+ * can rebuild it on the new shapes (spec §7: a group is copied as a unit).
+ * Only the membership matters, not the source group IDs — the paste mints new
+ * ones — so it is stored as plain sets of copied shape IDs.
  */
 
 export interface ClipboardContents {
   readonly shapes: readonly EditorShape[];
+  /**
+   * How the copied shapes were grouped, as lists of their IDs. Shapes that
+   * belonged to no group appear in none of these.
+   */
+  readonly groupings: readonly (readonly string[])[];
   /** How many times this clipboard content has been pasted so far. */
   readonly pasteCount: number;
 }
 
 let clipboard: ClipboardContents | null = null;
 
-/** Replace the clipboard with a snapshot of the given shapes. */
-export const copyToClipboard = (shapes: readonly EditorShape[]): void => {
+/**
+ * Replace the clipboard with a snapshot of the given shapes and, when the
+ * caller resolved it, how they were grouped.
+ */
+export const copyToClipboard = (
+  shapes: readonly EditorShape[],
+  groupings: readonly (readonly string[])[] = []
+): void => {
   if (shapes.length === 0) {
     return;
   }
-  clipboard = { shapes: [...shapes], pasteCount: 0 };
+  clipboard = {
+    shapes: [...shapes],
+    groupings: groupings.map((memberIds) => [...memberIds]),
+    pasteCount: 0,
+  };
 };
 
 /** Current clipboard contents, or `null` when nothing has been copied. */

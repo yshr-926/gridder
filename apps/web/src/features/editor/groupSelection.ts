@@ -20,19 +20,27 @@ export const groupContaining = (document: EditorDocument, shapeId: string): Shap
 };
 
 /**
- * Expand a set of shape IDs so that every member of a group any of them
- * belongs to is included too — "select one, get the whole group" (spec §7).
- * `activeGroupId` is the group currently entered for individual selection
- * (issue #52's double-click mode): a shape belonging to *that* group is left
- * as-is rather than expanded, since inside group mode the group's members are
- * meant to be selected individually. Order: original IDs first (in their
- * given order), then any newly-added group members, deduplicated.
+ * The shapes a group-aware action — move, delete, duplicate, copy, rotate, a
+ * boolean operation — should act on, given a selection.
+ *
+ * A group is expanded to all its members ("select one, act on the whole
+ * group", spec §7), *except* when the selection holds some but not all of
+ * them. That partial state is only reachable deliberately, by Shift-clicking a
+ * member out of a fully-selected group, and expanding it would act on shapes
+ * the user just removed from the selection — deleting a shape that is visibly
+ * unselected, for instance. `activeGroupId` is the group currently entered for
+ * individual selection (issue #52's double-click mode); its members are never
+ * expanded, since inside group mode they are meant to be handled individually.
+ *
+ * Order: the given IDs first, in their given order, then any added group
+ * members, deduplicated.
  */
-export const expandSelectionForGroups = (
+export const resolveSelectionForGroupActions = (
   document: EditorDocument,
   shapeIds: readonly string[],
   activeGroupId: string | null
 ): readonly string[] => {
+  const selected = new Set(shapeIds);
   const result: string[] = [];
   const seen = new Set<string>();
 
@@ -46,10 +54,20 @@ export const expandSelectionForGroups = (
   for (const shapeId of shapeIds) {
     add(shapeId);
     const group = groupContaining(document, shapeId);
-    if (group !== null && group.id !== activeGroupId) {
-      for (const memberId of group.shapeIds) {
-        add(memberId);
-      }
+    if (group === null || group.id === activeGroupId) {
+      continue;
+    }
+    // Every member selected → a whole-group selection, expansion is a no-op.
+    // No other member selected → the group was selected via this one shape
+    // (e.g. from `selectOnly`), so expand as usual. In between the user has
+    // deselected members on purpose; honour that.
+    const isPartiallySelected = group.shapeIds.some((id) => id !== shapeId && selected.has(id));
+    const isWhollySelected = group.shapeIds.every((id) => selected.has(id));
+    if (isPartiallySelected && !isWhollySelected) {
+      continue;
+    }
+    for (const memberId of group.shapeIds) {
+      add(memberId);
     }
   }
   return result;

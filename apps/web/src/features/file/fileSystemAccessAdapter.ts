@@ -16,19 +16,34 @@ const writeToHandle = async (handle: FileSystemFileHandle, content: string): Pro
 
 /**
  * File Adapter backed by the File System Access API (issue #54, ADR-0004):
- * Chromium's `showSaveFilePicker` / `showOpenFilePicker`. Holds the last
- * handle returned by either picker so a subsequent {@link save} overwrites
- * the same file without prompting again, matching spec §9 "Chromiumでは、初回に
- * 保存場所を選び、その後は同じファイルへ保存できる".
+ * Chromium's `showSaveFilePicker` / `showOpenFilePicker`. Holds the handle a
+ * save picker returned, or one an open picker returned *and* the caller then
+ * accepted via {@link confirmAssociation}, so a subsequent {@link save}
+ * overwrites the same file without prompting again — matching spec §9
+ * "Chromiumでは、初回に保存場所を選び、その後は同じファイルへ保存できる".
  *
  * `selectFileAdapter` only constructs this when `window.showSaveFilePicker`
  * exists, so callers never need their own feature check.
  */
 export class FileSystemAccessAdapter implements FileAdapter {
   private handle: FileSystemFileHandle | null = null;
+  /** Handle from the last {@link open}, held until the caller accepts its content. */
+  private pendingHandle: FileSystemFileHandle | null = null;
 
   get hasAssociatedFile(): boolean {
     return this.handle !== null;
+  }
+
+  confirmAssociation(): void {
+    if (this.pendingHandle !== null) {
+      this.handle = this.pendingHandle;
+      this.pendingHandle = null;
+    }
+  }
+
+  clearAssociation(): void {
+    this.handle = null;
+    this.pendingHandle = null;
   }
 
   async save(content: string, suggestedName?: string): Promise<SaveResult | null> {
@@ -79,7 +94,9 @@ export class FileSystemAccessAdapter implements FileAdapter {
     }
     const file = await handle.getFile();
     const content = await file.text();
-    this.handle = handle;
+    // Held, not adopted: only `confirmAssociation` — called once the caller
+    // has parsed and accepted the content — makes this the save destination.
+    this.pendingHandle = handle;
     return { fileName: handle.name, content };
   }
 }

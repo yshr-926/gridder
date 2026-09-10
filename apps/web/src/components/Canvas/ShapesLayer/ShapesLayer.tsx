@@ -27,6 +27,13 @@ export interface ShapesLayerVertexPreview {
   readonly polygon: GridPolygon;
 }
 
+/** An inspector opacity drag in progress (issue #45), or `undefined` when idle. */
+export interface ShapesLayerOpacityPreview {
+  readonly shapeIds: readonly string[];
+  /** Live opacity in 0..1, replacing each listed shape's document value. */
+  readonly opacity: number;
+}
+
 /**
  * ShapesLayer Props
  */
@@ -58,6 +65,12 @@ export interface ShapesLayerProps {
    * Command (or the edit is rejected and nothing commits).
    */
   vertexPreview?: ShapesLayerVertexPreview;
+  /**
+   * Live opacity from the inspector's slider (issue #45). When set, every
+   * listed shape draws at this opacity instead of its own — the document is
+   * not touched until the drag ends and commits one Command.
+   */
+  opacityPreview?: ShapesLayerOpacityPreview;
 }
 
 /**
@@ -138,9 +151,10 @@ ShapeAnnotationItem.displayName = 'ShapeAnnotationItem';
  * `useStageViewport`), and every per-shape item is memoised so a zoom only
  * re-renders the annotations, a change to the sketch-wide annotation font
  * size (issue #66) re-renders every annotation but no polygon, and a move /
- * resize / vertex-edit preview only re-renders the shapes it names. Preview props are resolved *per shape* into
- * plain values (a stable `shape` reference plus two numeric offsets) before
- * they reach an item, so a preview for one shape never invalidates another.
+ * resize / vertex-edit / opacity preview only re-renders the shapes it names.
+ * Preview props are resolved *per shape* into plain values (a stable `shape`
+ * reference plus two numeric offsets) before they reach an item, so a preview
+ * for one shape never invalidates another.
  */
 export const ShapesLayer = memo(
   ({
@@ -151,6 +165,7 @@ export const ShapesLayer = memo(
     movePreview,
     resizePreview,
     vertexPreview,
+    opacityPreview,
   }: ShapesLayerProps) => {
     const orderedShapes = useMemo(() => resolveOrderedShapes(document), [document]);
     const annotationFontSize = document.annotationFontSize;
@@ -163,23 +178,28 @@ export const ShapesLayer = memo(
     };
 
     /**
-     * The shape to actually draw: unchanged, unless it is the one shape being
-     * resized (issue #44) or vertex/edge-edited (issue #50), in which case its
-     * polygon is swapped for the live preview — a Konva-only substitution that
-     * never touches `document`. Returns the document's own object otherwise,
-     * so memoised items see the same reference render after render.
+     * The shape to actually draw: unchanged, unless it is being resized
+     * (issue #44), vertex/edge-edited (issue #50), or opacity-dragged in the
+     * inspector (issue #45), in which case the previewed geometry or style is
+     * swapped in — a Konva-only substitution that never touches `document`.
+     * Returns the document's own object otherwise, so memoised items see the
+     * same reference render after render.
      */
     const shapeToRender = (shape: EditorShape): EditorShape => {
+      const previewed =
+        opacityPreview !== undefined && opacityPreview.shapeIds.includes(shape.id)
+          ? { ...shape, style: { ...shape.style, opacity: opacityPreview.opacity } }
+          : shape;
       if (resizePreview !== undefined && resizePreview.shapeId === shape.id) {
         return {
-          ...shape,
+          ...previewed,
           polygon: { outerRing: ringFromRect(resizePreview.bounds), innerRings: [] },
         };
       }
       if (vertexPreview !== undefined && vertexPreview.shapeId === shape.id) {
-        return { ...shape, polygon: vertexPreview.polygon };
+        return { ...previewed, polygon: vertexPreview.polygon };
       }
-      return shape;
+      return previewed;
     };
 
     return (
