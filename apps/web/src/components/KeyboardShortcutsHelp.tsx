@@ -7,31 +7,36 @@ import { cn } from '@/utils';
 interface KeyboardShortcut {
   key: string;
   description: string;
-  category: 'tool' | 'action' | 'navigation';
+  category: 'shape' | 'action' | 'navigation';
 }
 
 /**
  * All available keyboard shortcuts
  */
 const SHORTCUTS: KeyboardShortcut[] = [
-  // Tool shortcuts
-  { key: 'D', description: '描画モード', category: 'tool' },
-  { key: 'V', description: '選択モード', category: 'tool' },
-  { key: 'E', description: '消しゴムモード', category: 'tool' },
+  // Shape shortcuts
+  { key: 'P', description: 'ポリゴン作成', category: 'shape' },
+  { key: 'Enter', description: 'ポリゴンを確定', category: 'shape' },
+  { key: 'Escape', description: '操作を取り消す', category: 'shape' },
+  { key: 'R', description: '90度回転（時計回り）', category: 'shape' },
+  { key: 'Shift + R', description: '90度回転（反時計回り）', category: 'shape' },
 
   // Action shortcuts
-  { key: 'Delete / Backspace', description: '選択オブジェクトを削除', category: 'action' },
-  { key: 'R', description: '90度回転', category: 'action' },
+  { key: 'Delete / Backspace', description: '選択図形を削除', category: 'action' },
+  { key: 'Ctrl/Cmd + C', description: 'コピー', category: 'action' },
+  { key: 'Ctrl/Cmd + V', description: '貼り付け', category: 'action' },
   { key: 'Ctrl/Cmd + D', description: '複製', category: 'action' },
   { key: 'Ctrl/Cmd + Z', description: '元に戻す', category: 'action' },
   { key: 'Ctrl/Cmd + Shift + Z', description: 'やり直し', category: 'action' },
-  { key: 'Ctrl/Cmd + A', description: '全選択', category: 'action' },
+  { key: 'Ctrl/Cmd + ]', description: '前面へ', category: 'action' },
+  { key: 'Ctrl/Cmd + [', description: '背面へ', category: 'action' },
+  { key: 'Ctrl/Cmd + Shift + ]', description: '最前面へ', category: 'action' },
+  { key: 'Ctrl/Cmd + Shift + [', description: '最背面へ', category: 'action' },
   { key: 'Ctrl/Cmd + G', description: 'グループ化', category: 'action' },
   { key: 'Ctrl/Cmd + Shift + G', description: 'グループ解除', category: 'action' },
-  { key: 'Shift + クリック', description: '追加選択', category: 'action' },
 
   // Navigation shortcuts
-  { key: 'Arrow Keys', description: '選択オブジェクトを移動', category: 'navigation' },
+  { key: 'Shift + クリック', description: '追加選択', category: 'navigation' },
   { key: 'Space + Drag', description: 'キャンバスをパン', category: 'navigation' },
   { key: 'Mouse Wheel', description: 'ズームイン/アウト', category: 'navigation' },
   { key: '?', description: 'このヘルプを表示', category: 'navigation' },
@@ -41,7 +46,7 @@ const SHORTCUTS: KeyboardShortcut[] = [
  * Category labels
  */
 const CATEGORY_LABELS: Record<KeyboardShortcut['category'], string> = {
-  tool: 'ツール切り替え',
+  shape: '図形の作成と変形',
   action: 'アクション',
   navigation: 'ナビゲーション',
 };
@@ -134,13 +139,13 @@ export const KeyboardShortcutsHelp = ({ isOpen, onClose }: KeyboardShortcutsHelp
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {(['tool', 'action', 'navigation'] as const).map((category) => (
+          {(['shape', 'action', 'navigation'] as const).map(category => (
             <div key={category}>
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
                 {CATEGORY_LABELS[category]}
               </h3>
               <dl className="space-y-2">
-                {groupedShortcuts[category]?.map((shortcut) => (
+                {groupedShortcuts[category]?.map(shortcut => (
                   <div key={shortcut.key} className="flex items-center justify-between">
                     <dt className="text-sm text-gray-700">{shortcut.description}</dt>
                     <dd>
@@ -164,12 +169,9 @@ export const KeyboardShortcutsHelp = ({ isOpen, onClose }: KeyboardShortcutsHelp
 
         {/* Footer */}
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
-            Escキーまたは外側をクリックして閉じる
-          </p>
+          <p className="text-xs text-gray-500 text-center">Escキーまたは外側をクリックして閉じる</p>
         </div>
       </div>
     </div>
   );
 };
-
