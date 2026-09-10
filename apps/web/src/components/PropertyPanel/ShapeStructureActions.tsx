@@ -1,11 +1,4 @@
-import {
-  BringToFront,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  SendToBack,
-  Trash2,
-} from 'lucide-react';
+import { BringToFront, ChevronDown, ChevronUp, Copy, SendToBack, Trash2 } from 'lucide-react';
 import {
   bringForward,
   bringToFront,

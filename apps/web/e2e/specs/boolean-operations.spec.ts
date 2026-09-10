@@ -27,9 +27,9 @@ test.describe('combine', () => {
     expect(document.shapeCount).toBe(1);
     expect(document.shapes[0].polygon.outerRing).toHaveLength(6);
     expect(document.shapes[0].polygon.innerRings).toHaveLength(0);
-    await expect.poll(async () => (await readSelection(page)).selectedIds).toEqual([
-      document.shapes[0].id,
-    ]);
+    await expect
+      .poll(async () => (await readSelection(page)).selectedIds)
+      .toEqual([document.shapes[0].id]);
 
     await page.keyboard.press('ControlOrMeta+z');
     await expect.poll(async () => (await readDocument(page)).shapeCount).toBe(2);
@@ -86,10 +86,12 @@ test.describe('subtract', () => {
     // tie at exactly the hit radius, half a cell at zoom 1).
     await canvasHelper.dragGrid(8, 2, 10, 4);
     await canvasHelper.dragGrid(9, 3, 3, 3);
-    await expect.poll(async () => (await readDocument(page)).shapes[1].polygon.outerRing[0]).toEqual({
-      x: 2,
-      y: 2,
-    });
+    await expect
+      .poll(async () => (await readDocument(page)).shapes[1].polygon.outerRing[0])
+      .toEqual({
+        x: 2,
+        y: 2,
+      });
 
     await canvasHelper.clickGrid(1, 1);
     await canvasHelper.clickGrid(3, 3, { modifiers: ['Shift'] });
@@ -100,9 +102,9 @@ test.describe('subtract', () => {
     const document = await readDocument(page);
     expect(document.shapeCount).toBe(1);
     expect(document.shapes[0].polygon.innerRings).toHaveLength(1);
-    await expect.poll(async () => (await readSelection(page)).selectedIds).toEqual([
-      document.shapes[0].id,
-    ]);
+    await expect
+      .poll(async () => (await readSelection(page)).selectedIds)
+      .toEqual([document.shapes[0].id]);
 
     await page.keyboard.press('ControlOrMeta+z');
     await expect.poll(async () => (await readDocument(page)).shapeCount).toBe(2);
@@ -119,10 +121,12 @@ test.describe('subtract', () => {
     // spans the subject's full height at x = 2..3.
     await canvasHelper.dragGrid(8, 0, 9, 4);
     await canvasHelper.dragGrid(8.5, 3, 2.5, 3);
-    await expect.poll(async () => (await readDocument(page)).shapes[1].polygon.outerRing[0]).toEqual({
-      x: 2,
-      y: 0,
-    });
+    await expect
+      .poll(async () => (await readDocument(page)).shapes[1].polygon.outerRing[0])
+      .toEqual({
+        x: 2,
+        y: 0,
+      });
 
     await canvasHelper.clickGrid(1, 1);
     await canvasHelper.clickGrid(2.5, 3, { modifiers: ['Shift'] });

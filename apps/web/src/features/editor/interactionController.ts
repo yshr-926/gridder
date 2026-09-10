@@ -633,7 +633,11 @@ export const reduceInteraction = (
 
     case 'movingVertex': {
       if (event.type === 'pointerMove') {
-        const currentPolygon = withVertexMoved(state.originPolygon, state.vertex, event.sample.vertex);
+        const currentPolygon = withVertexMoved(
+          state.originPolygon,
+          state.vertex,
+          event.sample.vertex
+        );
         if (currentPolygon === state.currentPolygon) {
           return { state };
         }

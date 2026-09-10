@@ -24,12 +24,7 @@ interface EmptyStateProps {
  * Default empty state icon
  */
 const DefaultIcon = () => (
-  <svg
-    className="w-12 h-12 text-gray-400"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
+  <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -43,19 +38,10 @@ const DefaultIcon = () => (
  * EmptyState component
  * Displays a placeholder when there's no content
  */
-export const EmptyState = ({
-  title,
-  description,
-  icon,
-  action,
-  className,
-}: EmptyStateProps) => {
+export const EmptyState = ({ title, description, icon, action, className }: EmptyStateProps) => {
   return (
     <div
-      className={cn(
-        'flex flex-col items-center justify-center p-8 text-center',
-        className
-      )}
+      className={cn('flex flex-col items-center justify-center p-8 text-center', className)}
       role="status"
       aria-label={title}
     >
@@ -66,9 +52,7 @@ export const EmptyState = ({
       <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
 
       {/* Description */}
-      {description && (
-        <p className="text-sm text-gray-500 max-w-sm mb-4">{description}</p>
-      )}
+      {description && <p className="text-sm text-gray-500 max-w-sm mb-4">{description}</p>}
 
       {/* Action Button */}
       {action && (

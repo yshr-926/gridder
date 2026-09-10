@@ -1,14 +1,6 @@
 import { useMemo } from 'react';
-import {
-  SHAPE_FILL_PALETTE,
-  type EditorShape,
-  type ShapeFillColor,
-} from '@gridder/editor-core';
-import {
-  setShapesBorderVisible,
-  setShapesFill,
-  setShapesOpacity,
-} from '@/features/editor';
+import { SHAPE_FILL_PALETTE, type EditorShape, type ShapeFillColor } from '@gridder/editor-core';
+import { setShapesBorderVisible, setShapesFill, setShapesOpacity } from '@/features/editor';
 import { cn } from '@/utils/cn';
 
 interface ShapeAppearanceProps {
@@ -19,7 +11,10 @@ interface ShapeAppearanceProps {
 const OPACITY_STEP = 5;
 
 /** The value shared by every shape, or `null` when they differ. */
-const sharedValue = <T,>(shapes: readonly EditorShape[], pick: (shape: EditorShape) => T): T | null => {
+const sharedValue = <T,>(
+  shapes: readonly EditorShape[],
+  pick: (shape: EditorShape) => T
+): T | null => {
   if (shapes.length === 0) {
     return null;
   }
@@ -37,11 +32,11 @@ export const ShapeAppearance = ({ shapes }: ShapeAppearanceProps) => {
   const currentFill = useMemo(() => sharedValue(shapes, (shape) => shape.style.fill), [shapes]);
   const currentOpacity = useMemo(
     () => sharedValue(shapes, (shape) => shape.style.opacity),
-    [shapes],
+    [shapes]
   );
   const currentBorderVisible = useMemo(
     () => sharedValue(shapes, (shape) => shape.style.isBorderVisible),
-    [shapes],
+    [shapes]
   );
 
   const opacityPercent = currentOpacity === null ? null : Math.round(currentOpacity * 100);
@@ -72,7 +67,7 @@ export const ShapeAppearance = ({ shapes }: ShapeAppearanceProps) => {
                   'h-8 w-8 rounded-md border-2 transition-colors',
                   isActive
                     ? 'border-gray-800 ring-2 ring-gray-400'
-                    : 'border-transparent hover:border-gray-300',
+                    : 'border-transparent hover:border-gray-300'
                 )}
                 style={{ backgroundColor: color }}
                 aria-label={`塗り色を ${color} に変更`}

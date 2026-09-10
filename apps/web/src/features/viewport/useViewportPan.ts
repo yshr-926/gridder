@@ -35,11 +35,7 @@ export const useViewportPan = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.code === 'Space' &&
-        !event.repeat &&
-        !isEditableTarget(event.target)
-      ) {
+      if (event.code === 'Space' && !event.repeat && !isEditableTarget(event.target)) {
         event.preventDefault();
         setIsSpacePressed(true);
       }
@@ -62,15 +58,12 @@ export const useViewportPan = () => {
     };
   }, []);
 
-  const updatePan = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>, gesture: PanGesture) => {
-      useViewportStore.getState().setOffset({
-        x: gesture.startOffsetX + event.clientX - gesture.startClientX,
-        y: gesture.startOffsetY + event.clientY - gesture.startClientY,
-      });
-    },
-    []
-  );
+  const updatePan = useCallback((event: ReactPointerEvent<HTMLDivElement>, gesture: PanGesture) => {
+    useViewportStore.getState().setOffset({
+      x: gesture.startOffsetX + event.clientX - gesture.startClientX,
+      y: gesture.startOffsetY + event.clientY - gesture.startClientY,
+    });
+  }, []);
 
   const handlePointerDownCapture = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -145,12 +138,9 @@ export const useViewportPan = () => {
     setIsPanning(false);
   }, []);
 
-  const handleAuxClick = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (event.button === 1) event.preventDefault();
-    },
-    []
-  );
+  const handleAuxClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button === 1) event.preventDefault();
+  }, []);
 
   return {
     isPanning,

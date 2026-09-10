@@ -56,9 +56,7 @@ export const createDummyDocument = (options: DummyDocumentOptions): EditorDocume
     const originY = row * stride;
 
     const innerRings: GridRing[] =
-      withHole && side >= 3
-        ? [rectRing(originX + 1, originY + 1, side - 2, side - 2)]
-        : [];
+      withHole && side >= 3 ? [rectRing(originX + 1, originY + 1, side - 2, side - 2)] : [];
 
     shapes[id] = {
       id,

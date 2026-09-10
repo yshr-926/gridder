@@ -42,7 +42,7 @@ describe('isShareImageSizeExportable', () => {
 
   it('test_isShareImageSizeExportable_sideOverLimit_false_evenWithSmallArea', () => {
     expect(isShareImageSizeExportable({ width: MAX_SHARE_IMAGE_SIDE_PX + 1, height: 10 })).toBe(
-      false,
+      false
     );
   });
 

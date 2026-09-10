@@ -21,10 +21,7 @@ export interface PolygonBooleanEngine {
    * list of grid polygons. The result is empty when the subject is fully
    * covered, and has more than one entry when the subtraction disconnects it.
    */
-  difference(
-    subject: GridPolygon,
-    clips: readonly GridPolygon[],
-  ): readonly GridPolygon[];
+  difference(subject: GridPolygon, clips: readonly GridPolygon[]): readonly GridPolygon[];
 }
 
 /**

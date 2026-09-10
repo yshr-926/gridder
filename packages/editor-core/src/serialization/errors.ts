@@ -28,7 +28,7 @@ export class DocumentDeserializationError extends Error {
   constructor(
     code: DocumentDeserializationErrorCode,
     message: string,
-    issues: readonly DocumentValidationIssue[] = [],
+    issues: readonly DocumentValidationIssue[] = []
   ) {
     super(message);
     this.name = 'DocumentDeserializationError';

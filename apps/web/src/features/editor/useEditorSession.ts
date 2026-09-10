@@ -25,8 +25,7 @@ if (typeof window !== 'undefined') {
 // can read document / history state. Restricted to dev builds and the Playwright
 // build (VITE_E2E=true) so it is never present in a production bundle. Guarded
 // for non-browser (SSR / test) contexts.
-const isEditorDebugExposed =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
+const isEditorDebugExposed = import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
 
 if (isEditorDebugExposed && typeof window !== 'undefined') {
   (window as unknown as { __GRIDDER_EDITOR_SESSION__: EditorSession }).__GRIDDER_EDITOR_SESSION__ =
@@ -35,7 +34,11 @@ if (isEditorDebugExposed && typeof window !== 'undefined') {
 
 /** Subscribe a component to the live document snapshot. */
 export const useEditorDocument = (): EditorDocument =>
-  useSyncExternalStore(editorSession.subscribe, editorSession.getDocument, editorSession.getDocument);
+  useSyncExternalStore(
+    editorSession.subscribe,
+    editorSession.getDocument,
+    editorSession.getDocument
+  );
 
 interface EditorHistoryControls {
   readonly undo: () => void;

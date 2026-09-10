@@ -31,7 +31,8 @@ export const loadBenchmarkFromQuery = (
   }
 
   const rawShapeCount = params.get('benchmark');
-  const parsedShapeCount = rawShapeCount === null || rawShapeCount === '' ? NaN : Number(rawShapeCount);
+  const parsedShapeCount =
+    rawShapeCount === null || rawShapeCount === '' ? NaN : Number(rawShapeCount);
   const shapeCount =
     Number.isFinite(parsedShapeCount) && parsedShapeCount > 0
       ? Math.round(parsedShapeCount)

@@ -53,7 +53,11 @@ describe('applyInteractionEffect — updateShapeVertices (issue #50)', () => {
       ],
       innerRings: [],
     };
-    applyInteractionEffect(session, { type: 'updateShapeVertices', shapeId: 'l', polygon: nextPolygon });
+    applyInteractionEffect(session, {
+      type: 'updateShapeVertices',
+      shapeId: 'l',
+      polygon: nextPolygon,
+    });
 
     expect(session.getDocument().shapes['l']?.polygon).toEqual(nextPolygon);
   });
@@ -74,7 +78,11 @@ describe('applyInteractionEffect — updateShapeVertices (issue #50)', () => {
       ],
       innerRings: [],
     };
-    applyInteractionEffect(session, { type: 'updateShapeVertices', shapeId: 'l', polygon: nextPolygon });
+    applyInteractionEffect(session, {
+      type: 'updateShapeVertices',
+      shapeId: 'l',
+      polygon: nextPolygon,
+    });
     expect(session.getDocument()).not.toEqual(beforeEdit);
 
     session.undo();
@@ -139,7 +147,11 @@ describe('applyInteractionEffect — updateShapeVertices (issue #50)', () => {
       ],
       innerRings: [],
     };
-    applyInteractionEffect(session, { type: 'updateShapeVertices', shapeId: 'sq', polygon: degenerate });
+    applyInteractionEffect(session, {
+      type: 'updateShapeVertices',
+      shapeId: 'sq',
+      polygon: degenerate,
+    });
 
     expect(session.getDocument()).toEqual(beforeEdit);
   });
@@ -242,7 +254,11 @@ describe('applyInteractionEffect — updateShapeVertices normalisation (issue #6
       ],
       innerRings: [],
     };
-    applyInteractionEffect(session, { type: 'updateShapeVertices', shapeId: 'l', polygon: notchClosed });
+    applyInteractionEffect(session, {
+      type: 'updateShapeVertices',
+      shapeId: 'l',
+      polygon: notchClosed,
+    });
 
     expect(session.getDocument().shapes['l']?.polygon).toEqual({
       outerRing: squareRing(0, 0, 6),
@@ -268,7 +284,11 @@ describe('applyInteractionEffect — updateShapeVertices normalisation (issue #6
       ],
       innerRings: [],
     };
-    applyInteractionEffect(session, { type: 'updateShapeVertices', shapeId: 'l', polygon: overlapping });
+    applyInteractionEffect(session, {
+      type: 'updateShapeVertices',
+      shapeId: 'l',
+      polygon: overlapping,
+    });
 
     expect(session.getDocument().shapes['l']?.polygon.outerRing).toEqual([
       { x: 0, y: 0 },

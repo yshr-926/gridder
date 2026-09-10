@@ -49,9 +49,7 @@ describe('PropertyPanel', () => {
 
     render(<PropertyPanel />);
 
-    expect(
-      screen.getByRole('complementary', { name: '図形インスペクター' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '図形インスペクター' })).toBeInTheDocument();
     expect(screen.getByText('選択中の図形')).toBeInTheDocument();
     // Name field.
     expect(screen.getByLabelText('名前')).toBeInTheDocument();

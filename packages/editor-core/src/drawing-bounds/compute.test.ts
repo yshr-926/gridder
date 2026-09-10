@@ -7,7 +7,13 @@ import {
 } from '../model.js';
 import { boundingBoxOfShapes, resolveDrawingBounds } from './compute.js';
 
-const rectangle = (id: string, minX: number, minY: number, maxX: number, maxY: number): EditorShape => ({
+const rectangle = (
+  id: string,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number
+): EditorShape => ({
   id,
   polygon: {
     outerRing: [
@@ -56,7 +62,10 @@ describe('boundingBoxOfShapes', () => {
   it('test_boundingBoxOfShapes_shapeEntirelyInsideAnother_isAbsorbed', () => {
     const outer = rectangle('outer', 0, 0, 10, 10);
     const inner = rectangle('inner', 2, 2, 4, 4);
-    expect(boundingBoxOfShapes([outer, inner])).toEqual({ min: { x: 0, y: 0 }, max: { x: 10, y: 10 } });
+    expect(boundingBoxOfShapes([outer, inner])).toEqual({
+      min: { x: 0, y: 0 },
+      max: { x: 10, y: 10 },
+    });
   });
 });
 
@@ -67,11 +76,16 @@ describe('resolveDrawingBounds', () => {
       zOrder: ['a'],
       drawingBounds: { mode: 'manual', min: { x: -5, y: -5 }, max: { x: 20, y: 20 } },
     });
-    expect(resolveDrawingBounds(document)).toEqual({ min: { x: -5, y: -5 }, max: { x: 20, y: 20 } });
+    expect(resolveDrawingBounds(document)).toEqual({
+      min: { x: -5, y: -5 },
+      max: { x: 20, y: 20 },
+    });
   });
 
   it('test_resolveDrawingBounds_autoMode_noShapes_returnsNull', () => {
-    const document = baseDocument({ drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 1, y: 1 } } });
+    const document = baseDocument({
+      drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 1, y: 1 } },
+    });
     expect(resolveDrawingBounds(document)).toBeNull();
   });
 

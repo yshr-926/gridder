@@ -93,7 +93,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
       const world = screenToWorld(pointer, readViewportTransform());
       return { x: world.x / gridSize, y: world.y / gridSize };
     },
-    [gridSize],
+    [gridSize]
   );
 
   const handlePointerDown = useCallback(
@@ -104,7 +104,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
       event.cancelBubble = true;
       setDragState({ kind, startBounds: baseRect, bounds: baseRect });
     },
-    [baseRect],
+    [baseRect]
   );
 
   const handlePointerMove = useCallback(
@@ -120,7 +120,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
       const nextBounds = resizeRectBounds(dragState.startBounds, dragState.kind, snapped);
       setDragState({ ...dragState, bounds: nextBounds });
     },
-    [dragState, pointerToGrid],
+    [dragState, pointerToGrid]
   );
 
   const commitDrag = useCallback(
@@ -137,7 +137,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
         setManualDrawingBounds({ x: minX, y: minY }, { x: maxX, y: maxY });
       }
     },
-    [dragState],
+    [dragState]
   );
 
   const handlePointerEnter = useCallback(
@@ -147,7 +147,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
         stage.container().style.cursor = `${resizeCursorForHandle(kind)}-resize`;
       }
     },
-    [],
+    []
   );
 
   const handlePointerLeave = useCallback(
@@ -157,7 +157,7 @@ export const DrawingRangeLayer = ({ gridSize, scale }: DrawingRangeLayerProps) =
         stage.container().style.cursor = '';
       }
     },
-    [dragState],
+    [dragState]
   );
 
   if (displayRect === null) {

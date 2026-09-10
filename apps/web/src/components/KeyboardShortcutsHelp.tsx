@@ -139,13 +139,13 @@ export const KeyboardShortcutsHelp = ({ isOpen, onClose }: KeyboardShortcutsHelp
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {(['shape', 'action', 'navigation'] as const).map(category => (
+          {(['shape', 'action', 'navigation'] as const).map((category) => (
             <div key={category}>
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
                 {CATEGORY_LABELS[category]}
               </h3>
               <dl className="space-y-2">
-                {groupedShortcuts[category]?.map(shortcut => (
+                {groupedShortcuts[category]?.map((shortcut) => (
                   <div key={shortcut.key} className="flex items-center justify-between">
                     <dt className="text-sm text-gray-700">{shortcut.description}</dt>
                     <dd>

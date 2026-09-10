@@ -144,10 +144,22 @@ describe('reduceInteraction — movingVertex (issue #50)', () => {
   it('test_movingVertex_pointerMove_updatesCurrentPolygon_liveWithoutCommitting', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(0, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(0, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
     expect(state.kind).toBe('movingVertex');
 
-    const moved = reduceInteraction(state, { type: 'pointerMove', sample: sample(-2, -2) }, document, ['l'], 0.5);
+    const moved = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(-2, -2) },
+      document,
+      ['l'],
+      0.5
+    );
     const preview = vertexEditPreview(moved.state);
     expect(preview?.shapeId).toBe('l');
     expect(preview?.polygon.outerRing[0]).toEqual({ x: -2, y: -2 });
@@ -157,20 +169,47 @@ describe('reduceInteraction — movingVertex (issue #50)', () => {
   it('test_movingVertex_pointerUp_commitsUpdateShapeVerticesEffect', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(0, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(0, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(-2, -2) }, document, ['l'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(-2, -2) },
+      document,
+      ['l'],
+      0.5
+    );
     expect(result.state).toEqual(IDLE_STATE);
     expect(result.effect).toMatchObject({ type: 'updateShapeVertices', shapeId: 'l' });
-    expect((result.effect as { polygon: GridPolygon }).polygon.outerRing[0]).toEqual({ x: -2, y: -2 });
+    expect((result.effect as { polygon: GridPolygon }).polygon.outerRing[0]).toEqual({
+      x: -2,
+      y: -2,
+    });
   });
 
   it('test_movingVertex_pointerUpWithNoNetChange_commitsNothing', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(0, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(0, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(0, 0) }, document, ['l'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(0, 0) },
+      document,
+      ['l'],
+      0.5
+    );
     expect(result.state).toEqual(IDLE_STATE);
     expect(result.effect).toBeUndefined();
   });
@@ -178,8 +217,20 @@ describe('reduceInteraction — movingVertex (issue #50)', () => {
   it('test_movingVertex_pointerCancel_returnsToIdle_withPreviewCleared', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(0, 0) }, document, ['l'], 0.5).state;
-    state = reduceInteraction(state, { type: 'pointerMove', sample: sample(-2, -2) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(0, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(-2, -2) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
     const result = reduceInteraction(state, { type: 'pointerCancel' }, document, ['l'], 0.5);
     expect(result.state).toEqual(IDLE_STATE);
@@ -209,10 +260,25 @@ describe('reduceInteraction — movingVertex (issue #50)', () => {
     };
     const document = documentOf([holed]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(2, 2) }, document, ['holed'], 0.5).state;
-    expect(state).toMatchObject({ kind: 'movingVertex', vertex: { ring: { kind: 'inner', holeIndex: 0 } } });
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(2, 2) },
+      document,
+      ['holed'],
+      0.5
+    ).state;
+    expect(state).toMatchObject({
+      kind: 'movingVertex',
+      vertex: { ring: { kind: 'inner', holeIndex: 0 } },
+    });
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(1, 1) }, document, ['holed'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(1, 1) },
+      document,
+      ['holed'],
+      0.5
+    );
     const polygon = (result.effect as { polygon: GridPolygon }).polygon;
     expect(polygon.innerRings[0]?.[0]).toEqual({ x: 1, y: 1 });
     expect(polygon.outerRing).toEqual(holed.polygon.outerRing);
@@ -223,10 +289,22 @@ describe('reduceInteraction — movingEdge (issue #50)', () => {
   it('test_movingEdge_axisAlignedEdge_pointerMove_translatesBothEndpoints', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(3, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(3, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
     expect(state.kind).toBe('movingEdge');
 
-    const moved = reduceInteraction(state, { type: 'pointerMove', sample: sample(3, -2) }, document, ['l'], 0.5);
+    const moved = reduceInteraction(
+      state,
+      { type: 'pointerMove', sample: sample(3, -2) },
+      document,
+      ['l'],
+      0.5
+    );
     const preview = vertexEditPreview(moved.state);
     expect(preview?.polygon.outerRing[0]).toEqual({ x: 0, y: -2 });
     expect(preview?.polygon.outerRing[1]).toEqual({ x: 6, y: -2 });
@@ -235,9 +313,21 @@ describe('reduceInteraction — movingEdge (issue #50)', () => {
   it('test_movingEdge_pointerUp_commitsUpdateShapeVerticesEffect', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(3, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(3, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(3, -2) }, document, ['l'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(3, -2) },
+      document,
+      ['l'],
+      0.5
+    );
     expect(result.effect).toMatchObject({ type: 'updateShapeVertices', shapeId: 'l' });
     const polygon = (result.effect as { polygon: GridPolygon }).polygon;
     expect(polygon.outerRing[0]).toEqual({ x: 0, y: -2 });
@@ -247,9 +337,21 @@ describe('reduceInteraction — movingEdge (issue #50)', () => {
   it('test_movingEdge_pointerUpWithNoNetChange_commitsNothing', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(3, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(3, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(3, 0) }, document, ['l'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(3, 0) },
+      document,
+      ['l'],
+      0.5
+    );
     expect(result.state).toEqual(IDLE_STATE);
     expect(result.effect).toBeUndefined();
   });
@@ -279,7 +381,13 @@ describe('reduceInteraction — movingEdge (issue #50)', () => {
     ).state;
     expect(state).toMatchObject({ kind: 'movingEdge', edge: { edgeIndex: 0 } });
 
-    const result = reduceInteraction(state, { type: 'pointerUp', sample: sample(5, 4) }, document, ['tri'], 0.5);
+    const result = reduceInteraction(
+      state,
+      { type: 'pointerUp', sample: sample(5, 4) },
+      document,
+      ['tri'],
+      0.5
+    );
     const polygon = (result.effect as { polygon: GridPolygon }).polygon;
     expect(polygon.outerRing[0]).toEqual({ x: 3, y: 3 });
     expect(polygon.outerRing[1]).toEqual({ x: 7, y: 5 });
@@ -289,7 +397,13 @@ describe('reduceInteraction — movingEdge (issue #50)', () => {
   it('test_movingEdge_pointerCancel_returnsToIdle_withPreviewCleared', () => {
     const document = documentOf([lShape('l')]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(3, 0) }, document, ['l'], 0.5).state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(3, 0) },
+      document,
+      ['l'],
+      0.5
+    ).state;
 
     const result = reduceInteraction(state, { type: 'pointerCancel' }, document, ['l'], 0.5);
     expect(result.state).toEqual(IDLE_STATE);

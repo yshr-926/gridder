@@ -19,12 +19,7 @@ export const square = (x: number, y: number, size = 1): GridPolygon => ({
 });
 
 /** A rectangle spanning `[minX, maxX] x [minY, maxY]`. */
-export const rectangle = (
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
-): GridPolygon => ({
+export const rectangle = (minX: number, minY: number, maxX: number, maxY: number): GridPolygon => ({
   outerRing: [
     { x: minX, y: minY },
     { x: maxX, y: minY },
@@ -43,10 +38,7 @@ const canonicalizeRing = (ring: GridRing): GridRing => {
   for (let index = 1; index < ring.length; index += 1) {
     const candidate = ring[index] as GridPoint;
     const current = ring[startIndex] as GridPoint;
-    if (
-      candidate.x < current.x ||
-      (candidate.x === current.x && candidate.y < current.y)
-    ) {
+    if (candidate.x < current.x || (candidate.x === current.x && candidate.y < current.y)) {
       startIndex = index;
     }
   }
@@ -60,9 +52,7 @@ const canonicalizeRing = (ring: GridRing): GridRing => {
  */
 export const polygonKey = (polygon: GridPolygon): string => {
   const outer = JSON.stringify(canonicalizeRing(polygon.outerRing));
-  const inners = polygon.innerRings
-    .map((ring) => JSON.stringify(canonicalizeRing(ring)))
-    .sort();
+  const inners = polygon.innerRings.map((ring) => JSON.stringify(canonicalizeRing(ring))).sort();
   return `${outer}|${inners.join('#')}`;
 };
 
@@ -99,19 +89,12 @@ export const assertNormalized = (polygons: readonly GridPolygon[]): void => {
   polygons.forEach((polygon, polygonIndex) => {
     assertRingIsClean(polygon.outerRing, `polygon[${polygonIndex}].outerRing`);
     if (doubleSignedArea(polygon.outerRing) <= 0) {
-      throw new Error(
-        `polygon[${polygonIndex}].outerRing is not counter-clockwise`,
-      );
+      throw new Error(`polygon[${polygonIndex}].outerRing is not counter-clockwise`);
     }
     polygon.innerRings.forEach((ring, ringIndex) => {
-      assertRingIsClean(
-        ring,
-        `polygon[${polygonIndex}].innerRings[${ringIndex}]`,
-      );
+      assertRingIsClean(ring, `polygon[${polygonIndex}].innerRings[${ringIndex}]`);
       if (doubleSignedArea(ring) >= 0) {
-        throw new Error(
-          `polygon[${polygonIndex}].innerRings[${ringIndex}] is not clockwise`,
-        );
+        throw new Error(`polygon[${polygonIndex}].innerRings[${ringIndex}] is not clockwise`);
       }
     });
   });
@@ -127,7 +110,7 @@ export const coveredDoubleArea = (polygons: readonly GridPolygon[]): number =>
     const outer = Math.abs(doubleSignedArea(polygon.outerRing));
     const holes = polygon.innerRings.reduce(
       (sum, ring) => sum + Math.abs(doubleSignedArea(ring)),
-      0,
+      0
     );
     return total + outer - holes;
   }, 0);
@@ -152,7 +135,7 @@ export const createRandom = (seed: number): (() => number) => {
  */
 export const coveredCells = (
   polygons: readonly GridPolygon[],
-  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  bounds: { minX: number; minY: number; maxX: number; maxY: number }
 ): Set<string> => {
   const cells = new Set<string>();
   for (let cx = bounds.minX; cx < bounds.maxX; cx += 1) {

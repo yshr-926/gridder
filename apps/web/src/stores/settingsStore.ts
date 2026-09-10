@@ -21,8 +21,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   includeDimensionsInShareImage: true,
-  setIncludeDimensionsInShareImage: (include) =>
-    set({ includeDimensionsInShareImage: include }),
+  setIncludeDimensionsInShareImage: (include) => set({ includeDimensionsInShareImage: include }),
 
   includeGridInShareImage: true,
   setIncludeGridInShareImage: (include) => set({ includeGridInShareImage: include }),

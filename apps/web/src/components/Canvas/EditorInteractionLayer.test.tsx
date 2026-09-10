@@ -29,11 +29,7 @@ vi.mock('react-konva', () => ({
     onDblClick,
     ...props
   }: Record<string, unknown>) => {
-    const makeEvent = (e: {
-      clientX?: number;
-      clientY?: number;
-      shiftKey?: boolean;
-    }) => ({
+    const makeEvent = (e: { clientX?: number; clientY?: number; shiftKey?: boolean }) => ({
       evt: { shiftKey: e.shiftKey ?? false },
       target: {
         getStage: () => ({
@@ -91,9 +87,7 @@ vi.mock('react-konva', () => ({
                 )
             : undefined
         }
-        onPointerCancel={
-          onPointerCancel ? () => (onPointerCancel as () => void)() : undefined
-        }
+        onPointerCancel={onPointerCancel ? () => (onPointerCancel as () => void)() : undefined}
         onDoubleClick={
           onDblClick
             ? (e) =>
@@ -236,9 +230,19 @@ describe('EditorInteractionLayer', () => {
 
   describe('shape drag move (issue #43)', () => {
     it('test_EditorInteractionLayer_dragOnShape_selectsIt_movesByIntegerDelta_andCommitsOneUndoStep', () => {
-      const shape = { id: 'move-a', polygon: { outerRing: [
-        { x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 3 }, { x: 1, y: 3 },
-      ], innerRings: [] }, style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true } };
+      const shape = {
+        id: 'move-a',
+        polygon: {
+          outerRing: [
+            { x: 1, y: 1 },
+            { x: 3, y: 1 },
+            { x: 3, y: 3 },
+            { x: 1, y: 3 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
       editorSession.dispatch(new CreateShapeCommand(shape));
       useSelectionStore.setState({ selectedIds: [], primaryId: null });
 
@@ -284,9 +288,19 @@ describe('EditorInteractionLayer', () => {
     });
 
     it('test_EditorInteractionLayer_dragOnShape_clearsMovePreview_onPointerUp', () => {
-      const shape = { id: 'move-b', polygon: { outerRing: [
-        { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-      ], innerRings: [] }, style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true } };
+      const shape = {
+        id: 'move-b',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 2, y: 0 },
+            { x: 2, y: 2 },
+            { x: 0, y: 2 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
       editorSession.dispatch(new CreateShapeCommand(shape));
 
       const { container } = render(<EditorInteractionLayer {...defaultProps} />);
@@ -301,9 +315,19 @@ describe('EditorInteractionLayer', () => {
     });
 
     it('test_EditorInteractionLayer_moveDrag_throttlesRapidPointerMoves_to16ms', () => {
-      const shape = { id: 'move-throttle', polygon: { outerRing: [
-        { x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 },
-      ], innerRings: [] }, style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true } };
+      const shape = {
+        id: 'move-throttle',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 4, y: 0 },
+            { x: 4, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
       editorSession.dispatch(new CreateShapeCommand(shape));
 
       let now = 1_000;
@@ -331,12 +355,32 @@ describe('EditorInteractionLayer', () => {
     });
 
     it('test_EditorInteractionLayer_multiSelectDrag_movesEverySelectedShape_bySameDelta', () => {
-      const shapeA = { id: 'multi-a', polygon: { outerRing: [
-        { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-      ], innerRings: [] }, style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true } };
-      const shapeB = { id: 'multi-b', polygon: { outerRing: [
-        { x: 10, y: 10 }, { x: 12, y: 10 }, { x: 12, y: 12 }, { x: 10, y: 12 },
-      ], innerRings: [] }, style: { fill: '#ef4444' as const, opacity: 0.8, isBorderVisible: true } };
+      const shapeA = {
+        id: 'multi-a',
+        polygon: {
+          outerRing: [
+            { x: 0, y: 0 },
+            { x: 2, y: 0 },
+            { x: 2, y: 2 },
+            { x: 0, y: 2 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
+      };
+      const shapeB = {
+        id: 'multi-b',
+        polygon: {
+          outerRing: [
+            { x: 10, y: 10 },
+            { x: 12, y: 10 },
+            { x: 12, y: 12 },
+            { x: 10, y: 12 },
+          ],
+          innerRings: [],
+        },
+        style: { fill: '#ef4444' as const, opacity: 0.8, isBorderVisible: true },
+      };
       editorSession.dispatch(new CreateShapeCommand(shapeA));
       editorSession.dispatch(new CreateShapeCommand(shapeB));
       useSelectionStore.setState({ selectedIds: ['multi-a', 'multi-b'], primaryId: 'multi-b' });
@@ -512,7 +556,10 @@ describe('EditorInteractionLayer', () => {
         style: { fill: '#3b82f6' as const, opacity: 0.8, isBorderVisible: true },
       };
       editorSession.dispatch(new CreateShapeCommand(shape));
-      useSelectionStore.setState({ selectedIds: ['resize-priority'], primaryId: 'resize-priority' });
+      useSelectionStore.setState({
+        selectedIds: ['resize-priority'],
+        primaryId: 'resize-priority',
+      });
 
       const { container } = render(<EditorInteractionLayer {...defaultProps} />);
       const node = surface(container);
@@ -737,7 +784,9 @@ describe('EditorInteractionLayer', () => {
       fireEvent.pointerDown(node, { clientX: 40, clientY: 1 });
       fireEvent.pointerMove(node, { clientX: 40, clientY: 40 });
       fireEvent.pointerUp(node, { clientX: 40, clientY: 40 });
-      expect(editorSession.getDocument().shapes['ghost-round-trip'].polygon.outerRing).toHaveLength(5);
+      expect(editorSession.getDocument().shapes['ghost-round-trip'].polygon.outerRing).toHaveLength(
+        5
+      );
 
       // Drag that vertex back onto the top edge: collinear, so it is removed
       // and the shape is a 4-vertex rectangle again.

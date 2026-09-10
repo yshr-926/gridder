@@ -81,5 +81,5 @@ export const DEFAULT_SHARE_IMAGE_OPTIONS: ShareImageOptions = {
  */
 export const resolveShareImageBackground = (
   format: ShareImageFormat,
-  background: ShareImageBackground,
+  background: ShareImageBackground
 ): ShareImageBackground => (format === 'jpeg' ? 'white' : background);

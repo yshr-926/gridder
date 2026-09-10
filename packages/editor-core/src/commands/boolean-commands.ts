@@ -1,12 +1,6 @@
 import type { PolygonBooleanEngine } from '../boolean/engine.js';
 import { splitDisjointPolygons } from '../boolean/split.js';
-import type {
-  EditorDocument,
-  EditorShape,
-  GridPolygon,
-  ShapeGroup,
-  ShapeId,
-} from '../model.js';
+import type { EditorDocument, EditorShape, GridPolygon, ShapeGroup, ShapeId } from '../model.js';
 import { CommandApplicationError, type EditorCommand } from './command.js';
 import {
   indexInZOrder,
@@ -39,7 +33,7 @@ const MIN_OPERAND_COUNT = 2;
 const requireOperands = (
   document: EditorDocument,
   shapeIds: readonly ShapeId[],
-  operation: string,
+  operation: string
 ): readonly EditorShape[] => {
   if (shapeIds.length < MIN_OPERAND_COUNT) {
     throw new CommandApplicationError(`${operation} needs at least two shapes.`);
@@ -61,7 +55,7 @@ const requireOperands = (
  */
 export const frontmostShapeId = (
   document: EditorDocument,
-  shapeIds: readonly ShapeId[],
+  shapeIds: readonly ShapeId[]
 ): ShapeId => {
   let frontmost: ShapeId | undefined;
   let frontmostIndex = -1;
@@ -110,7 +104,7 @@ const derivePieceId = (baseId: ShapeId, takenIds: Set<ShapeId>): ShapeId => {
 export const unionOfShapes = (
   document: EditorDocument,
   shapeIds: readonly ShapeId[],
-  engine: PolygonBooleanEngine,
+  engine: PolygonBooleanEngine
 ): readonly GridPolygon[] => {
   const shapes = requireOperands(document, shapeIds, 'Combine');
   return splitDisjointPolygons(engine.union(shapes.map((shape) => shape.polygon)));
@@ -130,7 +124,7 @@ class RestoreShapesCommand implements EditorCommand {
 
   constructor(
     private readonly snapshot: Pick<EditorDocument, 'shapes' | 'zOrder' | 'groups'>,
-    private readonly forward: EditorCommand,
+    private readonly forward: EditorCommand
   ) {
     this.label = `Undo ${forward.label}`;
   }
@@ -150,7 +144,7 @@ class RestoreShapesCommand implements EditorCommand {
 }
 
 const snapshotOf = (
-  document: EditorDocument,
+  document: EditorDocument
 ): Pick<EditorDocument, 'shapes' | 'zOrder' | 'groups'> => ({
   shapes: document.shapes,
   zOrder: document.zOrder,
@@ -183,14 +177,14 @@ export class CombineShapesCommand implements EditorCommand {
 
   constructor(
     private readonly shapeIds: readonly ShapeId[],
-    private readonly engine: PolygonBooleanEngine,
+    private readonly engine: PolygonBooleanEngine
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
     const polygons = unionOfShapes(document, this.shapeIds, this.engine);
     if (polygons.length !== 1) {
       throw new CommandApplicationError(
-        'Combine needs shapes that overlap or share an edge; the union is not one connected polygon.',
+        'Combine needs shapes that overlap or share an edge; the union is not one connected polygon.'
       );
     }
     const keeperId = frontmostShapeId(document, this.shapeIds);
@@ -226,7 +220,7 @@ export class SubtractShapesCommand implements EditorCommand {
 
   constructor(
     private readonly shapeIds: readonly ShapeId[],
-    private readonly engine: PolygonBooleanEngine,
+    private readonly engine: PolygonBooleanEngine
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
@@ -236,14 +230,16 @@ export class SubtractShapesCommand implements EditorCommand {
     // Subjects are processed back to front so derived ids and z-order
     // insertions stay deterministic regardless of selection order.
     const subjectIds = document.zOrder.filter(
-      (shapeId) => shapeId !== cutterId && this.shapeIds.includes(shapeId),
+      (shapeId) => shapeId !== cutterId && this.shapeIds.includes(shapeId)
     );
     const takenIds = new Set(Object.keys(document.shapes));
 
     let next = document;
     for (const subjectId of subjectIds) {
       const subject = requireShape(next, subjectId);
-      const pieces = splitDisjointPolygons(this.engine.difference(subject.polygon, [cutter.polygon]));
+      const pieces = splitDisjointPolygons(
+        this.engine.difference(subject.polygon, [cutter.polygon])
+      );
       const [largest, ...rest] = pieces;
       if (largest === undefined) {
         next = removeShape(next, subjectId);

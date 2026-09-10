@@ -56,7 +56,7 @@ const baseDocument = (): EditorDocument => ({
  */
 const expectRoundTrip = (
   document: EditorDocument,
-  command: EditorCommand,
+  command: EditorCommand
 ): { applied: EditorDocument } => {
   const inverse = command.invert(document);
   const applied = command.apply(document);
@@ -70,10 +70,7 @@ const expectRoundTrip = (
 describe('CreateShapeCommand', () => {
   it('test_CreateShapeCommand_applyUndoRedo_documentMatches', () => {
     const doc = baseDocument();
-    const { applied } = expectRoundTrip(
-      doc,
-      new CreateShapeCommand(rectangle('shape-c', 12)),
-    );
+    const { applied } = expectRoundTrip(doc, new CreateShapeCommand(rectangle('shape-c', 12)));
     expect(applied.zOrder).toEqual(['shape-a', 'shape-b', 'shape-c']);
     expect(isDocumentValid(applied)).toBe(true);
   });
@@ -104,10 +101,7 @@ describe('DeleteShapeCommand', () => {
     const doc = baseDocument();
     const command = new DeleteShapeCommand('shape-a');
     const inverse = command.invert(doc);
-    expect(inverse.apply(command.apply(doc)).zOrder).toEqual([
-      'shape-a',
-      'shape-b',
-    ]);
+    expect(inverse.apply(command.apply(doc)).zOrder).toEqual(['shape-a', 'shape-b']);
   });
 });
 
@@ -123,10 +117,7 @@ describe('ReplaceShapeVerticesCommand', () => {
       ],
       innerRings: [],
     };
-    const { applied } = expectRoundTrip(
-      doc,
-      new ReplaceShapeVerticesCommand('shape-a', moved),
-    );
+    const { applied } = expectRoundTrip(doc, new ReplaceShapeVerticesCommand('shape-a', moved));
     expect(applied.shapes['shape-a']?.polygon).toEqual(moved);
   });
 
@@ -164,7 +155,7 @@ describe('SetShapeStyleCommand', () => {
         fill: '#ef4444',
         opacity: 0.5,
         isBorderVisible: false,
-      }),
+      })
     );
     expect(applied.shapes['shape-a']?.style.fill).toBe('#ef4444');
   });
@@ -178,10 +169,7 @@ describe('RenameShapeCommand', () => {
 
   it('test_RenameShapeCommand_clearName_applyUndoRedo_documentMatches', () => {
     const doc = baseDocument();
-    const { applied } = expectRoundTrip(
-      doc,
-      new RenameShapeCommand('shape-a', undefined),
-    );
+    const { applied } = expectRoundTrip(doc, new RenameShapeCommand('shape-a', undefined));
     expect('name' in (applied.shapes['shape-a'] ?? {})).toBe(false);
   });
 });
@@ -203,7 +191,7 @@ describe('SetDrawingBoundsCommand', () => {
         mode: 'manual',
         min: { x: -2, y: -2 },
         max: { x: 20, y: 20 },
-      }),
+      })
     );
     expect(applied.drawingBounds.mode).toBe('manual');
   });
@@ -214,17 +202,14 @@ describe('GroupShapesCommand / UngroupShapesCommand', () => {
     const doc = baseDocument();
     const { applied } = expectRoundTrip(
       doc,
-      new GroupShapesCommand('group-1', ['shape-a', 'shape-b']),
+      new GroupShapesCommand('group-1', ['shape-a', 'shape-b'])
     );
     expect(applied.groups['group-1']?.shapeIds).toEqual(['shape-a', 'shape-b']);
     expect(isDocumentValid(applied)).toBe(true);
   });
 
   it('test_UngroupShapesCommand_applyUndoRedo_documentMatches', () => {
-    const grouped = new GroupShapesCommand('group-1', [
-      'shape-a',
-      'shape-b',
-    ]).apply(baseDocument());
+    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     expectRoundTrip(grouped, new UngroupShapesCommand('group-1'));
   });
 
@@ -232,32 +217,22 @@ describe('GroupShapesCommand / UngroupShapesCommand', () => {
     // Nested groups are impossible by construction (spec §7): re-grouping a
     // shape that already belongs to one dissolves that group rather than
     // throwing (issue #52's chosen rule — see the class doc comment).
-    const grouped = new GroupShapesCommand('group-1', [
-      'shape-a',
-      'shape-b',
-    ]).apply(baseDocument());
-    const regrouped = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(
-      grouped,
-    );
+    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
+    const regrouped = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(grouped);
     expect(regrouped.groups['group-1']).toBeUndefined();
     expect(regrouped.groups['group-2']?.shapeIds).toEqual(['shape-a', 'shape-b']);
     expect(isDocumentValid(regrouped)).toBe(true);
   });
 
   it('test_GroupShapesCommand_shapeAlreadyGrouped_invert_restoresDissolvedGroup', () => {
-    const grouped = new GroupShapesCommand('group-1', [
-      'shape-a',
-      'shape-b',
-    ]).apply(baseDocument());
+    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     const command = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']);
     const { applied } = expectRoundTrip(grouped, command);
     expect(applied.groups['group-2']?.shapeIds).toEqual(['shape-a', 'shape-b']);
   });
 
   it('test_GroupShapesCommand_fewerThanTwoShapes_throws', () => {
-    expect(() =>
-      new GroupShapesCommand('group-1', ['shape-a']).apply(baseDocument()),
-    ).toThrow();
+    expect(() => new GroupShapesCommand('group-1', ['shape-a']).apply(baseDocument())).toThrow();
   });
 });
 
@@ -270,14 +245,10 @@ describe('CompositeCommand', () => {
         new CreateShapeCommand(rectangle('shape-a1', 0)),
         new CreateShapeCommand(rectangle('shape-a2', 20)),
       ],
-      'Split shape',
+      'Split shape'
     );
     const { applied } = expectRoundTrip(doc, split);
-    expect(Object.keys(applied.shapes).sort()).toEqual([
-      'shape-a1',
-      'shape-a2',
-      'shape-b',
-    ]);
+    expect(Object.keys(applied.shapes).sort()).toEqual(['shape-a1', 'shape-a2', 'shape-b']);
     expect(isDocumentValid(applied)).toBe(true);
   });
 

@@ -58,8 +58,7 @@ const countCells = (document: EditorDocument): number => {
     const outerXs = outerRing.map((p) => p.x);
     const outerYs = outerRing.map((p) => p.y);
     total +=
-      (Math.max(...outerXs) - Math.min(...outerXs)) *
-      (Math.max(...outerYs) - Math.min(...outerYs));
+      (Math.max(...outerXs) - Math.min(...outerXs)) * (Math.max(...outerYs) - Math.min(...outerYs));
   }
   return total;
 };
@@ -68,9 +67,7 @@ describe('ShapesLayer', () => {
   it('test_ShapesLayer_renders_oneKonvaShapeNodePerShape', () => {
     const document = createDummyDocument({ shapeCount: 12, cellsPerShape: 9 });
 
-    const { getAllByTestId } = render(
-      <ShapesLayer document={document} gridSize={10} scale={1} />
-    );
+    const { getAllByTestId } = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
 
     const polygons = getAllByTestId('konva-shape');
     expect(polygons).toHaveLength(12);
@@ -87,15 +84,11 @@ describe('ShapesLayer', () => {
     expect(countCells(large)).toBeGreaterThanOrEqual(45_000);
     expect(countCells(large)).toBeLessThanOrEqual(55_000);
 
-    const smallRender = render(
-      <ShapesLayer document={small} gridSize={8} scale={1} />
-    );
+    const smallRender = render(<ShapesLayer document={small} gridSize={8} scale={1} />);
     const smallPolygons = smallRender.getAllByTestId('konva-shape').length;
     smallRender.unmount();
 
-    const largeRender = render(
-      <ShapesLayer document={large} gridSize={8} scale={1} />
-    );
+    const largeRender = render(<ShapesLayer document={large} gridSize={8} scale={1} />);
     const largePolygons = largeRender.getAllByTestId('konva-shape').length;
     const largeTexts = largeRender.getAllByTestId('konva-text').length;
     largeRender.unmount();
@@ -117,9 +110,7 @@ describe('ShapesLayer', () => {
       zOrder: ['shape-2', 'shape-0', 'shape-1'],
     };
 
-    const { getAllByTestId } = render(
-      <ShapesLayer document={reordered} gridSize={10} scale={1} />
-    );
+    const { getAllByTestId } = render(<ShapesLayer document={reordered} gridSize={10} scale={1} />);
 
     const names = getAllByTestId('konva-shape').map((el) => el.getAttribute('data-name'));
     expect(names).toEqual([
@@ -136,9 +127,7 @@ describe('ShapesLayer', () => {
       zOrder: ['shape-0', 'ghost', 'shape-1'],
     };
 
-    const { getAllByTestId } = render(
-      <ShapesLayer document={withGhost} gridSize={10} scale={1} />
-    );
+    const { getAllByTestId } = render(<ShapesLayer document={withGhost} gridSize={10} scale={1} />);
 
     expect(getAllByTestId('konva-shape')).toHaveLength(2);
   });
@@ -146,9 +135,7 @@ describe('ShapesLayer', () => {
   it('test_ShapesLayer_rendersNameAnnotationPerNamedShape', () => {
     const document = createDummyDocument({ shapeCount: 4, cellsPerShape: 9, withName: true });
 
-    const { getAllByTestId } = render(
-      <ShapesLayer document={document} gridSize={10} scale={1} />
-    );
+    const { getAllByTestId } = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
 
     const texts = getAllByTestId('konva-text');
     expect(texts).toHaveLength(4);
@@ -255,9 +242,7 @@ describe('ShapesLayer', () => {
     const shape0Before = document.shapes[document.zOrder[0]];
     const shape1Before = document.shapes[document.zOrder[1]];
 
-    const withoutPreview = render(
-      <ShapesLayer document={document} gridSize={10} scale={1} />
-    );
+    const withoutPreview = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
     const shape0PointsBefore = withoutPreview
       .getAllByTestId('konva-shape')[0]
       .getAttribute('data-points');
@@ -290,9 +275,7 @@ describe('ShapesLayer', () => {
     expect(shape0PointsAfter).not.toBe(shape0PointsBefore);
 
     // The other shape's geometry is untouched.
-    const untouchedRender = render(
-      <ShapesLayer document={document} gridSize={10} scale={1} />
-    );
+    const untouchedRender = render(<ShapesLayer document={document} gridSize={10} scale={1} />);
     const shape1PointsWithoutPreview = untouchedRender
       .getAllByTestId('konva-shape')[1]
       .getAttribute('data-points');
@@ -311,9 +294,7 @@ describe('ShapesLayer', () => {
       drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 0, y: 0 } },
     };
 
-    const { queryAllByTestId } = render(
-      <ShapesLayer document={empty} gridSize={10} scale={1} />
-    );
+    const { queryAllByTestId } = render(<ShapesLayer document={empty} gridSize={10} scale={1} />);
 
     expect(queryAllByTestId('konva-shape')).toHaveLength(0);
     expect(queryAllByTestId('konva-text')).toHaveLength(0);

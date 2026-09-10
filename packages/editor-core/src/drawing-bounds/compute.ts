@@ -6,7 +6,7 @@ import type { EditorDocument, EditorShape, GridPoint, GridPolygon } from '../mod
  * practice, but this function stays total rather than throwing).
  */
 const polygonBoundingBox = (
-  polygon: GridPolygon,
+  polygon: GridPolygon
 ): { readonly min: GridPoint; readonly max: GridPoint } | null => {
   if (polygon.outerRing.length === 0) {
     return null;
@@ -32,7 +32,7 @@ const polygonBoundingBox = (
  * `auto` mode, and what a "fit to content" action asks for explicitly.
  */
 export const boundingBoxOfShapes = (
-  shapes: readonly EditorShape[],
+  shapes: readonly EditorShape[]
 ): { readonly min: GridPoint; readonly max: GridPoint } | null => {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -87,8 +87,8 @@ export const resolveDrawingBounds = (document: EditorDocument): ResolvedDrawingB
   if (document.drawingBounds.mode === 'manual') {
     return { min: document.drawingBounds.min, max: document.drawingBounds.max };
   }
-  const shapes = document.zOrder.map((id) => document.shapes[id]).filter(
-    (shape): shape is EditorShape => shape !== undefined,
-  );
+  const shapes = document.zOrder
+    .map((id) => document.shapes[id])
+    .filter((shape): shape is EditorShape => shape !== undefined);
   return boundingBoxOfShapes(shapes);
 };

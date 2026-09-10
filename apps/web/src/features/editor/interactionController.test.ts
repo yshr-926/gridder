@@ -40,11 +40,7 @@ const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
   drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 100, y: 100 } },
 });
 
-const sample = (
-  x: number,
-  y: number,
-  shiftKey = false
-): PointerSample => ({
+const sample = (x: number, y: number, shiftKey = false): PointerSample => ({
   vertex: { x: Math.round(x), y: Math.round(y) },
   precise: { x, y },
   shiftKey,
@@ -245,16 +241,18 @@ describe('reduceInteraction — shape drag move (issue #43)', () => {
     expect(state).toEqual(IDLE_STATE);
     // No selectOnly: the drag started on an already-selected shape, so the
     // whole current selection moves together with one integer delta.
-    expect(effects).toEqual([
-      { type: 'moveShapes', shapeIds: ['a', 'b'], delta: { x: 2, y: 0 } },
-    ]);
+    expect(effects).toEqual([{ type: 'moveShapes', shapeIds: ['a', 'b'], delta: { x: 2, y: 0 } }]);
   });
 
   it('test_movePreview_tracksTheLiveDelta_untilPointerUp', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 4)]);
     let state: InteractionState = IDLE_STATE;
-    state = reduceInteraction(state, { type: 'pointerDown', sample: sample(2, 2) }, document, [])
-      .state;
+    state = reduceInteraction(
+      state,
+      { type: 'pointerDown', sample: sample(2, 2) },
+      document,
+      []
+    ).state;
     state = reduceInteraction(
       state,
       { type: 'pointerMove', sample: sample(5, 6) },
@@ -303,7 +301,11 @@ describe('reduceInteraction — shape drag move (issue #43)', () => {
   it('test_movePreview_isNull_outsideMovingState', () => {
     expect(movePreview(IDLE_STATE)).toBeNull();
     expect(
-      movePreview({ kind: 'creatingRect', originVertex: { x: 0, y: 0 }, currentVertex: { x: 1, y: 1 } })
+      movePreview({
+        kind: 'creatingRect',
+        originVertex: { x: 0, y: 0 },
+        currentVertex: { x: 1, y: 1 },
+      })
     ).toBeNull();
   });
 });
@@ -423,7 +425,10 @@ describe('reduceInteraction — rectangle handle resize (issue #44)', () => {
       0.5
     );
     expect(effects).toHaveLength(1);
-    const effect = effects[0] as { type: string; bounds: { minX: number; minY: number; maxX: number; maxY: number } };
+    const effect = effects[0] as {
+      type: string;
+      bounds: { minX: number; minY: number; maxX: number; maxY: number };
+    };
     expect(effect.type).toBe('resizeShape');
     for (const value of Object.values(effect.bounds)) {
       expect(Number.isInteger(value)).toBe(true);
@@ -485,7 +490,12 @@ describe('reduceInteraction — rectangle handle resize (issue #44)', () => {
   it('test_resizePreview_isNull_outsideResizingState', () => {
     expect(resizePreview(IDLE_STATE)).toBeNull();
     expect(
-      resizePreview({ kind: 'moving', originVertex: { x: 0, y: 0 }, shapeIds: ['a'], delta: { x: 1, y: 1 } })
+      resizePreview({
+        kind: 'moving',
+        originVertex: { x: 0, y: 0 },
+        shapeIds: ['a'],
+        delta: { x: 1, y: 1 },
+      })
     ).toBeNull();
   });
 });

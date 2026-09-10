@@ -20,12 +20,12 @@ const createMockHandle = (name: string, initialContent = '') => {
     isSameEntry: vi.fn(async () => false),
     queryPermission: vi.fn(async () => 'granted' as PermissionState),
     requestPermission: vi.fn(async () => 'granted' as PermissionState),
-    createWritable: vi.fn(async () => ({ write, close }) as unknown as FileSystemWritableFileStream),
+    createWritable: vi.fn(
+      async () => ({ write, close }) as unknown as FileSystemWritableFileStream
+    ),
     // jsdom's `File` does not implement `.text()` (only real browsers do), so
     // this test double provides one directly rather than relying on jsdom's.
-    getFile: vi.fn(
-      async () => ({ name, text: async () => content }) as unknown as File,
-    ),
+    getFile: vi.fn(async () => ({ name, text: async () => content }) as unknown as File),
     getWrittenContent: () => content,
     write,
     close,

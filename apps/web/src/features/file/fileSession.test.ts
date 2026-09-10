@@ -96,7 +96,9 @@ describe('fileSession', () => {
 
   describe('saveSketchAs', () => {
     it('test_saveSketchAs_delegatesToAdapterSaveAs_notSave', async () => {
-      const save = vi.fn<FileAdapter['save']>(async () => ({ fileName: 'should-not-be-used.json' }));
+      const save = vi.fn<FileAdapter['save']>(async () => ({
+        fileName: 'should-not-be-used.json',
+      }));
       const saveAs = vi.fn<FileAdapter['saveAs']>(async () => ({ fileName: 'renamed.json' }));
       const adapter = mockAdapter({ save, saveAs });
 

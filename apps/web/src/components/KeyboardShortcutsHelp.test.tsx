@@ -38,14 +38,14 @@ describe('KeyboardShortcutsHelp', () => {
     'Ctrl/Cmd + Shift + [',
     'Ctrl/Cmd + G',
     'Ctrl/Cmd + Shift + G',
-  ])('test_KeyboardShortcutsHelp_open_lists_%s', key => {
+  ])('test_KeyboardShortcutsHelp_open_lists_%s', (key) => {
     renderOpen();
     expect(screen.getByText(key)).toBeInTheDocument();
   });
 
   it.each(['D', 'V', 'E', 'Ctrl/Cmd + A', 'Arrow Keys'])(
     'test_KeyboardShortcutsHelp_open_omitsUnimplemented_%s',
-    key => {
+    (key) => {
       renderOpen();
       expect(screen.queryByText(key)).not.toBeInTheDocument();
     }

@@ -19,15 +19,13 @@ import { editorSession } from './useEditorSession';
 /** Rename a single shape. An empty / whitespace-only name clears it. */
 export const renameShape = (shapeId: string, name: string): void => {
   const trimmed = name.trim();
-  editorSession.dispatch(
-    new RenameShapeCommand(shapeId, trimmed.length > 0 ? trimmed : undefined),
-  );
+  editorSession.dispatch(new RenameShapeCommand(shapeId, trimmed.length > 0 ? trimmed : undefined));
 };
 
 const applyStyleToShapes = (
   shapes: readonly EditorShape[],
   nextStyle: (style: ShapeStyle) => ShapeStyle,
-  label: string,
+  label: string
 ): void => {
   const commands = shapes
     .map((shape) => {
@@ -44,39 +42,25 @@ const applyStyleToShapes = (
     return;
   }
   editorSession.dispatch(
-    commands.length === 1 ? commands[0] : new CompositeCommand(commands, label),
+    commands.length === 1 ? commands[0] : new CompositeCommand(commands, label)
   );
 };
 
 /** Set the fill colour on every given shape. */
-export const setShapesFill = (
-  shapes: readonly EditorShape[],
-  fill: ShapeFillColor,
-): void => {
+export const setShapesFill = (shapes: readonly EditorShape[], fill: ShapeFillColor): void => {
   applyStyleToShapes(shapes, (style) => ({ ...style, fill }), 'Change fill');
 };
 
 /** Set the opacity (0..1) on every given shape. */
-export const setShapesOpacity = (
-  shapes: readonly EditorShape[],
-  opacity: number,
-): void => {
+export const setShapesOpacity = (shapes: readonly EditorShape[], opacity: number): void => {
   const clamped = Math.min(1, Math.max(0, opacity));
-  applyStyleToShapes(
-    shapes,
-    (style) => ({ ...style, opacity: clamped }),
-    'Change opacity',
-  );
+  applyStyleToShapes(shapes, (style) => ({ ...style, opacity: clamped }), 'Change opacity');
 };
 
 /** Toggle border visibility on every given shape to `isBorderVisible`. */
 export const setShapesBorderVisible = (
   shapes: readonly EditorShape[],
-  isBorderVisible: boolean,
+  isBorderVisible: boolean
 ): void => {
-  applyStyleToShapes(
-    shapes,
-    (style) => ({ ...style, isBorderVisible }),
-    'Toggle border',
-  );
+  applyStyleToShapes(shapes, (style) => ({ ...style, isBorderVisible }), 'Toggle border');
 };

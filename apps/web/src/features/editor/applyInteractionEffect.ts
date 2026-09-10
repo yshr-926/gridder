@@ -49,7 +49,8 @@ const isValidPolygonEdit = (polygon: GridPolygon): boolean => {
 };
 
 const sameRing = (a: GridRing, b: GridRing): boolean =>
-  a.length === b.length && a.every((point, index) => point.x === b[index]?.x && point.y === b[index]?.y);
+  a.length === b.length &&
+  a.every((point, index) => point.x === b[index]?.x && point.y === b[index]?.y);
 
 /** Structural equality of two polygons, ring by ring and vertex by vertex. */
 const samePolygon = (a: GridPolygon, b: GridPolygon): boolean =>
@@ -85,10 +86,7 @@ const samePolygon = (a: GridPolygon, b: GridPolygon): boolean =>
  * before committing one {@link ReplaceShapeVerticesCommand}. An edit whose
  * normalised result equals the shape's current geometry commits nothing.
  */
-export const applyInteractionEffect = (
-  session: EditorSession,
-  effect: InteractionEffect
-): void => {
+export const applyInteractionEffect = (session: EditorSession, effect: InteractionEffect): void => {
   const selection = useSelectionStore.getState();
 
   switch (effect.type) {
@@ -101,7 +99,7 @@ export const applyInteractionEffect = (
       const { shapeIds, activeGroupId } = resolveClickSelection(
         session.getDocument(),
         selection.activeGroupId,
-        effect.shapeId,
+        effect.shapeId
       );
       if (shapeIds.length === 1) {
         selection.selectOnly(shapeIds[0]);
@@ -147,11 +145,7 @@ export const applyInteractionEffect = (
       // member without the group already fully selected (`interactionController`
       // only knows the single hit shape at that point), expand it here so
       // every member gets the same delta in the same Command.
-      const shapeIds = expandSelectionForGroups(
-        document,
-        effect.shapeIds,
-        selection.activeGroupId,
-      );
+      const shapeIds = expandSelectionForGroups(document, effect.shapeIds, selection.activeGroupId);
       const commands: EditorCommand[] = [];
       for (const shapeId of shapeIds) {
         const shape = document.shapes[shapeId];
@@ -159,10 +153,7 @@ export const applyInteractionEffect = (
           continue;
         }
         commands.push(
-          new ReplaceShapeVerticesCommand(
-            shapeId,
-            translatePolygon(shape.polygon, effect.delta)
-          )
+          new ReplaceShapeVerticesCommand(shapeId, translatePolygon(shape.polygon, effect.delta))
         );
       }
       if (commands.length === 0) {

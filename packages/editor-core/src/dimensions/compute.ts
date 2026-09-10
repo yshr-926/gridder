@@ -49,10 +49,7 @@ const formatNumber = (value: number): string => {
  * Format one axis of a size for display. With no scale it reads `"3 セル"`;
  * with a scale it reads e.g. `"30 cm"` (cells × valuePerCell, unit-suffixed).
  */
-export const formatDimension = (
-  cells: number,
-  scale: PhysicalScale | undefined,
-): string => {
+export const formatDimension = (cells: number, scale: PhysicalScale | undefined): string => {
   if (scale === undefined) {
     return `${cells} セル`;
   }

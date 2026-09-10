@@ -54,9 +54,9 @@ test.describe('grouping and ungrouping', () => {
     // Clicking one member now selects only that shape.
     const document = await readDocument(page);
     await canvasHelper.clickGrid(3, 3);
-    await expect.poll(async () => (await readSelection(page)).selectedIds).toEqual([
-      document.shapes[0].id,
-    ]);
+    await expect
+      .poll(async () => (await readSelection(page)).selectedIds)
+      .toEqual([document.shapes[0].id]);
   });
 
   test('grouping a selection that overlaps an existing group dissolves and replaces it (nesting is impossible)', async ({

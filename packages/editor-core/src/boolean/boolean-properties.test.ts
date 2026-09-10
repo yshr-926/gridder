@@ -77,10 +77,7 @@ describe('property: adding a cell already covered is a no-op', () => {
       const base = unionOfCells(cells);
       const duplicated = cellList[Math.floor(random() * cellList.length)];
 
-      const again = engine.union([
-        ...base,
-        cellKeyToSquare(duplicated as string),
-      ]);
+      const again = engine.union([...base, cellKeyToSquare(duplicated as string)]);
 
       expect(resultKey(again)).toBe(resultKey(base));
     }
@@ -128,13 +125,8 @@ describe('property: add then remove the same cell returns to the original', () =
         continue;
       }
 
-      const grown = engine.union([
-        base[0] as GridPolygon,
-        cellKeyToSquare(freeCell),
-      ]);
-      const shrunk = engine.difference(grown[0] as GridPolygon, [
-        cellKeyToSquare(freeCell),
-      ]);
+      const grown = engine.union([base[0] as GridPolygon, cellKeyToSquare(freeCell)]);
+      const shrunk = engine.difference(grown[0] as GridPolygon, [cellKeyToSquare(freeCell)]);
 
       assertNormalized(shrunk);
       expect(resultKey(shrunk)).toBe(resultKey(base));
@@ -157,9 +149,7 @@ describe('property: difference never increases covered area', () => {
       const result = engine.difference(base[0] as GridPolygon, clips);
 
       assertNormalized(result);
-      expect(coveredDoubleArea(result)).toBeLessThanOrEqual(
-        coveredDoubleArea(base),
-      );
+      expect(coveredDoubleArea(result)).toBeLessThanOrEqual(coveredDoubleArea(base));
 
       const remaining = coveredCells(result, RASTER_BOUNDS);
       for (const clip of clipCells) {

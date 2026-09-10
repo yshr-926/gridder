@@ -74,5 +74,13 @@ export const useFileMenu = (): FileMenuControls => {
     void saveSketchAs(adapter);
   };
 
-  return { pendingConfirmAction, requestNew, requestOpen, confirmDiscard, cancelDiscard, save, saveAs };
+  return {
+    pendingConfirmAction,
+    requestNew,
+    requestOpen,
+    confirmDiscard,
+    cancelDiscard,
+    save,
+    saveAs,
+  };
 };

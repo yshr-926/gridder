@@ -49,12 +49,12 @@ vi.mock('react-konva', async () => {
         'data-height': String(height),
         'data-scale-x': String(scaleX ?? ''),
       },
-      children,
+      children
     );
   const MockLayer = React.forwardRef(
     (
       { children, x, y, listening }: Record<string, unknown> & { children?: React.ReactNode },
-      ref: React.Ref<{ toBlob: (opts: Record<string, unknown>) => Promise<Blob> }>,
+      ref: React.Ref<{ toBlob: (opts: Record<string, unknown>) => Promise<Blob> }>
     ) => {
       React.useImperativeHandle(ref, () => ({
         toBlob: (opts: Record<string, unknown>) => {
@@ -72,18 +72,13 @@ vi.mock('react-konva', async () => {
           {children}
         </div>
       );
-    },
+    }
   );
 
   return {
     Stage: MockStage,
     Layer: MockLayer,
-    Group: ({
-      children,
-      name,
-      x,
-      y,
-    }: { children?: React.ReactNode } & Record<string, unknown>) => (
+    Group: ({ children, name, x, y }: { children?: React.ReactNode } & Record<string, unknown>) => (
       <div
         data-testid="konva-group"
         data-name={String(name ?? '')}
@@ -157,7 +152,7 @@ const cropRect: ExportCropRect = { x: 20, y: 10, width: 200, height: 120 };
 const renderStage = (
   document: EditorDocument,
   overrides: Partial<ComponentProps<typeof ExportStage>> = {},
-  ref?: Ref<ExportStageHandle>,
+  ref?: Ref<ExportStageHandle>
 ) =>
   render(
     <ExportStage
@@ -171,7 +166,7 @@ const renderStage = (
       scale={2}
       previewScale={1}
       {...overrides}
-    />,
+    />
   );
 
 const lastToBlobOptions = (): Record<string, unknown> => {
@@ -250,7 +245,7 @@ describe('ExportStage', () => {
         scale,
       });
       const widths = getAllByTestId('konva-line').map((line) =>
-        Number(line.getAttribute('data-stroke-width')),
+        Number(line.getAttribute('data-stroke-width'))
       );
       unmount();
       return Math.min(...widths);
@@ -268,7 +263,7 @@ describe('ExportStage', () => {
       previewScale: 0.25,
     });
     expect(Number(getByTestId('konva-shape').getAttribute('data-stroke-width'))).toBeCloseTo(
-      DEFAULT_SHAPES_LAYER_THEME.borderWidth * 0.25,
+      DEFAULT_SHAPES_LAYER_THEME.borderWidth * 0.25
     );
   });
 
@@ -285,7 +280,7 @@ describe('ExportStage', () => {
       includeDimensions: true,
     });
     const dimensionLabels = getAllByTestId('konva-text').filter((el) =>
-      el.getAttribute('data-name')?.startsWith('dimension-label-'),
+      el.getAttribute('data-name')?.startsWith('dimension-label-')
     );
     expect(dimensionLabels).toHaveLength(2);
   });
@@ -295,7 +290,7 @@ describe('ExportStage', () => {
     const document = { ...documentOf([rectShape('a', 0, 0, 10, 8)]), annotationFontSize: 24 };
     const { getAllByTestId } = renderStage(document, { includeDimensions: true });
     const fontSizes = getAllByTestId('konva-text').map((text) =>
-      Number(text.getAttribute('data-font-size')),
+      Number(text.getAttribute('data-font-size'))
     );
     // The name label (24) and its dimension label (24 * 11 / 12 = 22).
     expect(fontSizes).toHaveLength(2);

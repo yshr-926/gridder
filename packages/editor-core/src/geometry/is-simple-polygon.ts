@@ -28,12 +28,7 @@ const isOnSegment = (a: GridPoint, b: GridPoint, point: GridPoint): boolean =>
  * shared ring vertex) must be excluded by the caller before calling this —
  * see {@link isSimplePolygon}'s adjacent-edge skip.
  */
-const segmentsIntersect = (
-  a: GridPoint,
-  b: GridPoint,
-  c: GridPoint,
-  d: GridPoint,
-): boolean => {
+const segmentsIntersect = (a: GridPoint, b: GridPoint, c: GridPoint, d: GridPoint): boolean => {
   const d1 = cross2(c, d, a);
   const d2 = cross2(c, d, b);
   const d3 = cross2(a, b, c);

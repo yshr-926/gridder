@@ -226,7 +226,14 @@ export const generateBenchmarkDocument = (
   for (let index = 0; index < shapeCount; index += 1) {
     const kind = SHAPE_KINDS[index % SHAPE_KINDS.length];
     const id = `bench-${index}`;
-    const generated = buildShape(id, kind, { x: cursorX, y: cursorY }, averageCellsPerShape, random, index);
+    const generated = buildShape(
+      id,
+      kind,
+      { x: cursorX, y: cursorY },
+      averageCellsPerShape,
+      random,
+      index
+    );
 
     shapes.push(generated.shape);
     zOrder.push(id);
@@ -249,8 +256,14 @@ export const generateBenchmarkDocument = (
     }
   }
 
-  const maxX = Math.max(1, ...shapes.map((shape) => Math.max(...shape.polygon.outerRing.map((p) => p.x))));
-  const maxY = Math.max(1, ...shapes.map((shape) => Math.max(...shape.polygon.outerRing.map((p) => p.y))));
+  const maxX = Math.max(
+    1,
+    ...shapes.map((shape) => Math.max(...shape.polygon.outerRing.map((p) => p.x)))
+  );
+  const maxY = Math.max(
+    1,
+    ...shapes.map((shape) => Math.max(...shape.polygon.outerRing.map((p) => p.y)))
+  );
 
   const document: EditorDocument = {
     formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,

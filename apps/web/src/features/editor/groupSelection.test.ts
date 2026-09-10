@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENT_DOCUMENT_FORMAT_VERSION, DEFAULT_ANNOTATION_FONT_SIZE, type EditorDocument, type EditorShape } from '@gridder/editor-core';
+import {
+  CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
+  type EditorDocument,
+  type EditorShape,
+} from '@gridder/editor-core';
 import {
   expandSelectionForGroups,
   groupContaining,
@@ -23,7 +28,7 @@ const rectShape = (id: string): EditorShape => ({
 
 const documentWith = (
   shapeIds: readonly string[],
-  groups: Record<string, readonly string[]> = {},
+  groups: Record<string, readonly string[]> = {}
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
@@ -33,7 +38,7 @@ const documentWith = (
     Object.entries(groups).map(([groupId, memberIds]) => [
       groupId,
       { id: groupId, shapeIds: memberIds },
-    ]),
+    ])
   ),
   drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 10, y: 10 } },
 });

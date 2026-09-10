@@ -55,7 +55,7 @@ const rotatePoint = (
   bounds: BoundingBox,
   width: number,
   height: number,
-  direction: RotationDirection,
+  direction: RotationDirection
 ): GridPoint => {
   const localX = point.x - bounds.min.x;
   const localY = point.y - bounds.min.y;
@@ -69,7 +69,7 @@ const rotateRing = (
   bounds: BoundingBox,
   width: number,
   height: number,
-  direction: RotationDirection,
+  direction: RotationDirection
 ): GridRing => ring.map((point) => rotatePoint(point, bounds, width, height, direction));
 
 const rotatePolygon = (
@@ -77,12 +77,10 @@ const rotatePolygon = (
   bounds: BoundingBox,
   width: number,
   height: number,
-  direction: RotationDirection,
+  direction: RotationDirection
 ): GridPolygon => ({
   outerRing: rotateRing(polygon.outerRing, bounds, width, height, direction),
-  innerRings: polygon.innerRings.map((ring) =>
-    rotateRing(ring, bounds, width, height, direction),
-  ),
+  innerRings: polygon.innerRings.map((ring) => rotateRing(ring, bounds, width, height, direction)),
 });
 
 /**
@@ -119,7 +117,7 @@ export class RotateShapesCommand implements EditorCommand {
 
   constructor(
     private readonly shapeIds: readonly ShapeId[],
-    private readonly direction: RotationDirection,
+    private readonly direction: RotationDirection
   ) {}
 
   apply(document: EditorDocument): EditorDocument {

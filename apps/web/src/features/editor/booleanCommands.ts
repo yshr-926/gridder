@@ -31,7 +31,7 @@ const MIN_OPERAND_COUNT = 2;
 const selectedOperandIds = (document: EditorDocument): readonly string[] => {
   const { selectedIds, activeGroupId } = useSelectionStore.getState();
   return expandSelectionForGroups(document, selectedIds, activeGroupId).filter(
-    (id) => document.shapes[id] !== undefined,
+    (id) => document.shapes[id] !== undefined
   );
 };
 
@@ -81,7 +81,7 @@ export const subtractSelection = (): void => {
   // Survivors keep their ids; split-off pieces are the ids that did not
   // exist before. Walk the new z-order so the selection order is stable.
   const resultIds = after.zOrder.filter(
-    (id) => subjectIds.has(id) || before.shapes[id] === undefined,
+    (id) => subjectIds.has(id) || before.shapes[id] === undefined
   );
   const selection = useSelectionStore.getState();
   if (resultIds.length === 0) {

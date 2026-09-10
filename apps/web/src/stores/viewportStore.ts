@@ -21,27 +21,28 @@ interface ViewportState {
   resetViewport: () => void;
 }
 
-export const useViewportStore = create<ViewportState>(set => ({
+export const useViewportStore = create<ViewportState>((set) => ({
   scale: 1,
   offset: { x: 0, y: 0 },
-  setScale: scale => set({ scale: clampScale(scale) }),
-  setOffset: offset => set({ offset }),
-  panBy: delta =>
-    set(state => ({
+  setScale: (scale) => set({ scale: clampScale(scale) }),
+  setOffset: (offset) => set({ offset }),
+  panBy: (delta) =>
+    set((state) => ({
       offset: {
         x: state.offset.x + delta.x,
         y: state.offset.y + delta.y,
       },
     })),
   zoomIn: () =>
-    set(state => ({
+    set((state) => ({
       scale: clampScale(state.scale * VIEWPORT_ZOOM_FACTOR),
     })),
   zoomOut: () =>
-    set(state => ({
+    set((state) => ({
       scale: clampScale(state.scale / VIEWPORT_ZOOM_FACTOR),
     })),
-  zoomAtPoint: (point, scale) => set(state => zoomViewportAtPoint(state, point, clampScale(scale))),
+  zoomAtPoint: (point, scale) =>
+    set((state) => zoomViewportAtPoint(state, point, clampScale(scale))),
   resetViewport: () => set({ scale: 1, offset: { x: 0, y: 0 } }),
 }));
 

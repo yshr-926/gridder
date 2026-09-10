@@ -38,7 +38,7 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 
 const documentOf = (
   shapes: readonly EditorShape[],
-  physicalScale?: EditorDocument['physicalScale'],
+  physicalScale?: EditorDocument['physicalScale']
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
@@ -53,7 +53,7 @@ describe('DimensionLayer', () => {
   it('test_DimensionLayer_noSelection_rendersNothing', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
     const { queryByTestId } = render(
-      <DimensionLayer document={document} selectedIds={[]} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={[]} gridSize={10} scale={1} />
     );
     expect(queryByTestId('konva-text')).toBeNull();
   });
@@ -61,18 +61,15 @@ describe('DimensionLayer', () => {
   it('test_DimensionLayer_selectedShape_noScale_showsCellCounts', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
     const { getByTestId } = render(
-      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />
     );
     expect(getByTestId('konva-text').getAttribute('data-text')).toBe('4 セル × 3 セル');
   });
 
   it('test_DimensionLayer_selectedShape_withScale_showsUnitSuffixedLength', () => {
-    const document = documentOf(
-      [rectShape('a', 0, 0, 4, 3)],
-      { valuePerCell: 10, unit: 'cm' },
-    );
+    const document = documentOf([rectShape('a', 0, 0, 4, 3)], { valuePerCell: 10, unit: 'cm' });
     const { getByTestId } = render(
-      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />
     );
     expect(getByTestId('konva-text').getAttribute('data-text')).toBe('40 cm × 30 cm');
   });
@@ -80,18 +77,15 @@ describe('DimensionLayer', () => {
   it('test_DimensionLayer_label_neverWraps_evenWhenWiderThanEstimate_issue67', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
     const { getByTestId } = render(
-      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />
     );
     expect(getByTestId('konva-text').getAttribute('data-wrap')).toBe('none');
   });
 
   it('test_DimensionLayer_multipleSelectedShapes_drawsOneLabelPerShape', () => {
-    const document = documentOf([
-      rectShape('a', 0, 0, 4, 3),
-      rectShape('b', 10, 0, 2, 2),
-    ]);
+    const document = documentOf([rectShape('a', 0, 0, 4, 3), rectShape('b', 10, 0, 2, 2)]);
     const { getAllByTestId } = render(
-      <DimensionLayer document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
     );
     const labels = getAllByTestId('konva-text');
     expect(labels).toHaveLength(2);
@@ -104,7 +98,7 @@ describe('DimensionLayer', () => {
   it('test_DimensionLayer_skipsSelectedIdWithNoMatchingShape', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
     const { getAllByTestId } = render(
-      <DimensionLayer document={document} selectedIds={['a', 'ghost']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a', 'ghost']} gridSize={10} scale={1} />
     );
     expect(getAllByTestId('konva-text')).toHaveLength(1);
   });
@@ -113,9 +107,11 @@ describe('DimensionLayer', () => {
     const base = documentOf([rectShape('a', 0, 0, 4, 3)]);
 
     const atDefault = render(
-      <DimensionLayer document={base} selectedIds={['a']} gridSize={10} scale={1} />,
+      <DimensionLayer document={base} selectedIds={['a']} gridSize={10} scale={1} />
     );
-    expect(Number(atDefault.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(11);
+    expect(Number(atDefault.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(
+      11
+    );
     atDefault.unmount();
 
     const enlarged = render(
@@ -124,9 +120,11 @@ describe('DimensionLayer', () => {
         selectedIds={['a']}
         gridSize={10}
         scale={1}
-      />,
+      />
     );
-    expect(Number(enlarged.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(22);
+    expect(Number(enlarged.getByTestId('konva-text').getAttribute('data-font-size'))).toBeCloseTo(
+      22
+    );
     enlarged.unmount();
   });
 
@@ -134,15 +132,19 @@ describe('DimensionLayer', () => {
     const document = documentOf([rectShape('a', 0, 0, 4, 3)]);
 
     const zoomedIn = render(
-      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={4} />,
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={4} />
     );
-    const zoomedInFontSize = Number(zoomedIn.getByTestId('konva-text').getAttribute('data-font-size'));
+    const zoomedInFontSize = Number(
+      zoomedIn.getByTestId('konva-text').getAttribute('data-font-size')
+    );
     zoomedIn.unmount();
 
     const zoomedOut = render(
-      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />,
+      <DimensionLayer document={document} selectedIds={['a']} gridSize={10} scale={1} />
     );
-    const zoomedOutFontSize = Number(zoomedOut.getByTestId('konva-text').getAttribute('data-font-size'));
+    const zoomedOutFontSize = Number(
+      zoomedOut.getByTestId('konva-text').getAttribute('data-font-size')
+    );
     zoomedOut.unmount();
 
     // World-space font size shrinks as zoom grows, so the on-screen size stays constant.

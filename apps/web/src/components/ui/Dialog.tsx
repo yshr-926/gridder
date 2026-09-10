@@ -41,7 +41,7 @@ export const ConfirmDialog = ({
         className={cn(
           'fixed inset-0 z-50 bg-black/40',
           'transition-opacity duration-fast',
-          'data-[starting-style]:opacity-0 data-[ending-style]:opacity-0',
+          'data-[starting-style]:opacity-0 data-[ending-style]:opacity-0'
         )}
       />
       <BaseDialog.Popup
@@ -50,7 +50,7 @@ export const ConfirmDialog = ({
           'rounded-lg border border-ui-border bg-surface p-5 shadow-lg',
           'transition-[transform,opacity] duration-fast ease-out',
           'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-          'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
+          'data-[ending-style]:scale-95 data-[ending-style]:opacity-0'
         )}
       >
         <BaseDialog.Title className="text-sm font-semibold text-ui">{title}</BaseDialog.Title>
@@ -63,7 +63,9 @@ export const ConfirmDialog = ({
             render={
               <Button
                 variant="primary"
-                className={destructive ? 'bg-red-600 hover:bg-red-500 focus:ring-red-500' : undefined}
+                className={
+                  destructive ? 'bg-red-600 hover:bg-red-500 focus:ring-red-500' : undefined
+                }
                 onClick={onConfirm}
               >
                 {confirmLabel}

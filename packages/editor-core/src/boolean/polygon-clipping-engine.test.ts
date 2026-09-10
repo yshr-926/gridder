@@ -35,7 +35,7 @@ describe('PolygonBooleanEngine — single cell add / remove', () => {
           { x: 0, y: 2 },
         ],
         innerRings: [],
-      }),
+      })
     );
   });
 
@@ -129,10 +129,7 @@ describe('PolygonBooleanEngine — hole creation and hole removal', () => {
   it('test_difference_removingRingOfCells_createsHoleThenClosingItRestoresSolid', () => {
     const base = rectangle(0, 0, 3, 3);
     const punched = engine.difference(base, [square(1, 1)]);
-    const partiallyFilled = engine.union([
-      punched[0] as GridPolygon,
-      rectangle(1, 1, 2, 2),
-    ]);
+    const partiallyFilled = engine.union([punched[0] as GridPolygon, rectangle(1, 1, 2, 2)]);
 
     assertNormalized(partiallyFilled);
     expect(hasHole(partiallyFilled[0] as GridPolygon)).toBe(false);
@@ -149,9 +146,7 @@ describe('PolygonBooleanEngine — difference that separates into multiple polyg
     assertNormalized(result);
     expect(result).toHaveLength(2);
     expect(coveredDoubleArea(result)).toBe(2 * 2);
-    expect(resultKey(result)).toBe(
-      resultKey([rectangle(0, 0, 1, 1), rectangle(2, 0, 3, 1)]),
-    );
+    expect(resultKey(result)).toBe(resultKey([rectangle(0, 0, 1, 1), rectangle(2, 0, 3, 1)]));
   });
 
   it('test_difference_crossShapedCut_splitsIntoFourCorners', () => {
@@ -176,13 +171,10 @@ describe('PolygonBooleanEngine — difference that separates into multiple polyg
     const areas = result.map((polygon) =>
       Math.abs(
         polygon.outerRing.reduce((total, point, index) => {
-          const next =
-            polygon.outerRing[(index + 1) % polygon.outerRing.length];
-          return next === undefined
-            ? total
-            : total + (point.x * next.y - next.x * point.y);
-        }, 0),
-      ),
+          const next = polygon.outerRing[(index + 1) % polygon.outerRing.length];
+          return next === undefined ? total : total + (point.x * next.y - next.x * point.y);
+        }, 0)
+      )
     );
     expect([...areas]).toEqual([...areas].sort((a, b) => b - a));
   });

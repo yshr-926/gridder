@@ -13,7 +13,7 @@ describe('ConfirmDialog', () => {
         description="変更を破棄しますか？"
         confirmLabel="破棄"
         onConfirm={() => {}}
-      />,
+      />
     );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -28,7 +28,7 @@ describe('ConfirmDialog', () => {
         description="変更を破棄しますか？"
         confirmLabel="破棄"
         onConfirm={() => {}}
-      />,
+      />
     );
 
     expect(screen.getByText('保存されていません')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('ConfirmDialog', () => {
         description="変更を破棄しますか？"
         confirmLabel="破棄して新規作成"
         onConfirm={onConfirm}
-      />,
+      />
     );
 
     await user.click(screen.getByRole('button', { name: '破棄して新規作成' }));
@@ -70,7 +70,7 @@ describe('ConfirmDialog', () => {
         description="変更を破棄しますか？"
         confirmLabel="破棄"
         onConfirm={onConfirm}
-      />,
+      />
     );
 
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));
@@ -89,7 +89,7 @@ describe('ConfirmDialog', () => {
         confirmLabel="破棄"
         cancelLabel="戻る"
         onConfirm={() => {}}
-      />,
+      />
     );
 
     expect(screen.getByRole('button', { name: '戻る' })).toBeInTheDocument();

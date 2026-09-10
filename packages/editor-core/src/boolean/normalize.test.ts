@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  isIntegerPolygon,
-  normalizeMultiPolygon,
-  type ClosedMultiPolygon,
-} from './normalize.js';
+import { isIntegerPolygon, normalizeMultiPolygon, type ClosedMultiPolygon } from './normalize.js';
 import { doubleSignedArea } from '../geometry/ring.js';
 import { rectangle } from './test-helpers.js';
 
@@ -125,9 +121,9 @@ describe('normalizeMultiPolygon', () => {
 
     const result = normalizeMultiPolygon(input);
 
-    expect(
-      Math.abs(doubleSignedArea(result[0]?.outerRing ?? [])),
-    ).toBeGreaterThan(Math.abs(doubleSignedArea(result[1]?.outerRing ?? [])));
+    expect(Math.abs(doubleSignedArea(result[0]?.outerRing ?? []))).toBeGreaterThan(
+      Math.abs(doubleSignedArea(result[1]?.outerRing ?? []))
+    );
   });
 
   it('test_normalizeMultiPolygon_isDeterministicForEquivalentInput', () => {
@@ -149,10 +145,11 @@ describe('normalizeMultiPolygon', () => {
         ],
       ],
     ];
-    const b: ClosedMultiPolygon = [a[1] as ClosedMultiPolygon[number], a[0] as ClosedMultiPolygon[number]];
+    const b: ClosedMultiPolygon = [
+      a[1] as ClosedMultiPolygon[number],
+      a[0] as ClosedMultiPolygon[number],
+    ];
 
-    expect(JSON.stringify(normalizeMultiPolygon(a))).toBe(
-      JSON.stringify(normalizeMultiPolygon(b)),
-    );
+    expect(JSON.stringify(normalizeMultiPolygon(a))).toBe(JSON.stringify(normalizeMultiPolygon(b)));
   });
 });

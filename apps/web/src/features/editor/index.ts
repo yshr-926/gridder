@@ -6,11 +6,7 @@ export {
   rectRingFromGridPoints,
 } from './document';
 export { EditorSession } from './editorSession';
-export {
-  editorSession,
-  useEditorDocument,
-  useEditorHistory,
-} from './useEditorSession';
+export { editorSession, useEditorDocument, useEditorHistory } from './useEditorSession';
 export {
   isAxisAlignedRect,
   isPointInPolygon,
@@ -66,10 +62,7 @@ export { useEditShortcuts } from './useEditShortcuts';
 export { rotateSelection } from './rotate';
 export { useRotateShortcut } from './useRotateShortcut';
 export { useDrawingBounds } from './useDrawingBounds';
-export {
-  setManualDrawingBounds,
-  fitDrawingBoundsToContent,
-} from './drawingBoundsCommands';
+export { setManualDrawingBounds, fitDrawingBoundsToContent } from './drawingBoundsCommands';
 export { setPhysicalScale, clearPhysicalScale } from './physicalScaleCommands';
 export { setAnnotationFontSize } from './annotationFontSizeCommands';
 export {
@@ -89,11 +82,7 @@ export {
   type VertexInsertionHit,
   type EdgeAxis,
 } from './hitTest';
-export {
-  vertexEditPreview,
-  handleTargetAt,
-  type HandleTarget,
-} from './interactionController';
+export { vertexEditPreview, handleTargetAt, type HandleTarget } from './interactionController';
 export {
   groupContaining,
   expandSelectionForGroups,

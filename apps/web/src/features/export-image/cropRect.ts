@@ -19,7 +19,7 @@ export interface ExportCropRect {
 export const drawingBoundsToCropRect = (
   bounds: ResolvedDrawingBounds,
   gridSize: number,
-  marginCells = 0,
+  marginCells = 0
 ): ExportCropRect => ({
   x: (bounds.min.x - marginCells) * gridSize,
   y: (bounds.min.y - marginCells) * gridSize,

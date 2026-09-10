@@ -1,4 +1,8 @@
-import { SetPhysicalScaleCommand, type PhysicalScale, type PhysicalUnit } from '@gridder/editor-core';
+import {
+  SetPhysicalScaleCommand,
+  type PhysicalScale,
+  type PhysicalUnit,
+} from '@gridder/editor-core';
 import { editorSession } from './useEditorSession';
 
 /**

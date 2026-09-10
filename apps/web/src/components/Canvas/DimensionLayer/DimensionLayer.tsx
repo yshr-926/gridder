@@ -25,8 +25,7 @@ const LABEL_COLOR = '#1f2937';
  * inside a `1 / scale` world, so it is fractional on screen anyway.
  */
 const DIMENSION_TO_ANNOTATION_FONT_RATIO = 11 / 12;
-const LABEL_FONT_FAMILY =
-  "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif";
+const LABEL_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif";
 /** Gap between a shape's bottom edge and its dimension label, in screen pixels. */
 const LABEL_OFFSET_SCREEN = 6;
 

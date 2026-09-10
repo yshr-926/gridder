@@ -52,10 +52,7 @@ export const deserializeDocument = (text: string): EditorDocument => {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new DocumentDeserializationError(
-      'invalid-json',
-      'The file is not valid JSON.',
-    );
+    throw new DocumentDeserializationError('invalid-json', 'The file is not valid JSON.');
   }
 
   // Version before shape: an older Gridder file (e.g. format 1, which had no
@@ -65,14 +62,14 @@ export const deserializeDocument = (text: string): EditorDocument => {
   if (formatVersion !== undefined && formatVersion !== CURRENT_DOCUMENT_FORMAT_VERSION) {
     throw new DocumentDeserializationError(
       'unsupported-format-version',
-      `This file uses format version ${formatVersion}, but only version ${CURRENT_DOCUMENT_FORMAT_VERSION} is supported.`,
+      `This file uses format version ${formatVersion}, but only version ${CURRENT_DOCUMENT_FORMAT_VERSION} is supported.`
     );
   }
 
   if (!isEditorDocumentShaped(parsed)) {
     throw new DocumentDeserializationError(
       'malformed-document',
-      'The file is not shaped like a Gridder sketch.',
+      'The file is not shaped like a Gridder sketch.'
     );
   }
 
@@ -81,7 +78,7 @@ export const deserializeDocument = (text: string): EditorDocument => {
     throw new DocumentDeserializationError(
       'invalid-document',
       'The file is not a valid Gridder sketch.',
-      issues,
+      issues
     );
   }
 

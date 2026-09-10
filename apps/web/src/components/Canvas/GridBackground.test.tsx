@@ -7,12 +7,7 @@ vi.mock('react-konva', () => ({
   Rect: ({ fill, ...props }: Record<string, unknown>) => (
     <div data-testid="konva-rect" data-fill={fill} {...props} />
   ),
-  Line: ({
-    stroke,
-    strokeWidth,
-    points,
-    ...props
-  }: Record<string, unknown>) => (
+  Line: ({ stroke, strokeWidth, points, ...props }: Record<string, unknown>) => (
     <div
       data-testid="konva-line"
       data-stroke={stroke}

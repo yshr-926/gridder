@@ -59,10 +59,7 @@ export const defaultShapeStyle = (existingShapeCount: number): ShapeStyle => ({
  * one cell in each axis, so a click without a drag still produces a valid
  * shape. Returns `null` only when either coordinate is not finite.
  */
-export const rectRingFromGridPoints = (
-  start: GridPoint,
-  end: GridPoint
-): GridRing | null => {
+export const rectRingFromGridPoints = (start: GridPoint, end: GridPoint): GridRing | null => {
   if (
     !Number.isFinite(start.x) ||
     !Number.isFinite(start.y) ||

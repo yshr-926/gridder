@@ -29,8 +29,7 @@ export const test = base.extend<TestFixtures>({
     await page.waitForFunction(
       () =>
         Boolean(
-          (window as unknown as { __GRIDDER_EDITOR_SESSION__?: unknown })
-            .__GRIDDER_EDITOR_SESSION__
+          (window as unknown as { __GRIDDER_EDITOR_SESSION__?: unknown }).__GRIDDER_EDITOR_SESSION__
         ),
       undefined,
       { timeout: 30000 }

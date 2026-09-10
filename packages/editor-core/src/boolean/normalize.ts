@@ -19,8 +19,7 @@ export type ClosedRing = readonly (readonly [number, number])[];
 export type ClosedPolygon = readonly ClosedRing[];
 export type ClosedMultiPolygon = readonly ClosedPolygon[];
 
-const toGridRing = (ring: ClosedRing): GridRing =>
-  ring.map(([x, y]) => ({ x, y }));
+const toGridRing = (ring: ClosedRing): GridRing => ring.map(([x, y]) => ({ x, y }));
 
 /**
  * Rounds a ring's coordinates to the nearest integer. `polygon-clipping` keeps
@@ -70,9 +69,7 @@ const normalizePolygon = (polygon: ClosedPolygon): GridPolygon | undefined => {
  * with a hole keeps its inner ring. The list is ordered by descending outer-ring
  * area so repeated identical operations produce byte-identical output.
  */
-export const normalizeMultiPolygon = (
-  multiPolygon: ClosedMultiPolygon,
-): readonly GridPolygon[] => {
+export const normalizeMultiPolygon = (multiPolygon: ClosedMultiPolygon): readonly GridPolygon[] => {
   const normalized: GridPolygon[] = [];
   for (const polygon of multiPolygon) {
     const result = normalizePolygon(polygon);
@@ -83,8 +80,7 @@ export const normalizeMultiPolygon = (
 
   return normalized.sort((first, second) => {
     const areaDelta =
-      Math.abs(doubleSignedArea(second.outerRing)) -
-      Math.abs(doubleSignedArea(first.outerRing));
+      Math.abs(doubleSignedArea(second.outerRing)) - Math.abs(doubleSignedArea(first.outerRing));
     if (areaDelta !== 0) {
       return areaDelta;
     }
@@ -110,5 +106,4 @@ const compareRings = (first: GridRing, second: GridRing): number => {
 
 /** True when every ring of the polygon has integer coordinates. */
 export const isIntegerPolygon = (polygon: GridPolygon): boolean =>
-  hasIntegerCoordinates(polygon.outerRing) &&
-  polygon.innerRings.every(hasIntegerCoordinates);
+  hasIntegerCoordinates(polygon.outerRing) && polygon.innerRings.every(hasIntegerCoordinates);

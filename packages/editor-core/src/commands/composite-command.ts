@@ -22,10 +22,7 @@ export class CompositeCommand implements EditorCommand {
   }
 
   apply(document: EditorDocument): EditorDocument {
-    return this.commands.reduce(
-      (current, command) => command.apply(current),
-      document,
-    );
+    return this.commands.reduce((current, command) => command.apply(current), document);
   }
 
   invert(documentBeforeApply: EditorDocument): EditorCommand {

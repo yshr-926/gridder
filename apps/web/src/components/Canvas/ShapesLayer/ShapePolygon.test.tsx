@@ -125,10 +125,10 @@ describe('ShapePolygon', () => {
     captured.props?.sceneFunc(context, {} as KonvaShape);
 
     // One beginPath, one fillStrokeShape, one closePath per ring (outer + hole).
-    expect(calls.filter(c => c[0] === 'beginPath')).toHaveLength(1);
-    expect(calls.filter(c => c[0] === 'closePath')).toHaveLength(2);
-    expect(calls.filter(c => c[0] === 'moveTo')).toHaveLength(2);
-    expect(calls.filter(c => c[0] === 'fillStrokeShape')).toHaveLength(1);
+    expect(calls.filter((c) => c[0] === 'beginPath')).toHaveLength(1);
+    expect(calls.filter((c) => c[0] === 'closePath')).toHaveLength(2);
+    expect(calls.filter((c) => c[0] === 'moveTo')).toHaveLength(2);
+    expect(calls.filter((c) => c[0] === 'fillStrokeShape')).toHaveLength(1);
 
     // Outer ring scaled by gridSize, first move at origin.
     expect(calls).toContainEqual(['moveTo', 0, 0]);
@@ -144,7 +144,7 @@ describe('ShapePolygon', () => {
 
     captured.props?.sceneFunc(context, {} as KonvaShape);
 
-    const vertexCalls = calls.filter(c => c[0] === 'moveTo' || c[0] === 'lineTo');
+    const vertexCalls = calls.filter((c) => c[0] === 'moveTo' || c[0] === 'lineTo');
     // 8 vertices of the U-shape, no simplification.
     expect(vertexCalls).toEqual([
       ['moveTo', 0, 0],

@@ -68,10 +68,8 @@ const isPointInRing = (point: GridPoint, ring: GridRing): boolean => {
 
     // On-segment check (treats the boundary as inside).
     const cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
-    const withinX =
-      point.x >= Math.min(a.x, b.x) - 1e-9 && point.x <= Math.max(a.x, b.x) + 1e-9;
-    const withinY =
-      point.y >= Math.min(a.y, b.y) - 1e-9 && point.y <= Math.max(a.y, b.y) + 1e-9;
+    const withinX = point.x >= Math.min(a.x, b.x) - 1e-9 && point.x <= Math.max(a.x, b.x) + 1e-9;
+    const withinY = point.y >= Math.min(a.y, b.y) - 1e-9 && point.y <= Math.max(a.y, b.y) + 1e-9;
     if (Math.abs(cross) < 1e-9 && withinX && withinY) {
       return true;
     }
@@ -103,10 +101,7 @@ export const isPointInPolygon = (point: GridPoint, polygon: GridPolygon): boolea
  * The topmost shape whose polygon contains `point`, or `null`. "Topmost" means
  * last in `zOrder` (drawn frontmost), matching what the user sees.
  */
-export const shapeAtPoint = (
-  document: EditorDocument,
-  point: GridPoint
-): EditorShape | null => {
+export const shapeAtPoint = (document: EditorDocument, point: GridPoint): EditorShape | null => {
   for (let i = document.zOrder.length - 1; i >= 0; i -= 1) {
     const shape = document.shapes[document.zOrder[i]];
     if (shape !== undefined && isPointInPolygon(point, shape.polygon)) {
@@ -266,9 +261,7 @@ const resizeAxis = (
     dragged >= fixed
       ? Math.max(dragged, fixed + MIN_RECT_SIZE_CELLS)
       : Math.min(dragged, fixed - MIN_RECT_SIZE_CELLS);
-  return clamped >= fixed
-    ? { min: fixed, max: clamped }
-    : { min: clamped, max: fixed };
+  return clamped >= fixed ? { min: fixed, max: clamped } : { min: clamped, max: fixed };
 };
 
 /**
@@ -340,9 +333,10 @@ const ringByRef = (polygon: GridPolygon, ref: PolygonRingRef): GridRing | undefi
 /** Every ring of `polygon` paired with the {@link PolygonRingRef} that identifies it. */
 const allRings = (polygon: GridPolygon): readonly (readonly [PolygonRingRef, GridRing])[] => [
   [{ kind: 'outer' }, polygon.outerRing],
-  ...polygon.innerRings.map(
-    (ring, holeIndex): readonly [PolygonRingRef, GridRing] => [{ kind: 'inner', holeIndex }, ring]
-  ),
+  ...polygon.innerRings.map((ring, holeIndex): readonly [PolygonRingRef, GridRing] => [
+    { kind: 'inner', holeIndex },
+    ring,
+  ]),
 ];
 
 /**
@@ -379,10 +373,7 @@ const distanceToSegmentSquared = (point: GridPoint, a: GridPoint, b: GridPoint):
   if (lengthSquared === 0) {
     return (point.x - a.x) ** 2 + (point.y - a.y) ** 2;
   }
-  const t = Math.max(
-    0,
-    Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared)
-  );
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
   const closestX = a.x + t * dx;
   const closestY = a.y + t * dy;
   return (point.x - closestX) ** 2 + (point.y - closestY) ** 2;
@@ -536,7 +527,9 @@ const withRingReplaced = (
   }
   return {
     ...polygon,
-    innerRings: polygon.innerRings.map((ring, index) => (index === ref.holeIndex ? nextRing : ring)),
+    innerRings: polygon.innerRings.map((ring, index) =>
+      index === ref.holeIndex ? nextRing : ring
+    ),
   };
 };
 

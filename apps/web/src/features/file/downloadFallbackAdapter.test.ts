@@ -80,12 +80,12 @@ describe('DownloadFallbackAdapter', () => {
   describe('open', () => {
     it('test_open_userSelectsAFile_resolvesFileNameAndContent', async () => {
       const file = fileWithText('picked.json', '{"loaded":true}');
-      const clickSpy = vi
-        .spyOn(HTMLInputElement.prototype, 'click')
-        .mockImplementation(function (this: HTMLInputElement) {
-          Object.defineProperty(this, 'files', { value: [file], configurable: true });
-          this.dispatchEvent(new Event('change'));
-        });
+      const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+        this: HTMLInputElement
+      ) {
+        Object.defineProperty(this, 'files', { value: [file], configurable: true });
+        this.dispatchEvent(new Event('change'));
+      });
       const adapter = new DownloadFallbackAdapter();
 
       const result = await adapter.open();
@@ -97,7 +97,7 @@ describe('DownloadFallbackAdapter', () => {
     it('test_open_userCancelsThePicker_resolvesNull', async () => {
       vi.useFakeTimers();
       vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
-        this: HTMLInputElement,
+        this: HTMLInputElement
       ) {
         // No `change` fires; the native dialog just closes, refocusing the window.
         window.dispatchEvent(new Event('focus'));

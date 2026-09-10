@@ -9,7 +9,12 @@ import { ConfirmDialog } from './components/ui';
 import { useKeyboardShortcutsHelp, useToastStore } from './hooks';
 import { fitDrawingBoundsToContent, useEditorDocument, useEditorHistory } from './features/editor';
 import { useBeforeUnload, useFileMenu } from './features/file';
-import { selectDraftStorage, useDraftAutosave, useDraftRestore, useTrackCleanExit } from './features/draft';
+import {
+  selectDraftStorage,
+  useDraftAutosave,
+  useDraftRestore,
+  useTrackCleanExit,
+} from './features/draft';
 
 export const App = () => {
   // Canvas への参照（画像エクスポート用）
@@ -19,8 +24,8 @@ export const App = () => {
   const { isOpen: isHelpOpen, close: closeHelp } = useKeyboardShortcutsHelp();
 
   // トースト通知
-  const toasts = useToastStore(state => state.toasts);
-  const removeToast = useToastStore(state => state.removeToast);
+  const toasts = useToastStore((state) => state.toasts);
+  const removeToast = useToastStore((state) => state.removeToast);
 
   // 保存ファイルの新規/開く/保存/名前を付けて保存（issue #54, spec §9）と、
   // 未保存の変更があるページ離脱を確認する beforeunload。

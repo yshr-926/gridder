@@ -29,9 +29,7 @@ export const DEFAULT_ANNOTATION_FONT_SIZE = 12;
 
 /** Whether `value` is an annotation font size the document accepts. */
 export const isValidAnnotationFontSize = (value: number): boolean =>
-  Number.isInteger(value) &&
-  value >= MIN_ANNOTATION_FONT_SIZE &&
-  value <= MAX_ANNOTATION_FONT_SIZE;
+  Number.isInteger(value) && value >= MIN_ANNOTATION_FONT_SIZE && value <= MAX_ANNOTATION_FONT_SIZE;
 
 /** Fill colors available to a shape. Arbitrary colors are not document data. */
 export const SHAPE_FILL_PALETTE = [

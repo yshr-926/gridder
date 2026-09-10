@@ -5,9 +5,7 @@ import type { AppEnvironment, EnvConfig } from './env';
  * 環境変数をモックするためのヘルパー関数
  * 注意: import.meta.env の値は undefined ではなく空文字列で未設定を表現
  */
-function createMockEnv(
-  overrides: Partial<ImportMetaEnv> = {}
-): Record<string, string> {
+function createMockEnv(overrides: Partial<ImportMetaEnv> = {}): Record<string, string> {
   return {
     VITE_APP_ENV: overrides.VITE_APP_ENV ?? '',
     VITE_DEBUG: overrides.VITE_DEBUG ?? '',
@@ -72,9 +70,7 @@ describe('環境変数の検証', () => {
       })
     );
 
-    const { env, isDevelopment, isProduction, isStaging } = await import(
-      './env'
-    );
+    const { env, isDevelopment, isProduction, isStaging } = await import('./env');
 
     expect(env.appEnv).toBe('staging');
     expect(env.debug).toBe(false);
@@ -152,11 +148,7 @@ describe('EnvConfig 型の検証', () => {
   });
 
   it('AppEnvironment 型が有効な値のみを許可する', () => {
-    const environments: AppEnvironment[] = [
-      'development',
-      'staging',
-      'production',
-    ];
+    const environments: AppEnvironment[] = ['development', 'staging', 'production'];
 
     expect(environments).toContain('development');
     expect(environments).toContain('staging');

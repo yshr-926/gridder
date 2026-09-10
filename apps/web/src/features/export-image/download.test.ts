@@ -19,13 +19,11 @@ describe('downloadBlob', () => {
 
   it('test_downloadBlob_clicksAnchorWithObjectUrl_thenRevokesIt', () => {
     vi.useFakeTimers();
-    const createSpy = vi
-      .spyOn(URL, 'createObjectURL')
-      .mockImplementation(() => 'blob:mock-url');
+    const createSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:mock-url');
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     let clicked: { href: string; download: string } | null = null;
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
-      this: HTMLAnchorElement,
+      this: HTMLAnchorElement
     ) {
       clicked = { href: this.href, download: this.download };
     });

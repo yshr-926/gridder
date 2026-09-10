@@ -32,7 +32,7 @@ import {
 const moveWithinZOrder = (
   zOrder: readonly ShapeId[],
   shapeId: ShapeId,
-  targetIndex: number,
+  targetIndex: number
 ): readonly ShapeId[] => {
   const without = zOrder.filter((id) => id !== shapeId);
   const clamped = Math.max(0, Math.min(targetIndex, without.length));
@@ -49,15 +49,12 @@ export class ReorderShapeCommand implements EditorCommand {
 
   constructor(
     private readonly shapeId: ShapeId,
-    private readonly targetIndex: number,
+    private readonly targetIndex: number
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
     indexInZOrder(document, this.shapeId);
-    return withZOrder(
-      document,
-      moveWithinZOrder(document.zOrder, this.shapeId, this.targetIndex),
-    );
+    return withZOrder(document, moveWithinZOrder(document.zOrder, this.shapeId, this.targetIndex));
   }
 
   invert(documentBeforeApply: EditorDocument): EditorCommand {
@@ -120,7 +117,7 @@ export class SetAnnotationFontSizeCommand implements EditorCommand {
   apply(document: EditorDocument): EditorDocument {
     if (!isValidAnnotationFontSize(this.annotationFontSize)) {
       throw new CommandApplicationError(
-        `Annotation font size must be an integer from ${MIN_ANNOTATION_FONT_SIZE} through ${MAX_ANNOTATION_FONT_SIZE}; received ${this.annotationFontSize}.`,
+        `Annotation font size must be an integer from ${MIN_ANNOTATION_FONT_SIZE} through ${MAX_ANNOTATION_FONT_SIZE}; received ${this.annotationFontSize}.`
       );
     }
     return withAnnotationFontSize(document, this.annotationFontSize);
@@ -148,7 +145,7 @@ export class GroupShapesCommand implements EditorCommand {
 
   constructor(
     private readonly groupId: GroupId,
-    private readonly shapeIds: readonly ShapeId[],
+    private readonly shapeIds: readonly ShapeId[]
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
@@ -202,11 +199,9 @@ export class GroupShapesCommand implements EditorCommand {
     return new CompositeCommand(
       [
         new UngroupShapesCommand(this.groupId),
-        ...dissolvedGroups.map(
-          (group) => new GroupShapesCommand(group.id, group.shapeIds),
-        ),
+        ...dissolvedGroups.map((group) => new GroupShapesCommand(group.id, group.shapeIds)),
       ],
-      'Undo group shapes',
+      'Undo group shapes'
     );
   }
 }

@@ -35,15 +35,11 @@ describe('doubleSignedArea', () => {
 
 describe('areCollinear', () => {
   it('test_areCollinear_pointsOnSameLine_returnsTrue', () => {
-    expect(
-      areCollinear({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 3, y: 0 }),
-    ).toBe(true);
+    expect(areCollinear({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 3, y: 0 })).toBe(true);
   });
 
   it('test_areCollinear_pointsFormingCorner_returnsFalse', () => {
-    expect(
-      areCollinear({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }),
-    ).toBe(false);
+    expect(areCollinear({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 })).toBe(false);
   });
 });
 
@@ -158,9 +154,7 @@ describe('orientRing', () => {
   ];
 
   it('test_orientRing_wantCounterClockwise_reversesClockwiseRing', () => {
-    expect(doubleSignedArea(orientRing(clockwiseSquare, true))).toBeGreaterThan(
-      0,
-    );
+    expect(doubleSignedArea(orientRing(clockwiseSquare, true))).toBeGreaterThan(0);
   });
 
   it('test_orientRing_wantClockwise_keepsClockwiseRing', () => {
@@ -174,7 +168,7 @@ describe('hasIntegerCoordinates', () => {
       hasIntegerCoordinates([
         { x: 0, y: 0 },
         { x: 3, y: 4 },
-      ]),
+      ])
     ).toBe(true);
   });
 
@@ -183,7 +177,7 @@ describe('hasIntegerCoordinates', () => {
       hasIntegerCoordinates([
         { x: 0, y: 0 },
         { x: 1.5, y: 4 },
-      ]),
+      ])
     ).toBe(false);
   });
 });

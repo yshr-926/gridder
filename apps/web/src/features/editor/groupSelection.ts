@@ -10,10 +10,7 @@ import type { EditorDocument, ShapeGroup } from '@gridder/editor-core';
  */
 
 /** The one-level group `shapeId` belongs to, or `null` if it belongs to none. */
-export const groupContaining = (
-  document: EditorDocument,
-  shapeId: string,
-): ShapeGroup | null => {
+export const groupContaining = (document: EditorDocument, shapeId: string): ShapeGroup | null => {
   for (const group of Object.values(document.groups)) {
     if (group.shapeIds.includes(shapeId)) {
       return group;
@@ -34,7 +31,7 @@ export const groupContaining = (
 export const expandSelectionForGroups = (
   document: EditorDocument,
   shapeIds: readonly string[],
-  activeGroupId: string | null,
+  activeGroupId: string | null
 ): readonly string[] => {
   const result: string[] = [];
   const seen = new Set<string>();
@@ -76,7 +73,7 @@ export interface ClickSelectionResult {
 export const resolveClickSelection = (
   document: EditorDocument,
   activeGroupId: string | null,
-  clickedShapeId: string,
+  clickedShapeId: string
 ): ClickSelectionResult => {
   const group = groupContaining(document, clickedShapeId);
   if (group === null) {
@@ -104,7 +101,7 @@ export type DoubleClickTarget = 'enter-group' | 'none';
 export const resolveDoubleClickTarget = (
   document: EditorDocument,
   activeGroupId: string | null,
-  shapeId: string,
+  shapeId: string
 ): DoubleClickTarget => {
   const group = groupContaining(document, shapeId);
   if (group !== null && group.id !== activeGroupId) {

@@ -15,11 +15,11 @@ export const ZOOM_SENSITIVITY = VIEWPORT_ZOOM_FACTOR;
  * useCanvasZoom - キャンバスのズーム操作を管理するフック
  */
 export const useCanvasZoom = () => {
-  const scale = useViewportStore(state => state.scale);
-  const zoomAtPoint = useViewportStore(state => state.zoomAtPoint);
-  const zoomIn = useViewportStore(state => state.zoomIn);
-  const zoomOut = useViewportStore(state => state.zoomOut);
-  const resetViewport = useViewportStore(state => state.resetViewport);
+  const scale = useViewportStore((state) => state.scale);
+  const zoomAtPoint = useViewportStore((state) => state.zoomAtPoint);
+  const zoomIn = useViewportStore((state) => state.zoomIn);
+  const zoomOut = useViewportStore((state) => state.zoomOut);
+  const resetViewport = useViewportStore((state) => state.resetViewport);
 
   /**
    * マウスホイールによるズーム

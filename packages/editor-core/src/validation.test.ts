@@ -100,9 +100,7 @@ describe('validateDocument', () => {
           ...shapeWithHole,
           polygon: {
             outerRing: [{ x: 6.5, y: 0 }, ...shapeWithHole.polygon.outerRing.slice(1)],
-            innerRings: [
-              [{ x: 8, y: 2.25 }, ...shapeWithHole.polygon.innerRings[0]!.slice(1)],
-            ],
+            innerRings: [[{ x: 8, y: 2.25 }, ...shapeWithHole.polygon.innerRings[0]!.slice(1)]],
           },
         },
       },
@@ -188,10 +186,7 @@ describe('validateDocument', () => {
       },
     };
 
-    expect(issueCodes(invalidDocument)).toEqual([
-      'shape-in-multiple-groups',
-      'nested-group',
-    ]);
+    expect(issueCodes(invalidDocument)).toEqual(['shape-in-multiple-groups', 'nested-group']);
   });
 
   it('rejects invalid style, drawing bounds, and physical scale values', () => {

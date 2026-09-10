@@ -44,14 +44,14 @@ const rectShape = (id: string, x: number, y: number, w: number, h: number): Edit
 
 const documentOf = (
   shapes: readonly EditorShape[],
-  groups: Record<string, readonly string[]> = {},
+  groups: Record<string, readonly string[]> = {}
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
   shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
   zOrder: shapes.map((shape) => shape.id),
   groups: Object.fromEntries(
-    Object.entries(groups).map(([groupId, shapeIds]) => [groupId, { id: groupId, shapeIds }]),
+    Object.entries(groups).map(([groupId, shapeIds]) => [groupId, { id: groupId, shapeIds }])
   ),
   drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 100, y: 100 } },
 });
@@ -66,10 +66,7 @@ describe('SelectionOverlay', () => {
   });
 
   it('test_SelectionOverlay_drawsOneFramePerSelectedShape', () => {
-    const document = documentOf([
-      rectShape('a', 0, 0, 4, 4),
-      rectShape('b', 6, 0, 3, 3),
-    ]);
+    const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 6, 0, 3, 3)]);
     const { getAllByTestId } = render(
       <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
     );
@@ -129,10 +126,7 @@ describe('SelectionOverlay', () => {
   });
 
   it('test_SelectionOverlay_movePreview_offsetsOnlyTheMovingShapesFrame_issue43', () => {
-    const document = documentOf([
-      rectShape('a', 0, 0, 4, 4),
-      rectShape('b', 10, 0, 4, 4),
-    ]);
+    const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)]);
     const withoutPreview = render(
       <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
     );
@@ -288,7 +282,9 @@ describe('SelectionOverlay', () => {
         <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={4} />
       );
       const widthAt4x = Number(
-        zoomedIn.container.querySelector('[data-name="resize-handle-nw"]')?.getAttribute('data-width')
+        zoomedIn.container
+          .querySelector('[data-name="resize-handle-nw"]')
+          ?.getAttribute('data-width')
       );
       zoomedIn.unmount();
 
@@ -296,7 +292,9 @@ describe('SelectionOverlay', () => {
         <SelectionOverlay document={document} selectedIds={['a']} gridSize={10} scale={1} />
       );
       const widthAt1x = Number(
-        zoomedOut.container.querySelector('[data-name="resize-handle-nw"]')?.getAttribute('data-width')
+        zoomedOut.container
+          .querySelector('[data-name="resize-handle-nw"]')
+          ?.getAttribute('data-width')
       );
       zoomedOut.unmount();
 
@@ -308,10 +306,9 @@ describe('SelectionOverlay', () => {
 
   describe('group bounding frame (issue #52)', () => {
     it('test_SelectionOverlay_wholeGroupSelected_drawsGroupFrame', () => {
-      const document = documentOf(
-        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
-        { 'group-1': ['a', 'b'] },
-      );
+      const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)], {
+        'group-1': ['a', 'b'],
+      });
       const { container } = render(
         <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
       );
@@ -340,7 +337,7 @@ describe('SelectionOverlay', () => {
     it('test_SelectionOverlay_partialGroupSelection_noGroupFrame', () => {
       const document = documentOf(
         [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4), rectShape('c', 20, 0, 4, 4)],
-        { 'group-1': ['a', 'b', 'c'] },
+        { 'group-1': ['a', 'b', 'c'] }
       );
       // Only two of the group's three members are selected.
       const { container } = render(
@@ -350,10 +347,9 @@ describe('SelectionOverlay', () => {
     });
 
     it('test_SelectionOverlay_groupFrame_isDashed_andZoomInvariant', () => {
-      const document = documentOf(
-        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
-        { 'group-1': ['a', 'b'] },
-      );
+      const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)], {
+        'group-1': ['a', 'b'],
+      });
       const { container } = render(
         <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={2.5} />
       );
@@ -362,17 +358,16 @@ describe('SelectionOverlay', () => {
     });
 
     it('test_SelectionOverlay_groupFrame_followsMovePreview', () => {
-      const document = documentOf(
-        [rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)],
-        { 'group-1': ['a', 'b'] },
-      );
+      const document = documentOf([rectShape('a', 0, 0, 4, 4), rectShape('b', 10, 0, 4, 4)], {
+        'group-1': ['a', 'b'],
+      });
       const withoutPreview = render(
         <SelectionOverlay document={document} selectedIds={['a', 'b']} gridSize={10} scale={1} />
       );
       const xBefore = Number(
         withoutPreview.container
           .querySelector('[data-name="selection-group-frame"]')
-          ?.getAttribute('data-x'),
+          ?.getAttribute('data-x')
       );
       withoutPreview.unmount();
 
@@ -388,7 +383,7 @@ describe('SelectionOverlay', () => {
       const xAfter = Number(
         withPreview.container
           .querySelector('[data-name="selection-group-frame"]')
-          ?.getAttribute('data-x'),
+          ?.getAttribute('data-x')
       );
 
       expect(xAfter).toBeCloseTo(xBefore + 30);

@@ -32,14 +32,9 @@ export const doubleSignedArea = (ring: GridRing): number => {
 };
 
 /** True when the three points lie on a single straight line. */
-export const areCollinear = (
-  first: GridPoint,
-  second: GridPoint,
-  third: GridPoint,
-): boolean => {
+export const areCollinear = (first: GridPoint, second: GridPoint, third: GridPoint): boolean => {
   const cross =
-    (second.x - first.x) * (third.y - first.y) -
-    (second.y - first.y) * (third.x - first.x);
+    (second.x - first.x) * (third.y - first.y) - (second.y - first.y) * (third.x - first.x);
   return cross === 0;
 };
 
@@ -78,8 +73,7 @@ export const cleanRing = (ring: GridRing): GridRing => {
   const withoutCollinear: GridPoint[] = [];
   for (let index = 0; index < deduped.length; index += 1) {
     const previous =
-      withoutCollinear[withoutCollinear.length - 1] ??
-      (deduped[deduped.length - 1] as GridPoint);
+      withoutCollinear[withoutCollinear.length - 1] ?? (deduped[deduped.length - 1] as GridPoint);
     const current = deduped[index] as GridPoint;
     const next = deduped[(index + 1) % deduped.length] as GridPoint;
     if (areCollinear(previous, current, next)) {
@@ -113,10 +107,7 @@ export const reverseRing = (ring: GridRing): GridRing =>
  * `wantCounterClockwise` is true, and clockwise (negative signed area)
  * otherwise. A degenerate ring with zero area is returned unchanged.
  */
-export const orientRing = (
-  ring: GridRing,
-  wantCounterClockwise: boolean,
-): GridRing => {
+export const orientRing = (ring: GridRing, wantCounterClockwise: boolean): GridRing => {
   const area = doubleSignedArea(ring);
   if (area === 0) {
     return ring;

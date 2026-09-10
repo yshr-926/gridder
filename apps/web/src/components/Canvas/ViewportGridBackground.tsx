@@ -34,7 +34,7 @@ export const ViewportGridBackground = ({
   gridSize,
 }: ViewportGridBackgroundProps) => {
   const range = useViewportStore(
-    useShallow(state =>
+    useShallow((state) =>
       visibleCellRange(
         { scale: state.scale, offset: state.offset },
         { width, height },
@@ -43,7 +43,7 @@ export const ViewportGridBackground = ({
       )
     )
   );
-  const zoom = useViewportStore(state => state.scale);
+  const zoom = useViewportStore((state) => state.scale);
 
   return (
     <GridBackground

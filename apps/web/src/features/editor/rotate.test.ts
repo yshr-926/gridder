@@ -100,10 +100,10 @@ describe('rotateSelection', () => {
 
       const document = editorSession.getDocument();
       expect(document.shapes['a']?.polygon.outerRing).not.toEqual(
-        beforeRotate.shapes['a']?.polygon.outerRing,
+        beforeRotate.shapes['a']?.polygon.outerRing
       );
       expect(document.shapes['b']?.polygon.outerRing).not.toEqual(
-        beforeRotate.shapes['b']?.polygon.outerRing,
+        beforeRotate.shapes['b']?.polygon.outerRing
       );
 
       editorSession.undo();
@@ -121,10 +121,10 @@ describe('rotateSelection', () => {
 
       const document = editorSession.getDocument();
       expect(document.shapes['a']?.polygon.outerRing).not.toEqual(
-        beforeRotate.shapes['a']?.polygon.outerRing,
+        beforeRotate.shapes['a']?.polygon.outerRing
       );
       expect(document.shapes['b']?.polygon.outerRing).toEqual(
-        beforeRotate.shapes['b']?.polygon.outerRing,
+        beforeRotate.shapes['b']?.polygon.outerRing
       );
     });
   });

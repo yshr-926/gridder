@@ -178,9 +178,7 @@ export const throttle = <T extends (...args: Parameters<T>) => void>(
  * @param fn - Mouse move handler function
  * @returns Throttled function running at 60fps
  */
-export const throttleMouseMove = <T extends (...args: Parameters<T>) => void>(
-  fn: T
-): T => {
+export const throttleMouseMove = <T extends (...args: Parameters<T>) => void>(fn: T): T => {
   return throttle(fn, 16); // 60fps = 1000ms / 60 = ~16ms
 };
 

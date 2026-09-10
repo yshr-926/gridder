@@ -34,18 +34,18 @@ vi.mock('react-konva', async () => {
         'data-height': String(height),
         'data-scale-x': String(scaleX ?? ''),
       },
-      children,
+      children
     );
   const MockLayer = React.forwardRef(
     (
       { children }: { children?: React.ReactNode },
-      ref: React.Ref<{ toBlob: (opts: Record<string, unknown>) => Promise<Blob> }>,
+      ref: React.Ref<{ toBlob: (opts: Record<string, unknown>) => Promise<Blob> }>
     ) => {
       React.useImperativeHandle(ref, () => ({
         toBlob: () => Promise.resolve(new Blob(['fake'], { type: 'image/png' })),
       }));
       return React.createElement('div', { 'data-testid': 'konva-layer' }, children);
-    },
+    }
   );
 
   const passthrough =
@@ -200,7 +200,7 @@ describe('SharePanel', () => {
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
     expect(useToastStore.getState().toasts.map((toast) => toast.message)).toContain(
-      '共有画像を書き出しました',
+      '共有画像を書き出しました'
     );
 
     clickSpy.mockRestore();
@@ -213,11 +213,11 @@ describe('SharePanel', () => {
     const user = await openPanel();
 
     let downloadName: string | null = null;
-    const clickSpy = vi
-      .spyOn(HTMLAnchorElement.prototype, 'click')
-      .mockImplementation(function (this: HTMLAnchorElement) {
-        downloadName = this.download;
-      });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
+      downloadName = this.download;
+    });
 
     await user.click(screen.getByRole('button', { name: '書き出す' }));
 
@@ -309,7 +309,7 @@ describe('SharePanel', () => {
     await user.click(screen.getByRole('button', { name: '3x' }));
     await user.keyboard('{Escape}');
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: '書き出す' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('button', { name: '書き出す' })).not.toBeInTheDocument()
     );
 
     await user.click(screen.getByRole('button', { name: '共有' }));

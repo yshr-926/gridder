@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { CURRENT_DOCUMENT_FORMAT_VERSION, DEFAULT_ANNOTATION_FONT_SIZE, type EditorDocument, type EditorShape } from '@gridder/editor-core';
+import {
+  CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
+  type EditorDocument,
+  type EditorShape,
+} from '@gridder/editor-core';
 import { ShapesLayer } from './ShapesLayer';
 
 /**

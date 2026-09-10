@@ -29,7 +29,13 @@ vi.mock('react-konva', () => ({
 describe('PolygonDraftLayer', () => {
   it('test_PolygonDraftLayer_noVerticesNoCursor_rendersNothing', () => {
     const { container } = render(
-      <PolygonDraftLayer vertices={[]} cursorVertex={null} canClose={false} gridSize={10} scale={1} />
+      <PolygonDraftLayer
+        vertices={[]}
+        cursorVertex={null}
+        canClose={false}
+        gridSize={10}
+        scale={1}
+      />
     );
     expect(container.firstChild).toBeNull();
   });
@@ -64,9 +70,7 @@ describe('PolygonDraftLayer', () => {
     );
     const edges = container.querySelector('[data-name="polygon-draft-edges"]');
     expect(edges).not.toBeNull();
-    expect(JSON.parse(edges?.getAttribute('data-points') ?? '[]')).toEqual([
-      0, 0, 40, 0, 40, 40,
-    ]);
+    expect(JSON.parse(edges?.getAttribute('data-points') ?? '[]')).toEqual([0, 0, 40, 0, 40, 40]);
   });
 
   it('test_PolygonDraftLayer_cursorVertex_drawsRubberBandFromLastVertex', () => {
@@ -133,7 +137,9 @@ describe('PolygonDraftLayer', () => {
         scale={1}
       />
     );
-    expect(withoutClose.container.querySelector('[data-name="polygon-draft-start-ring"]')).toBeNull();
+    expect(
+      withoutClose.container.querySelector('[data-name="polygon-draft-start-ring"]')
+    ).toBeNull();
     withoutClose.unmount();
 
     const withClose = render(
@@ -149,7 +155,9 @@ describe('PolygonDraftLayer', () => {
         scale={1}
       />
     );
-    expect(withClose.container.querySelector('[data-name="polygon-draft-start-ring"]')).not.toBeNull();
+    expect(
+      withClose.container.querySelector('[data-name="polygon-draft-start-ring"]')
+    ).not.toBeNull();
   });
 
   it('test_PolygonDraftLayer_rendersOneMarkerPerPlacedVertex', () => {

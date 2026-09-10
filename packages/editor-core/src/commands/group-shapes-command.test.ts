@@ -48,41 +48,31 @@ const baseDocument = (): EditorDocument => ({
 
 describe('GroupShapesCommand nesting rule', () => {
   it('test_apply_noExistingGroups_createsGroupUnchanged', () => {
-    const applied = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
+    const applied = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     expect(Object.keys(applied.groups)).toEqual(['group-1']);
     expect(isDocumentValid(applied)).toBe(true);
   });
 
   it('test_apply_oneShapeAlreadyGrouped_dissolvesThatGroup', () => {
     // shape-a and shape-b start in group-1; regroup shape-b with shape-c.
-    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
-    const regrouped = new GroupShapesCommand('group-2', ['shape-b', 'shape-c']).apply(
-      grouped,
-    );
+    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
+    const regrouped = new GroupShapesCommand('group-2', ['shape-b', 'shape-c']).apply(grouped);
 
     expect(regrouped.groups['group-1']).toBeUndefined();
     expect(regrouped.groups['group-2']?.shapeIds).toEqual(['shape-b', 'shape-c']);
     // shape-a is left ungrouped — it wasn't part of the new selection, and a
     // group can't have fewer than two members, so it can't linger alone.
     expect(
-      Object.values(regrouped.groups).some((group) => group.shapeIds.includes('shape-a')),
+      Object.values(regrouped.groups).some((group) => group.shapeIds.includes('shape-a'))
     ).toBe(false);
   });
 
   it('test_apply_selectionSpansTwoExistingGroups_dissolvesBoth', () => {
     // group-1: {a, b}, group-2: {c, d}. Regroup one member of each.
-    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
+    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     document = new GroupShapesCommand('group-2', ['shape-c', 'shape-d']).apply(document);
 
-    const regrouped = new GroupShapesCommand('group-3', ['shape-b', 'shape-c']).apply(
-      document,
-    );
+    const regrouped = new GroupShapesCommand('group-3', ['shape-b', 'shape-c']).apply(document);
 
     expect(regrouped.groups['group-1']).toBeUndefined();
     expect(regrouped.groups['group-2']).toBeUndefined();
@@ -91,20 +81,14 @@ describe('GroupShapesCommand nesting rule', () => {
   });
 
   it('test_apply_wholeExistingGroupReselected_replacesItWithNewId', () => {
-    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
-    const regrouped = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(
-      grouped,
-    );
+    const grouped = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
+    const regrouped = new GroupShapesCommand('group-2', ['shape-a', 'shape-b']).apply(grouped);
     expect(Object.keys(regrouped.groups)).toEqual(['group-2']);
     expect(regrouped.groups['group-2']?.shapeIds).toEqual(['shape-a', 'shape-b']);
   });
 
   it('test_invert_selectionSpansTwoExistingGroups_restoresBothOnUndo', () => {
-    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
+    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     document = new GroupShapesCommand('group-2', ['shape-c', 'shape-d']).apply(document);
 
     const command = new GroupShapesCommand('group-3', ['shape-b', 'shape-c']);
@@ -127,13 +111,9 @@ describe('GroupShapesCommand nesting rule', () => {
   });
 
   it('test_apply_neverProducesNestedGroups_everyShapeBelongsToAtMostOneGroup', () => {
-    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(
-      baseDocument(),
-    );
+    let document = new GroupShapesCommand('group-1', ['shape-a', 'shape-b']).apply(baseDocument());
     document = new GroupShapesCommand('group-2', ['shape-b', 'shape-c']).apply(document);
-    document = new GroupShapesCommand('group-3', ['shape-a', 'shape-c', 'shape-d']).apply(
-      document,
-    );
+    document = new GroupShapesCommand('group-3', ['shape-a', 'shape-c', 'shape-d']).apply(document);
 
     const membership = new Map<string, number>();
     for (const group of Object.values(document.groups)) {

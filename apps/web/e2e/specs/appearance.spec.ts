@@ -73,9 +73,9 @@ test.describe('border visibility', () => {
     canvasHelper,
   }) => {
     await canvasHelper.dragGrid(2, 2, 7, 6);
-    await expect.poll(async () => (await readDocument(page)).shapes[0].style.isBorderVisible).toBe(
-      true
-    );
+    await expect
+      .poll(async () => (await readDocument(page)).shapes[0].style.isBorderVisible)
+      .toBe(true);
 
     const checkbox = page.getByRole('checkbox', { name: '境界線を表示' });
     await checkbox.uncheck();

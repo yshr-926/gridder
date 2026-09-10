@@ -12,10 +12,7 @@
  * (counter-clockwise), and every inner ring has a negative area (clockwise).
  * Closure is implicit, matching {@link GridRing} in the document model.
  */
-export type {
-  PolygonBooleanEngine,
-  NormalizedGridPolygon,
-} from './engine.js';
+export type { PolygonBooleanEngine, NormalizedGridPolygon } from './engine.js';
 export { createPolygonClippingEngine } from './polygon-clipping-engine.js';
 export { splitDisjointPolygons, hasHole } from './split.js';
 export {

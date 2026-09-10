@@ -31,6 +31,5 @@ export const DEFAULT_SHAPES_LAYER_THEME: ShapesLayerTheme = {
   borderWidth: 1.5,
   hitStrokeWidth: 12,
   annotationColor: '#1f2937',
-  annotationFontFamily:
-    "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
+  annotationFontFamily: "'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
 };

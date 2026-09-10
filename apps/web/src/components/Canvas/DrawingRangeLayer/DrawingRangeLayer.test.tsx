@@ -33,12 +33,18 @@ vi.mock('react-konva', () => ({
         data-testid="konva-group"
         onPointerMove={
           onPointerMove
-            ? (e) => (onPointerMove as (ev: unknown) => void)(makeEvent(e as unknown as { clientX: number; clientY: number }))
+            ? (e) =>
+                (onPointerMove as (ev: unknown) => void)(
+                  makeEvent(e as unknown as { clientX: number; clientY: number })
+                )
             : undefined
         }
         onPointerUp={
           onPointerUp
-            ? (e) => (onPointerUp as (ev: unknown) => void)(makeEvent(e as unknown as { clientX: number; clientY: number }))
+            ? (e) =>
+                (onPointerUp as (ev: unknown) => void)(
+                  makeEvent(e as unknown as { clientX: number; clientY: number })
+                )
             : undefined
         }
         onPointerLeave={onPointerCancel ? () => (onPointerCancel as () => void)() : undefined}
@@ -48,7 +54,13 @@ vi.mock('react-konva', () => ({
       </div>
     );
   },
-  Rect: ({ name, onPointerDown, onPointerEnter, onPointerLeave, ...props }: Record<string, unknown>) => {
+  Rect: ({
+    name,
+    onPointerDown,
+    onPointerEnter,
+    onPointerLeave,
+    ...props
+  }: Record<string, unknown>) => {
     const makeEvent = (e: { clientX?: number; clientY?: number }) => ({
       target: {
         getStage: () => ({
@@ -67,17 +79,34 @@ vi.mock('react-konva', () => ({
         data-height={String(props.height ?? '')}
         onPointerDown={
           onPointerDown
-            ? (e) => (onPointerDown as (ev: unknown) => void)(makeEvent(e as unknown as { clientX: number; clientY: number }))
+            ? (e) =>
+                (onPointerDown as (ev: unknown) => void)(
+                  makeEvent(e as unknown as { clientX: number; clientY: number })
+                )
             : undefined
         }
-        onPointerEnter={onPointerEnter ? () => (onPointerEnter as (ev: unknown) => void)(makeEvent({})) : undefined}
-        onPointerLeave={onPointerLeave ? () => (onPointerLeave as (ev: unknown) => void)(makeEvent({})) : undefined}
+        onPointerEnter={
+          onPointerEnter
+            ? () => (onPointerEnter as (ev: unknown) => void)(makeEvent({}))
+            : undefined
+        }
+        onPointerLeave={
+          onPointerLeave
+            ? () => (onPointerLeave as (ev: unknown) => void)(makeEvent({}))
+            : undefined
+        }
       />
     );
   },
 }));
 
-const rectShape = (id: string, minX: number, minY: number, maxX: number, maxY: number): EditorShape => ({
+const rectShape = (
+  id: string,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number
+): EditorShape => ({
   id,
   polygon: {
     outerRing: [
@@ -144,7 +173,9 @@ describe('DrawingRangeLayer', () => {
     editorSession.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 4, 4)));
     const { container } = render(<DrawingRangeLayer {...defaultProps} />);
 
-    const seHandle = container.querySelector('[data-name="drawing-range-handle-se"]') as HTMLElement;
+    const seHandle = container.querySelector(
+      '[data-name="drawing-range-handle-se"]'
+    ) as HTMLElement;
     expect(seHandle).not.toBeNull();
 
     fireEvent.pointerDown(seHandle, { clientX: 80, clientY: 80 }); // grid (4,4), no change yet
@@ -166,7 +197,9 @@ describe('DrawingRangeLayer', () => {
     editorSession.dispatch(new CreateShapeCommand(rectShape('a', 0, 0, 4, 4)));
     const { container } = render(<DrawingRangeLayer {...defaultProps} />);
 
-    const seHandle = container.querySelector('[data-name="drawing-range-handle-se"]') as HTMLElement;
+    const seHandle = container.querySelector(
+      '[data-name="drawing-range-handle-se"]'
+    ) as HTMLElement;
     const group = container.querySelector('[data-testid="konva-group"]') as HTMLElement;
 
     fireEvent.pointerDown(seHandle, { clientX: 80, clientY: 80 });

@@ -60,8 +60,7 @@ export const useSelectionStore = create<SelectionState>((set) => ({
   primaryId: null,
   activeGroupId: null,
 
-  selectOnly: (shapeId) =>
-    set({ selectedIds: [shapeId], primaryId: shapeId, activeGroupId: null }),
+  selectOnly: (shapeId) => set({ selectedIds: [shapeId], primaryId: shapeId, activeGroupId: null }),
 
   setSelection: (shapeIds) =>
     set(() => ({
@@ -92,10 +91,10 @@ export const useSelectionStore = create<SelectionState>((set) => ({
 // Exposed for tooling and the issue #42 Playwright workflow. Restricted to dev
 // builds and the Playwright build (VITE_E2E=true) so it is never present in a
 // production bundle. Guarded for non-browser contexts.
-const isSelectionDebugExposed =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
+const isSelectionDebugExposed = import.meta.env.DEV || import.meta.env.VITE_E2E === 'true';
 
 if (isSelectionDebugExposed && typeof window !== 'undefined') {
-  (window as unknown as { __GRIDDER_SELECTION_STORE__: typeof useSelectionStore }).__GRIDDER_SELECTION_STORE__ =
-    useSelectionStore;
+  (
+    window as unknown as { __GRIDDER_SELECTION_STORE__: typeof useSelectionStore }
+  ).__GRIDDER_SELECTION_STORE__ = useSelectionStore;
 }

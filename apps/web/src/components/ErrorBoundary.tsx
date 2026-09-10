@@ -112,9 +112,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {/* Error Details (Development only) */}
             {import.meta.env.DEV && this.state.error && (
               <div className="mb-6 text-left bg-gray-100 rounded p-4 overflow-auto max-h-48">
-                <p className="text-sm font-mono text-red-600 mb-2">
-                  {this.state.error.toString()}
-                </p>
+                <p className="text-sm font-mono text-red-600 mb-2">{this.state.error.toString()}</p>
                 {this.state.errorInfo && (
                   <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap">
                     {this.state.errorInfo.componentStack}

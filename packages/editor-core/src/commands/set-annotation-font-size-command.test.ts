@@ -32,28 +32,28 @@ describe('SetAnnotationFontSizeCommand', () => {
   it('test_apply_acceptsRangeBounds', () => {
     const document = baseDocument();
 
-    expect(new SetAnnotationFontSizeCommand(MIN_ANNOTATION_FONT_SIZE).apply(document).annotationFontSize).toBe(
-      MIN_ANNOTATION_FONT_SIZE,
-    );
-    expect(new SetAnnotationFontSizeCommand(MAX_ANNOTATION_FONT_SIZE).apply(document).annotationFontSize).toBe(
-      MAX_ANNOTATION_FONT_SIZE,
-    );
+    expect(
+      new SetAnnotationFontSizeCommand(MIN_ANNOTATION_FONT_SIZE).apply(document).annotationFontSize
+    ).toBe(MIN_ANNOTATION_FONT_SIZE);
+    expect(
+      new SetAnnotationFontSizeCommand(MAX_ANNOTATION_FONT_SIZE).apply(document).annotationFontSize
+    ).toBe(MAX_ANNOTATION_FONT_SIZE);
   });
 
   it('test_apply_outOfRange_throwsCommandApplicationError', () => {
     const document = baseDocument();
 
-    expect(() => new SetAnnotationFontSizeCommand(MIN_ANNOTATION_FONT_SIZE - 1).apply(document)).toThrow(
-      CommandApplicationError,
-    );
-    expect(() => new SetAnnotationFontSizeCommand(MAX_ANNOTATION_FONT_SIZE + 1).apply(document)).toThrow(
-      CommandApplicationError,
-    );
+    expect(() =>
+      new SetAnnotationFontSizeCommand(MIN_ANNOTATION_FONT_SIZE - 1).apply(document)
+    ).toThrow(CommandApplicationError);
+    expect(() =>
+      new SetAnnotationFontSizeCommand(MAX_ANNOTATION_FONT_SIZE + 1).apply(document)
+    ).toThrow(CommandApplicationError);
   });
 
   it('test_apply_fractional_throwsCommandApplicationError', () => {
     expect(() => new SetAnnotationFontSizeCommand(12.5).apply(baseDocument())).toThrow(
-      CommandApplicationError,
+      CommandApplicationError
     );
   });
 

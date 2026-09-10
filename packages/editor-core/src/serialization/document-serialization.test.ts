@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { CURRENT_DOCUMENT_FORMAT_VERSION, DEFAULT_ANNOTATION_FONT_SIZE, type EditorDocument, type EditorShape } from '../model.js';
+import {
+  CURRENT_DOCUMENT_FORMAT_VERSION,
+  DEFAULT_ANNOTATION_FONT_SIZE,
+  type EditorDocument,
+  type EditorShape,
+} from '../model.js';
 import { DocumentDeserializationError } from './errors.js';
 import { deserializeDocument, serializeDocument } from './document-serialization.js';
 
@@ -88,7 +93,7 @@ describe('serializeDocument / deserializeDocument', () => {
         'physicalScale',
         'shapes',
         'zOrder',
-      ].sort(),
+      ].sort()
     );
   });
 
@@ -203,9 +208,9 @@ describe('serializeDocument / deserializeDocument', () => {
       expect(error).toBeInstanceOf(DocumentDeserializationError);
       const deserializationError = error as DocumentDeserializationError;
       expect(deserializationError.code).toBe('invalid-document');
-      expect(deserializationError.issues.some((issue) => issue.code === 'non-integer-coordinate')).toBe(
-        true,
-      );
+      expect(
+        deserializationError.issues.some((issue) => issue.code === 'non-integer-coordinate')
+      ).toBe(true);
     }
   });
 

@@ -24,10 +24,7 @@ export default defineConfig([
       // any 禁止
       '@typescript-eslint/no-explicit-any': 'error',
       // 未使用変数
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' },
-      ],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ]);

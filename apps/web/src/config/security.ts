@@ -97,9 +97,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
  * @param env - The environment
  * @returns Object with all security headers
  */
-export const getAllSecurityHeaders = (
-  env: Environment
-): Record<string, string> => {
+export const getAllSecurityHeaders = (env: Environment): Record<string, string> => {
   return {
     'Content-Security-Policy': getCSPHeader(env),
     ...SECURITY_HEADERS,

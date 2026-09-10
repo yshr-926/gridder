@@ -6,11 +6,7 @@
  */
 
 import type { Plugin } from 'vite';
-import {
-  getCSPDirectives,
-  generateCSPHeader,
-  SECURITY_HEADERS,
-} from './src/config/security';
+import { getCSPDirectives, generateCSPHeader, SECURITY_HEADERS } from './src/config/security';
 
 /**
  * Vite plugin that adds security headers to development server

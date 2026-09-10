@@ -101,7 +101,7 @@ export const installFrameProbe = (): void => {
       window.addEventListener('pointerdown', onInput, true);
       window.addEventListener('wheel', onInput, true);
       if (typeof PerformanceObserver !== 'undefined') {
-        observer = new PerformanceObserver(list => {
+        observer = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             longTasksMs.push(entry.duration);
           }

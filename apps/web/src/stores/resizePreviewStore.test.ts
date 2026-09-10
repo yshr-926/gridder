@@ -17,9 +17,7 @@ describe('useResizePreviewStore', () => {
   });
 
   it('test_useResizePreviewStore_setPreview_storesShapeIdAndBounds', () => {
-    useResizePreviewStore
-      .getState()
-      .setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
+    useResizePreviewStore.getState().setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
     expect(useResizePreviewStore.getState().preview).toEqual({
       shapeId: 'a',
       bounds: { minX: 0, minY: 0, maxX: 5, maxY: 3 },
@@ -27,20 +25,14 @@ describe('useResizePreviewStore', () => {
   });
 
   it('test_useResizePreviewStore_clearPreview_resetsToNull', () => {
-    useResizePreviewStore
-      .getState()
-      .setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
+    useResizePreviewStore.getState().setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
     useResizePreviewStore.getState().clearPreview();
     expect(useResizePreviewStore.getState().preview).toBeNull();
   });
 
   it('test_useResizePreviewStore_setPreview_replacesThePreviousValue', () => {
-    useResizePreviewStore
-      .getState()
-      .setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
-    useResizePreviewStore
-      .getState()
-      .setPreview('a', { minX: 0, minY: 0, maxX: 9, maxY: 9 });
+    useResizePreviewStore.getState().setPreview('a', { minX: 0, minY: 0, maxX: 5, maxY: 3 });
+    useResizePreviewStore.getState().setPreview('a', { minX: 0, minY: 0, maxX: 9, maxY: 9 });
     expect(useResizePreviewStore.getState().preview).toEqual({
       shapeId: 'a',
       bounds: { minX: 0, minY: 0, maxX: 9, maxY: 9 },

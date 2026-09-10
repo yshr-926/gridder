@@ -172,12 +172,12 @@ const findVisibleRect = async (
         if (ring.length !== 4) {
           continue;
         }
-        const xs = ring.map(p => p.x);
-        const ys = ring.map(p => p.y);
+        const xs = ring.map((p) => p.x);
+        const ys = ring.map((p) => p.y);
         const min = { x: Math.min(...xs), y: Math.min(...ys) };
         const max = { x: Math.max(...xs), y: Math.max(...ys) };
         const isAxisAligned = ring.every(
-          p => (p.x === min.x || p.x === max.x) && (p.y === min.y || p.y === max.y)
+          (p) => (p.x === min.x || p.x === max.x) && (p.y === min.y || p.y === max.y)
         );
         if (!isAxisAligned || min.x < 1 || min.y < 1 || max.x > maxGridX || max.y > maxGridY) {
           continue;
@@ -196,12 +196,12 @@ const findVisibleRect = async (
 
 const probe = (page: Page) => ({
   start: () =>
-    page.evaluate(key => {
+    page.evaluate((key) => {
       (window as unknown as Record<string, FrameProbeHandle>)[key].start();
     }, FRAME_PROBE_GLOBAL),
   stop: () =>
     page.evaluate(
-      key => (window as unknown as Record<string, FrameProbeHandle>)[key].stop(),
+      (key) => (window as unknown as Record<string, FrameProbeHandle>)[key].stop(),
       FRAME_PROBE_GLOBAL
     ) as Promise<FrameProbeSamples>,
 });
@@ -255,7 +255,7 @@ const sweepPointer = async (
 
 test.describe('@issue-57 benchmark frame-time measurement', () => {
   test.beforeEach(async ({ page }) => {
-    page.on('dialog', dialog => {
+    page.on('dialog', (dialog) => {
       void dialog.dismiss();
     });
   });

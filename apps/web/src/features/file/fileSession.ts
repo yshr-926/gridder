@@ -1,4 +1,8 @@
-import { DocumentDeserializationError, deserializeDocument, serializeDocument } from '@gridder/editor-core';
+import {
+  DocumentDeserializationError,
+  deserializeDocument,
+  serializeDocument,
+} from '@gridder/editor-core';
 import { createEmptyDocument, editorSession } from '@/features/editor';
 import { useToastStore } from '@/hooks/useToast';
 import { markSaved } from './dirtyTracking';

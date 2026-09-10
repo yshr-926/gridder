@@ -171,7 +171,10 @@ describe('VertexEditOverlay', () => {
         selectedIds={['l']}
         gridSize={10}
         scale={1}
-        vertexPreview={{ shapeId: 'other', polygon: { outerRing: [{ x: 0, y: 0 }], innerRings: [] } }}
+        vertexPreview={{
+          shapeId: 'other',
+          polygon: { outerRing: [{ x: 0, y: 0 }], innerRings: [] },
+        }}
       />
     );
     const firstMarker = getAllByTestId('konva-circle').find(

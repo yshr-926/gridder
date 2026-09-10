@@ -61,10 +61,7 @@ export class CanvasHelper {
 
   /** Convert a grid-vertex coordinate to a page-relative pixel position. */
   async gridToScreen(gridX: number, gridY: number): Promise<{ x: number; y: number }> {
-    const [box, viewport] = await Promise.all([
-      this.canvas.boundingBox(),
-      readViewport(this.page),
-    ]);
+    const [box, viewport] = await Promise.all([this.canvas.boundingBox(), readViewport(this.page)]);
     if (!box) {
       throw new Error('canvas has no bounding box');
     }
@@ -78,10 +75,7 @@ export class CanvasHelper {
 
   /** Convert a page-relative pixel position back to grid-vertex space. */
   async screenToGrid(x: number, y: number): Promise<{ x: number; y: number }> {
-    const [box, viewport] = await Promise.all([
-      this.canvas.boundingBox(),
-      readViewport(this.page),
-    ]);
+    const [box, viewport] = await Promise.all([this.canvas.boundingBox(), readViewport(this.page)]);
     if (!box) {
       throw new Error('canvas has no bounding box');
     }

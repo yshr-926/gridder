@@ -63,7 +63,11 @@ describe('generateBenchmarkDocument', () => {
   });
 
   it('test_generateBenchmarkDocument_smallerFixture_alsoPassesValidation', () => {
-    const { document } = generateBenchmarkDocument({ shapeCount: 12, targetCellCount: 500, seed: 999 });
+    const { document } = generateBenchmarkDocument({
+      shapeCount: 12,
+      targetCellCount: 500,
+      seed: 999,
+    });
     expect(validateDocument(document)).toEqual([]);
   });
 
@@ -90,7 +94,10 @@ describe('generateBenchmarkDocument', () => {
   });
 
   it('test_generateBenchmarkDocument_zeroShapes_returnsAnEmptyButValidDocument', () => {
-    const { document, totalCellCount } = generateBenchmarkDocument({ shapeCount: 0, targetCellCount: 0 });
+    const { document, totalCellCount } = generateBenchmarkDocument({
+      shapeCount: 0,
+      targetCellCount: 0,
+    });
 
     expect(document.zOrder).toEqual([]);
     expect(totalCellCount).toBe(0);

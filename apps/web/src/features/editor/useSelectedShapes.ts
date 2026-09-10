@@ -42,8 +42,7 @@ export const useSelectedShapes = (): SelectedShapesView => {
     const shapes = selectedIds
       .map((id) => document.shapes[id])
       .filter((shape): shape is EditorShape => shape !== undefined);
-    const primaryShape =
-      (primaryId !== null ? document.shapes[primaryId] : undefined) ?? null;
+    const primaryShape = (primaryId !== null ? document.shapes[primaryId] : undefined) ?? null;
 
     const isGroupSelection =
       activeGroupId === null &&

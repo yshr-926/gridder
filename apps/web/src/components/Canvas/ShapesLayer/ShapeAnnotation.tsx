@@ -38,7 +38,13 @@ export interface ShapeAnnotationProps {
  * re-render the 499 labels that did not change.
  */
 export const ShapeAnnotation = memo(
-  ({ shape, gridSize, scale, fontSize, theme = DEFAULT_SHAPES_LAYER_THEME }: ShapeAnnotationProps) => {
+  ({
+    shape,
+    gridSize,
+    scale,
+    fontSize,
+    theme = DEFAULT_SHAPES_LAYER_THEME,
+  }: ShapeAnnotationProps) => {
     const name = shape.name;
 
     const box = useMemo(() => polygonBoundingBox(shape.polygon), [shape.polygon]);

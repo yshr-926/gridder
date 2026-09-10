@@ -45,11 +45,7 @@ const isSamePoint = (first: GridPoint, second: GridPoint): boolean =>
 const isShapeFillColor = (value: string): value is ShapeFillColor =>
   (SHAPE_FILL_PALETTE as readonly string[]).includes(value);
 
-const validateRing = (
-  ring: GridRing,
-  path: string,
-  issues: DocumentValidationIssue[],
-): void => {
+const validateRing = (ring: GridRing, path: string, issues: DocumentValidationIssue[]): void => {
   const distinctPoints = new Set(ring.map(({ x, y }) => `${x},${y}`));
 
   if (distinctPoints.size < 3) {
@@ -84,9 +80,7 @@ const validateRing = (
  * Checks cross-document invariants without depending on React, a renderer,
  * browser APIs, persistence, or a polygon operation library.
  */
-export const validateDocument = (
-  document: EditorDocument,
-): readonly DocumentValidationIssue[] => {
+export const validateDocument = (document: EditorDocument): readonly DocumentValidationIssue[] => {
   const issues: DocumentValidationIssue[] = [];
 
   if (document.formatVersion !== CURRENT_DOCUMENT_FORMAT_VERSION) {

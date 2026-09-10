@@ -104,15 +104,9 @@ test.describe('z-order', () => {
     await canvasHelper.clickGrid(3, 3);
     await page.getByRole('button', { name: '前面へ', exact: true }).click();
 
-    await expect.poll(async () => (await readDocument(page)).zOrder).toEqual([
-      second.id,
-      first.id,
-    ]);
+    await expect.poll(async () => (await readDocument(page)).zOrder).toEqual([second.id, first.id]);
 
     await page.getByRole('button', { name: '背面へ', exact: true }).click();
-    await expect.poll(async () => (await readDocument(page)).zOrder).toEqual([
-      first.id,
-      second.id,
-    ]);
+    await expect.poll(async () => (await readDocument(page)).zOrder).toEqual([first.id, second.id]);
   });
 });

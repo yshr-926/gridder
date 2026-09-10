@@ -42,7 +42,7 @@ export const MAX_SHARE_IMAGE_AREA_PX = 8_192 * 8_192;
  */
 export const shareImageOutputSize = (
   cropRect: ExportCropRect,
-  scale: ShareImageScale,
+  scale: ShareImageScale
 ): ShareImageSize => ({
   width: Math.max(1, Math.round(cropRect.width * scale)),
   height: Math.max(1, Math.round(cropRect.height * scale)),
@@ -63,8 +63,5 @@ export const formatShareImageSize = (size: ShareImageSize): string =>
  * enlarging it past 1:1 (issue #67 item 2). A sketch smaller than the box
  * is previewed at its actual 1x size rather than blown up.
  */
-export const shareImagePreviewScale = (
-  cropRect: ExportCropRect,
-  box: ShareImageSize,
-): number =>
+export const shareImagePreviewScale = (cropRect: ExportCropRect, box: ShareImageSize): number =>
   Math.min(1, box.width / Math.max(1, cropRect.width), box.height / Math.max(1, cropRect.height));

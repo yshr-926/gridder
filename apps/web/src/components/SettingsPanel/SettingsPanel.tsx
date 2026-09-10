@@ -25,21 +25,21 @@ const triggerClassName = cn(
   'inline-flex h-control min-w-control items-center justify-center gap-1.5 rounded-control px-2',
   'text-sm font-medium text-ui-muted transition-colors duration-fast',
   'hover:bg-surface-muted hover:text-ui focus-visible:outline-none',
-  'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+  'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1'
 );
 
 const popupClassName = cn(
   'z-40 w-80 origin-[var(--transform-origin)] rounded-panel border border-ui-border bg-surface p-4',
   'transition-[transform,opacity] duration-fast ease-out',
   'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-  'data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:ease-in',
+  'data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:ease-in'
 );
 
 const rowLabelClassName = 'text-sm text-ui';
 const sectionLabelClassName = 'text-xs font-medium uppercase tracking-wide text-ui-muted';
 const numberInputClassName = cn(
   'h-control w-20 shrink-0 rounded-control border border-ui-border bg-surface px-2 text-sm tabular-nums text-ui',
-  'disabled:cursor-not-allowed disabled:opacity-50',
+  'disabled:cursor-not-allowed disabled:opacity-50'
 );
 
 /**
@@ -103,9 +103,7 @@ export const SettingsPanel = () => {
   }
 
   const includeDimensions = useSettingsStore((state) => state.includeDimensionsInShareImage);
-  const setIncludeDimensions = useSettingsStore(
-    (state) => state.setIncludeDimensionsInShareImage,
-  );
+  const setIncludeDimensions = useSettingsStore((state) => state.setIncludeDimensionsInShareImage);
   const includeGrid = useSettingsStore((state) => state.includeGridInShareImage);
   const setIncludeGrid = useSettingsStore((state) => state.setIncludeGridInShareImage);
 
@@ -167,20 +165,23 @@ export const SettingsPanel = () => {
                   aria-label="実寸スケールを有効にする"
                   className={cn(
                     'relative h-5 w-9 shrink-0 rounded-full bg-ui-border transition-colors',
-                    'data-[checked]:bg-accent',
+                    'data-[checked]:bg-accent'
                   )}
                 >
                   <Switch.Thumb
                     className={cn(
                       'block size-4 translate-x-0.5 rounded-full bg-white transition-transform',
-                      'data-[checked]:translate-x-[1.125rem]',
+                      'data-[checked]:translate-x-[1.125rem]'
                     )}
                   />
                 </Switch.Root>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
-                <label htmlFor="settings-panel-scale-value" className="shrink-0 text-sm text-ui-muted">
+                <label
+                  htmlFor="settings-panel-scale-value"
+                  className="shrink-0 text-sm text-ui-muted"
+                >
                   1セル =
                 </label>
                 <input
@@ -214,7 +215,7 @@ export const SettingsPanel = () => {
                       className={cn(
                         'h-control min-w-9 rounded-control px-2 text-sm text-ui-muted transition-colors',
                         'data-[pressed]:bg-accent data-[pressed]:text-white',
-                        'disabled:cursor-not-allowed disabled:opacity-50',
+                        'disabled:cursor-not-allowed disabled:opacity-50'
                       )}
                     >
                       {option}

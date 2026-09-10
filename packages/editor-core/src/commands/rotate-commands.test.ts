@@ -125,10 +125,7 @@ describe('RotateShapesCommand', () => {
   });
 
   it('test_apply_fourTimes_returnsToOriginal_forMultiSelection', () => {
-    const start = documentOf([
-      rectangle('shape-a', 0, 4, 3),
-      rectangle('shape-b', 6, 2, 5),
-    ]);
+    const start = documentOf([rectangle('shape-a', 0, 4, 3), rectangle('shape-b', 6, 2, 5)]);
     const ids = ['shape-a', 'shape-b'];
     let current = start;
     for (let i = 0; i < 4; i += 1) {
@@ -197,9 +194,7 @@ describe('RotateShapesCommand', () => {
     const start = documentOf([rectangle('shape-a', 0, 4, 3), rectangle('shape-b', 8, 2, 6)]);
     const history = new DocumentHistory(start);
 
-    const afterRotate = history.dispatch(
-      new RotateShapesCommand(['shape-a', 'shape-b'], 'cw'),
-    );
+    const afterRotate = history.dispatch(new RotateShapesCommand(['shape-a', 'shape-b'], 'cw'));
     expect(history.getDocument()).toBe(afterRotate);
     expect(afterRotate).not.toEqual(start);
 

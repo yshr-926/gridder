@@ -64,8 +64,8 @@ const holedPolygon: GridPolygon = {
 const documentOf = (shapes: readonly EditorShape[]): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
-  shapes: Object.fromEntries(shapes.map(shape => [shape.id, shape])),
-  zOrder: shapes.map(shape => shape.id),
+  shapes: Object.fromEntries(shapes.map((shape) => [shape.id, shape])),
+  zOrder: shapes.map((shape) => shape.id),
   groups: {},
   drawingBounds: { mode: 'auto', min: { x: 0, y: 0 }, max: { x: 100, y: 100 } },
 });

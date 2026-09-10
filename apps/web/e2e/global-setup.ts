@@ -50,8 +50,8 @@ async function globalSetup(config: FullConfig): Promise<void> {
     // Verify basic page structure (issue #58, polygon-document UI, spec §12):
     // a compact top bar and the canvas application region — no left toolbar,
     // no status-bar footer in this UI.
-    const hasHeader = await page.locator('header').count() > 0;
-    const hasApplicationRegion = await page.locator('[role="application"]').count() > 0;
+    const hasHeader = (await page.locator('header').count()) > 0;
+    const hasApplicationRegion = (await page.locator('[role="application"]').count()) > 0;
 
     console.log(`Page structure check:`);
     console.log(`  - Header: ${hasHeader ? 'present' : 'missing'}`);

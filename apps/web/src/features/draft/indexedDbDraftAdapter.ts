@@ -37,7 +37,8 @@ const openDatabase = (): Promise<IDBDatabase> =>
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Failed to open the draft database.'));
+    request.onerror = () =>
+      reject(request.error ?? new Error('Failed to open the draft database.'));
   });
 
 const runTransaction = async <T>(

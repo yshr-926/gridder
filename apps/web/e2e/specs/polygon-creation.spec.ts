@@ -25,9 +25,9 @@ test.describe('polygon creation via P shortcut', () => {
       { x: 14, y: 2 },
       { x: 12, y: 6 },
     ]);
-    await expect.poll(async () => (await readSelection(page)).selectedIds).toEqual([
-      document.shapes[0].id,
-    ]);
+    await expect
+      .poll(async () => (await readSelection(page)).selectedIds)
+      .toEqual([document.shapes[0].id]);
   });
 
   test('pressing Enter with 3+ vertices confirms the polygon', async ({ page, canvasHelper }) => {

@@ -22,7 +22,9 @@ vi.mock('./selectDraftStorage', () => ({
   selectDraftStorage: () => currentAdapter,
 }));
 
-const mockStorage = (initialDraft: string | null): DraftStorageAdapter & {
+const mockStorage = (
+  initialDraft: string | null
+): DraftStorageAdapter & {
   readonly clearCalls: number;
 } => {
   let draft = initialDraft;
@@ -176,7 +178,11 @@ describe('useDraftRestore', () => {
 
   it('test_discard_clearsTheDraft_withoutChangingTheDocument', async () => {
     clearCleanExitFlag();
-    const draftDocument = { ...createEmptyDocument(), shapes: { a: rectShape('a') }, zOrder: ['a'] };
+    const draftDocument = {
+      ...createEmptyDocument(),
+      shapes: { a: rectShape('a') },
+      zOrder: ['a'],
+    };
     const adapter = mockStorage(serializeDocument(draftDocument));
     currentAdapter = adapter;
     const before = editorSession.getDocument();

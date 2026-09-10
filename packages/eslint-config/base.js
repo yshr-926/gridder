@@ -7,10 +7,7 @@ export default defineConfig([
   globalIgnores(['dist', 'coverage', 'node_modules']),
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-    ],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,
     },
@@ -18,10 +15,7 @@ export default defineConfig([
       // any 禁止
       '@typescript-eslint/no-explicit-any': 'error',
       // 未使用変数
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' },
-      ],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ]);

@@ -60,7 +60,7 @@ const selectedShapes = (): readonly EditorShape[] => {
  */
 const cloneWithOffset = (
   shapes: readonly EditorShape[],
-  delta: GridPoint,
+  delta: GridPoint
 ): readonly EditorShape[] =>
   shapes.map((shape) => ({
     ...shape,
@@ -74,7 +74,7 @@ const dispatchAll = (commands: readonly EditorCommand[], label: string): void =>
     return;
   }
   editorSession.dispatch(
-    commands.length === 1 ? commands[0] : new CompositeCommand(commands, label),
+    commands.length === 1 ? commands[0] : new CompositeCommand(commands, label)
   );
 };
 
@@ -97,7 +97,7 @@ export const pasteClipboard = (): void => {
 
   dispatchAll(
     pasted.map((shape) => new CreateShapeCommand(shape)),
-    'Paste',
+    'Paste'
   );
   notePasted();
   useSelectionStore.getState().setSelection(pasted.map((shape) => shape.id));
@@ -119,7 +119,7 @@ export const duplicateSelection = (): void => {
 
   dispatchAll(
     duplicated.map((shape) => new CreateShapeCommand(shape)),
-    'Duplicate',
+    'Duplicate'
   );
   useSelectionStore.getState().setSelection(duplicated.map((shape) => shape.id));
 };
@@ -168,11 +168,7 @@ export const deleteSelection = (): void => {
 type ZOrderTarget = 'forward' | 'backward' | 'front' | 'back';
 
 /** Absolute z-order index for `shapeId` after applying `target`. */
-const targetIndex = (
-  document: EditorDocument,
-  shapeId: ShapeId,
-  target: ZOrderTarget,
-): number => {
+const targetIndex = (document: EditorDocument, shapeId: ShapeId, target: ZOrderTarget): number => {
   const current = document.zOrder.indexOf(shapeId);
   const lastIndex = document.zOrder.length - 1;
   switch (target) {

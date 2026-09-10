@@ -122,7 +122,9 @@ describe('subtractSelection', () => {
     const document = editorSession.getDocument();
     expect(document.zOrder).toHaveLength(2);
     expect(document.shapes['cutter']).toBeUndefined();
-    expect([...useSelectionStore.getState().selectedIds].sort()).toEqual([...document.zOrder].sort());
+    expect([...useSelectionStore.getState().selectedIds].sort()).toEqual(
+      [...document.zOrder].sort()
+    );
   });
 
   it('test_subtractSelection_subjectFullyCovered_clearsTheSelection', () => {

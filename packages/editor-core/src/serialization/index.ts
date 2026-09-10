@@ -7,8 +7,5 @@
  * The root package barrel re-exports this module; it is kept separate so that
  * parallel work on other editor-core modules does not collide on one file.
  */
-export {
-  DocumentDeserializationError,
-  type DocumentDeserializationErrorCode,
-} from './errors.js';
+export { DocumentDeserializationError, type DocumentDeserializationErrorCode } from './errors.js';
 export { serializeDocument, deserializeDocument } from './document-serialization.js';

@@ -59,9 +59,7 @@ describe('rectRingFromGridPoints', () => {
   });
 
   it('test_rectRing_returnsNull_forNonFiniteInput', () => {
-    expect(
-      rectRingFromGridPoints({ x: Number.NaN, y: 0 }, { x: 1, y: 1 })
-    ).toBeNull();
+    expect(rectRingFromGridPoints({ x: Number.NaN, y: 0 }, { x: 1, y: 1 })).toBeNull();
   });
 });
 

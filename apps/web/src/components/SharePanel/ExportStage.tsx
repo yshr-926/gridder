@@ -116,7 +116,7 @@ export const ExportStage = memo(
         scale,
         previewScale,
       },
-      ref,
+      ref
     ) => {
       const layerRef = useRef<Konva.Layer>(null);
 
@@ -142,7 +142,7 @@ export const ExportStage = memo(
             return blob instanceof Blob ? blob : null;
           },
         }),
-        [cropRect, previewScale],
+        [cropRect, previewScale]
       );
 
       const shapesTheme = useMemo<ShapesLayerTheme>(
@@ -150,7 +150,7 @@ export const ExportStage = memo(
           ...DEFAULT_SHAPES_LAYER_THEME,
           borderWidth: DEFAULT_SHAPES_LAYER_THEME.borderWidth * previewScale,
         }),
-        [previewScale],
+        [previewScale]
       );
 
       const offsetX = -cropRect.x;
@@ -163,9 +163,9 @@ export const ExportStage = memo(
           visibleCellRange(
             { scale: 1, offset: { x: offsetX, y: offsetY } },
             { width: cropRect.width, height: cropRect.height },
-            gridSize,
+            gridSize
           ),
-        [offsetX, offsetY, cropRect.width, cropRect.height, gridSize],
+        [offsetX, offsetY, cropRect.width, cropRect.height, gridSize]
       );
 
       return (
@@ -205,8 +205,8 @@ export const ExportStage = memo(
           </Layer>
         </Stage>
       );
-    },
-  ),
+    }
+  )
 );
 
 ExportStage.displayName = 'ExportStage';

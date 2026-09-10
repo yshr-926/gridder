@@ -154,13 +154,22 @@ test.describe('share image export', () => {
 
     await page.getByRole('button', { name: '共有' }).click();
     await page.getByRole('button', { name: '透明', exact: true }).click();
-    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute('data-pressed', '');
+    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute(
+      'data-pressed',
+      ''
+    );
 
     await page.getByRole('button', { name: 'JPEG' }).click();
     await expect(page.getByRole('button', { name: '透明', exact: true })).toBeDisabled();
-    await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute('data-pressed', '');
+    await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute(
+      'data-pressed',
+      ''
+    );
 
     await page.getByRole('button', { name: 'PNG' }).click();
-    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute('data-pressed', '');
+    await expect(page.getByRole('button', { name: '透明', exact: true })).toHaveAttribute(
+      'data-pressed',
+      ''
+    );
   });
 });

@@ -37,9 +37,7 @@ function validateEnv(): EnvConfig {
   const appVersion = import.meta.env.VITE_APP_VERSION;
 
   // 環境の検証
-  const validatedAppEnv: AppEnvironment = VALID_ENVIRONMENTS.includes(
-    appEnv as AppEnvironment
-  )
+  const validatedAppEnv: AppEnvironment = VALID_ENVIRONMENTS.includes(appEnv as AppEnvironment)
     ? (appEnv as AppEnvironment)
     : 'development';
 
@@ -48,9 +46,7 @@ function validateEnv(): EnvConfig {
 
   // バージョンの検証
   const validatedVersion =
-    typeof appVersion === 'string' && appVersion.length > 0
-      ? appVersion
-      : '0.0.0';
+    typeof appVersion === 'string' && appVersion.length > 0 ? appVersion : '0.0.0';
 
   return {
     appEnv: validatedAppEnv,

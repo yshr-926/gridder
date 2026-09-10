@@ -6,11 +6,7 @@ import {
   type EditorDocument,
   type EditorShape,
 } from '../model.js';
-import {
-  CreateShapeCommand,
-  DeleteShapeCommand,
-  RenameShapeCommand,
-} from '../commands/index.js';
+import { CreateShapeCommand, DeleteShapeCommand, RenameShapeCommand } from '../commands/index.js';
 import { DocumentHistory } from './index.js';
 
 const rectangle = (id: string, offsetX: number): EditorShape => ({
@@ -40,9 +36,7 @@ describe('DocumentHistory', () => {
   it('test_dispatch_undo_redo_documentMatchesEachStep', () => {
     const start = baseDocument();
     const history = new DocumentHistory(start);
-    const afterCreate = history.dispatch(
-      new CreateShapeCommand(rectangle('shape-b', 6)),
-    );
+    const afterCreate = history.dispatch(new CreateShapeCommand(rectangle('shape-b', 6)));
 
     expect(history.getDocument()).toBe(afterCreate);
     expect(history.canUndo).toBe(true);
@@ -92,9 +86,7 @@ describe('DocumentHistory', () => {
 
   it('test_clear_dropsHistoryButKeepsDocument', () => {
     const history = new DocumentHistory(baseDocument());
-    const afterCreate = history.dispatch(
-      new CreateShapeCommand(rectangle('shape-b', 6)),
-    );
+    const afterCreate = history.dispatch(new CreateShapeCommand(rectangle('shape-b', 6)));
     history.clear();
     expect(history.canUndo).toBe(false);
     expect(history.canRedo).toBe(false);

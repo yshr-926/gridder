@@ -3,7 +3,13 @@ import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
 import { fitDrawingBoundsToContent, setManualDrawingBounds } from './drawingBoundsCommands';
 import { editorSession } from './useEditorSession';
 
-const rectShape = (id: string, minX: number, minY: number, maxX: number, maxY: number): EditorShape => ({
+const rectShape = (
+  id: string,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number
+): EditorShape => ({
   id,
   polygon: {
     outerRing: [

@@ -1,10 +1,4 @@
-import type {
-  EditorDocument,
-  EditorShape,
-  GridPolygon,
-  ShapeId,
-  ShapeStyle,
-} from '../model.js';
+import type { EditorDocument, EditorShape, GridPolygon, ShapeId, ShapeStyle } from '../model.js';
 import type { EditorCommand } from './command.js';
 import {
   indexInZOrder,
@@ -33,7 +27,7 @@ export class CreateShapeCommand implements EditorCommand {
   constructor(
     private readonly shape: EditorShape,
     /** Insertion point in z-order (back to front). Defaults to frontmost. */
-    private readonly zIndex?: number,
+    private readonly zIndex?: number
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
@@ -72,7 +66,7 @@ export class ReplaceShapeVerticesCommand implements EditorCommand {
 
   constructor(
     private readonly shapeId: ShapeId,
-    private readonly polygon: GridPolygon,
+    private readonly polygon: GridPolygon
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
@@ -92,7 +86,7 @@ export class SetShapeStyleCommand implements EditorCommand {
 
   constructor(
     private readonly shapeId: ShapeId,
-    private readonly style: ShapeStyle,
+    private readonly style: ShapeStyle
   ) {}
 
   apply(document: EditorDocument): EditorDocument {
@@ -113,7 +107,7 @@ export class RenameShapeCommand implements EditorCommand {
   constructor(
     private readonly shapeId: ShapeId,
     /** `undefined` clears the name. */
-    private readonly name: string | undefined,
+    private readonly name: string | undefined
   ) {}
 
   apply(document: EditorDocument): EditorDocument {

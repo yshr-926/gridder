@@ -37,7 +37,7 @@ const rect = (
   minY: number,
   maxX: number,
   maxY: number,
-  extra: Partial<Pick<EditorShape, 'name' | 'style'>> = {},
+  extra: Partial<Pick<EditorShape, 'name' | 'style'>> = {}
 ): EditorShape => ({
   id,
   polygon: rectPolygon(minX, minY, maxX, maxY),
@@ -48,7 +48,7 @@ const rect = (
 /** Shapes listed back to front. */
 const documentOf = (
   shapes: readonly EditorShape[],
-  groups: EditorDocument['groups'] = {},
+  groups: EditorDocument['groups'] = {}
 ): EditorDocument => ({
   formatVersion: CURRENT_DOCUMENT_FORMAT_VERSION,
   annotationFontSize: DEFAULT_ANNOTATION_FONT_SIZE,
@@ -59,7 +59,10 @@ const documentOf = (
 });
 
 /** apply → undo → redo must reproduce the applied document exactly (spec §11). */
-const expectRoundTrip = (document: EditorDocument, command: CombineShapesCommand | SubtractShapesCommand) => {
+const expectRoundTrip = (
+  document: EditorDocument,
+  command: CombineShapesCommand | SubtractShapesCommand
+) => {
   const history = new DocumentHistory(document);
   const applied = history.dispatch(command);
   expect(isDocumentValid(applied)).toBe(true);
@@ -70,7 +73,11 @@ const expectRoundTrip = (document: EditorDocument, command: CombineShapesCommand
 
 describe('frontmostShapeId', () => {
   it('test_frontmostShapeId_returnsTheIdWithTheHighestZOrderSlot', () => {
-    const document = documentOf([rect('back', 0, 0, 1, 1), rect('mid', 0, 0, 1, 1), rect('front', 0, 0, 1, 1)]);
+    const document = documentOf([
+      rect('back', 0, 0, 1, 1),
+      rect('mid', 0, 0, 1, 1),
+      rect('front', 0, 0, 1, 1),
+    ]);
     expect(frontmostShapeId(document, ['back', 'front', 'mid'])).toBe('front');
     expect(frontmostShapeId(document, ['mid', 'back'])).toBe('mid');
   });
@@ -120,7 +127,7 @@ describe('CombineShapesCommand', () => {
           { x: 0, y: 3 },
         ],
         innerRings: [],
-      }),
+      })
     );
   });
 
@@ -139,12 +146,18 @@ describe('CombineShapesCommand', () => {
   });
 
   it('test_CombineShapesCommand_threeOverlappingShapes_collapseToOne', () => {
-    const document = documentOf([rect('a', 0, 0, 2, 2), rect('b', 1, 0, 3, 2), rect('c', 2, 0, 4, 2)]);
+    const document = documentOf([
+      rect('a', 0, 0, 2, 2),
+      rect('b', 1, 0, 3, 2),
+      rect('c', 2, 0, 4, 2),
+    ]);
 
     const applied = expectRoundTrip(document, new CombineShapesCommand(['a', 'b', 'c'], engine));
 
     expect(applied.zOrder).toEqual(['c']);
-    expect(polygonKey((applied.shapes['c'] as EditorShape).polygon)).toBe(polygonKey(rectPolygon(0, 0, 4, 2)));
+    expect(polygonKey((applied.shapes['c'] as EditorShape).polygon)).toBe(
+      polygonKey(rectPolygon(0, 0, 4, 2))
+    );
   });
 
   it('test_CombineShapesCommand_separatedShapes_isRefused_documentUntouched', () => {
@@ -152,7 +165,7 @@ describe('CombineShapesCommand', () => {
     const history = new DocumentHistory(document);
 
     expect(() => history.dispatch(new CombineShapesCommand(['a', 'b'], engine))).toThrow(
-      CommandApplicationError,
+      CommandApplicationError
     );
     expect(history.getDocument()).toBe(document);
     expect(history.canUndo).toBe(false);
@@ -160,7 +173,9 @@ describe('CombineShapesCommand', () => {
 
   it('test_CombineShapesCommand_fewerThanTwoShapes_isRefused', () => {
     const document = documentOf([rect('a', 0, 0, 3, 3)]);
-    expect(() => new CombineShapesCommand(['a'], engine).apply(document)).toThrow(CommandApplicationError);
+    expect(() => new CombineShapesCommand(['a'], engine).apply(document)).toThrow(
+      CommandApplicationError
+    );
   });
 
   it('test_CombineShapesCommand_wholeGroupCombined_dissolvesTheGroup_undoRestoresIt', () => {
@@ -178,7 +193,10 @@ describe('SubtractShapesCommand', () => {
   it('test_SubtractShapesCommand_cutterInsideSubject_leavesOneShapeWithAHole_andDeletesTheCutter', () => {
     const document = documentOf([rect('subject', 0, 0, 4, 4), rect('cutter', 1, 1, 2, 2)]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['subject']);
     const carved = applied.shapes['subject'] as EditorShape;
@@ -194,14 +212,17 @@ describe('SubtractShapesCommand', () => {
             { x: 2, y: 1 },
           ],
         ],
-      }),
+      })
     );
   });
 
   it('test_SubtractShapesCommand_cutterAtTheEdge_leavesOneConcaveShape', () => {
     const document = documentOf([rect('subject', 0, 0, 4, 4), rect('cutter', 3, 1, 5, 2)]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['subject']);
     const carved = applied.shapes['subject'] as EditorShape;
@@ -218,7 +239,10 @@ describe('SubtractShapesCommand', () => {
       rect('cutter', 2, 0, 3, 2),
     ]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['below', 'subject', 'subject-2', 'above']);
     const pieces = [applied.shapes['subject'], applied.shapes['subject-2']] as EditorShape[];
@@ -227,7 +251,7 @@ describe('SubtractShapesCommand', () => {
       expect(piece.style).toEqual(style);
     }
     expect(pieces.map((piece) => polygonKey(piece.polygon)).sort()).toEqual(
-      [polygonKey(rectPolygon(0, 0, 2, 2)), polygonKey(rectPolygon(3, 0, 5, 2))].sort(),
+      [polygonKey(rectPolygon(0, 0, 2, 2)), polygonKey(rectPolygon(3, 0, 5, 2))].sort()
     );
   });
 
@@ -238,7 +262,10 @@ describe('SubtractShapesCommand', () => {
       rect('cutter', 2, 0, 3, 2),
     ]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['subject', 'subject-3', 'subject-2']);
   });
@@ -246,7 +273,10 @@ describe('SubtractShapesCommand', () => {
   it('test_SubtractShapesCommand_subjectFullyCovered_isDeleted', () => {
     const document = documentOf([rect('subject', 1, 1, 2, 2), rect('cutter', 0, 0, 4, 4)]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual([]);
   });
@@ -254,7 +284,10 @@ describe('SubtractShapesCommand', () => {
   it('test_SubtractShapesCommand_cutterNotTouchingSubject_stillConsumesTheCutter', () => {
     const document = documentOf([rect('subject', 0, 0, 2, 2), rect('cutter', 5, 5, 6, 6)]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['subject']);
     expect(applied.shapes['subject']).toEqual(document.shapes['subject']);
@@ -270,9 +303,16 @@ describe('SubtractShapesCommand', () => {
   });
 
   it('test_SubtractShapesCommand_severalSubjects_eachLosesTheCutter', () => {
-    const document = documentOf([rect('a', 0, 0, 4, 2), rect('b', 0, 2, 4, 4), rect('cutter', 1, 1, 3, 3)]);
+    const document = documentOf([
+      rect('a', 0, 0, 4, 2),
+      rect('b', 0, 2, 4, 4),
+      rect('cutter', 1, 1, 3, 3),
+    ]);
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['a', 'b', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['a', 'b', 'cutter'], engine)
+    );
 
     expect(applied.zOrder).toEqual(['a', 'b']);
     expect((applied.shapes['a'] as EditorShape).polygon.outerRing).toHaveLength(8);
@@ -282,17 +322,22 @@ describe('SubtractShapesCommand', () => {
   it('test_SubtractShapesCommand_splitPiecesJoinTheSubjectsGroup_undoRestoresMembership', () => {
     const document = documentOf(
       [rect('subject', 0, 0, 5, 2), rect('other', 10, 10, 11, 11), rect('cutter', 2, 0, 3, 2)],
-      { 'group-1': { id: 'group-1', shapeIds: ['subject', 'other'] } },
+      { 'group-1': { id: 'group-1', shapeIds: ['subject', 'other'] } }
     );
 
-    const applied = expectRoundTrip(document, new SubtractShapesCommand(['subject', 'cutter'], engine));
+    const applied = expectRoundTrip(
+      document,
+      new SubtractShapesCommand(['subject', 'cutter'], engine)
+    );
 
     expect(applied.groups['group-1']?.shapeIds).toEqual(['subject', 'other', 'subject-2']);
   });
 
   it('test_SubtractShapesCommand_fewerThanTwoShapes_isRefused', () => {
     const document = documentOf([rect('a', 0, 0, 3, 3)]);
-    expect(() => new SubtractShapesCommand(['a'], engine).apply(document)).toThrow(CommandApplicationError);
+    expect(() => new SubtractShapesCommand(['a'], engine).apply(document)).toThrow(
+      CommandApplicationError
+    );
   });
 
   it('test_SubtractShapesCommand_unknownShape_isRefused', () => {

@@ -71,9 +71,8 @@ export const readDocument = (page: Page): Promise<E2eDocumentSnapshot> =>
 export const readShapeCount = (page: Page): Promise<number> =>
   page.evaluate(
     () =>
-      (
-        window as unknown as { __GRIDDER_EDITOR_SESSION__: { shapeCount: number } }
-      ).__GRIDDER_EDITOR_SESSION__.shapeCount
+      (window as unknown as { __GRIDDER_EDITOR_SESSION__: { shapeCount: number } })
+        .__GRIDDER_EDITOR_SESSION__.shapeCount
   );
 
 export interface E2eSelectionSnapshot {

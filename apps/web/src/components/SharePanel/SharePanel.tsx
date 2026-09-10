@@ -36,14 +36,14 @@ const triggerClassName = cn(
   'inline-flex h-control items-center justify-center gap-1.5 rounded-control px-2.5',
   'text-sm font-medium text-white transition-colors duration-fast',
   'bg-accent hover:bg-accent-strong focus-visible:outline-none',
-  'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+  'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1'
 );
 
 const popupClassName = cn(
   'z-40 w-80 origin-[var(--transform-origin)] rounded-panel border border-ui-border bg-surface p-4',
   'transition-[transform,opacity] duration-fast ease-out',
   'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-  'data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:ease-in',
+  'data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:ease-in'
 );
 
 const rowLabelClassName = 'text-sm text-ui';
@@ -52,7 +52,7 @@ const toggleGroupClassName = 'mt-2 flex gap-0.5 rounded-control border border-ui
 const toggleClassName = cn(
   'h-control flex-1 rounded-control px-2 text-sm text-ui-muted transition-colors',
   'data-[pressed]:bg-accent data-[pressed]:text-white',
-  'disabled:cursor-not-allowed disabled:opacity-50',
+  'disabled:cursor-not-allowed disabled:opacity-50'
 );
 
 const FORMAT_LABEL: Readonly<Record<ShareImageFormat, string>> = {
@@ -128,9 +128,7 @@ const SharePanelContent = ({ choices, onChoicesChange }: SharePanelContentProps)
   const includeGrid = useSettingsStore((state) => state.includeGridInShareImage);
   const setIncludeGrid = useSettingsStore((state) => state.setIncludeGridInShareImage);
   const includeDimensions = useSettingsStore((state) => state.includeDimensionsInShareImage);
-  const setIncludeDimensions = useSettingsStore(
-    (state) => state.setIncludeDimensionsInShareImage,
-  );
+  const setIncludeDimensions = useSettingsStore((state) => state.setIncludeDimensionsInShareImage);
 
   const [isExporting, setIsExporting] = useState(false);
   const exportStageRef = useRef<ExportStageHandle>(null);
@@ -306,7 +304,8 @@ const SharePanelContent = ({ choices, onChoicesChange }: SharePanelContentProps)
         </div>
         {outputSize !== null && !isExportable && (
           <p role="alert" className="mt-1 text-xs text-red-600">
-            上限（{MAX_SQUARE_SIDE_PX} × {MAX_SQUARE_SIDE_PX} px 相当）を超えるため書き出せません。解像度か余白を下げてください。
+            上限（{MAX_SQUARE_SIDE_PX} × {MAX_SQUARE_SIDE_PX} px
+            相当）を超えるため書き出せません。解像度か余白を下げてください。
           </p>
         )}
       </div>
@@ -374,7 +373,7 @@ const SharePanelContent = ({ choices, onChoicesChange }: SharePanelContentProps)
         disabled={!hasContent || !isExportable || isExporting}
         className={cn(
           'h-control w-full rounded-control bg-accent text-sm font-medium text-white transition-colors',
-          'hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50',
+          'hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50'
         )}
       >
         {isExporting ? '書き出し中…' : '書き出す'}
