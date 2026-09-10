@@ -10,7 +10,7 @@
 4. [Architecture Decision Records](./adr/)
 5. [UI 原則](./ui-principles.md)
 
-技術選定の比較と根拠は [エディタ技術スタック調査](./architecture/editor-stack-research.md)、リリース作業は [リリースワークフロー](./release-workflow.md) を参照する。`docs/agents/` はリポジトリ運用の補助資料であり、プロダクト仕様やアーキテクチャの根拠にはしない。
+技術選定の比較と根拠は [エディタ技術スタック調査](./architecture/editor-stack-research.md)、リリース作業は [リリースワークフロー](./release-workflow.md)、配信環境は [デプロイ手順](./deployment.md) を参照する。`docs/agents/` はリポジトリ運用の補助資料であり、プロダクト仕様やアーキテクチャの根拠にはしない。
 
 文書間に差異がある場合は、第一リリース仕様と Accepted の ADR を優先し、実装を現行設計へ移行する。
 
