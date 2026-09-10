@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CreateShapeCommand, type EditorShape } from '@gridder/editor-core';
+import { CreateShapeCommand, DeleteShapeCommand, type EditorShape } from '@gridder/editor-core';
 import { createEmptyDocument, editorSession } from '@/features/editor';
 import {
   isDirty,
@@ -152,6 +152,24 @@ describe('dirty tracking', () => {
     });
 
     expect(isDirty()).toBe(true);
+  });
+
+  it('test_isDirty_undoOfADelete_isClean_despiteShapeKeyOrderChanging', () => {
+    // Deleting a shape and undoing it re-inserts its key at the end, so the
+    // `shapes` record comes back with a different key order. The document is
+    // the saved one; the comparison must not depend on key order.
+    act(() => {
+      editorSession.dispatch(new CreateShapeCommand(rectShape('a')));
+      editorSession.dispatch(new CreateShapeCommand(rectShape('b')));
+      markSaved();
+      editorSession.dispatch(new DeleteShapeCommand('a'));
+      editorSession.undo();
+    });
+
+    // 'a' was re-inserted after 'b', so the key order really did change.
+    const keys = Object.keys(editorSession.getDocument().shapes);
+    expect(keys.indexOf('a')).toBeGreaterThan(keys.indexOf('b'));
+    expect(isDirty()).toBe(false);
   });
 
   it('test_markDirty_afterReset_isDirty_evenThoughUndoDepthIsZeroAgain', () => {

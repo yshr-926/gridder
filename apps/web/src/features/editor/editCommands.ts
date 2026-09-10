@@ -16,7 +16,7 @@ import { generateId } from '@/utils/id';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { copyToClipboard, notePasted, readClipboard } from './clipboard';
 import { editorSession } from './useEditorSession';
-import { groupContaining, resolveSelectionForGroupActions } from './groupSelection';
+import { groupContaining } from './groupSelection';
 
 /**
  * Multi-shape edit operations for issue #51: copy / paste / duplicate / delete
@@ -42,19 +42,18 @@ const translatePolygon = (polygon: GridPolygon, delta: GridPoint): GridPolygon =
 
 /**
  * Selected shapes resolved against the live document, in selection order.
- * Expanded to whole groups (issue #52, spec §7: copy/duplicate/delete act on
- * a group as a unit) — normally a no-op, since a click already expands the
- * selection to the whole group (see `applyInteractionEffect`'s `selectOnly`),
- * but this stays correct even if `selectedIds` ever holds just one member of
- * a not-currently-entered group. A group the user has deliberately
- * Shift-clicked *part* of is left alone; see
- * {@link resolveSelectionForGroupActions}.
+ *
+ * The selection is taken verbatim: group membership was already applied when
+ * the click, Shift-click or marquee that produced it was interpreted (see
+ * `groupSelection.ts`), so a group is either wholly in `selectedIds` or was
+ * deliberately reduced. Re-expanding here would act on shapes the user
+ * Shift-clicked out of the selection.
  */
 const selectedShapes = (): readonly EditorShape[] => {
   const document = editorSession.getDocument();
-  const { selectedIds, activeGroupId } = useSelectionStore.getState();
-  return resolveSelectionForGroupActions(document, selectedIds, activeGroupId)
-    .map((id) => document.shapes[id])
+  return useSelectionStore
+    .getState()
+    .selectedIds.map((id) => document.shapes[id])
     .filter((shape): shape is EditorShape => shape !== undefined);
 };
 
@@ -333,15 +332,12 @@ const reorderedZOrder = (
  */
 const reorderSelection = (target: ZOrderTarget): void => {
   const document = editorSession.getDocument();
-  const { selectedIds, activeGroupId } = useSelectionStore.getState();
-  const resolvedIds = new Set(
-    resolveSelectionForGroupActions(document, selectedIds, activeGroupId)
-  );
-  if (!document.zOrder.some((id) => resolvedIds.has(id))) {
+  const selectedIds = new Set(useSelectionStore.getState().selectedIds);
+  if (!document.zOrder.some((id) => selectedIds.has(id))) {
     return;
   }
 
-  const nextZOrder = reorderedZOrder(document.zOrder, resolvedIds, target);
+  const nextZOrder = reorderedZOrder(document.zOrder, selectedIds, target);
   const commands: EditorCommand[] = [];
   let working = document;
   nextZOrder.forEach((shapeId, index) => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { resolveClickSelection } from './groupSelection';
 import { rotateSelection } from './rotate';
 import { editorSession } from './useEditorSession';
 
@@ -86,14 +87,15 @@ describe('rotateSelection', () => {
   });
 
   describe('group rotation (issue #52)', () => {
-    it('test_rotateSelection_oneGroupMemberSelected_rotatesWholeGroup_oneUndoStep', () => {
+    it('test_rotateSelection_clickOnOneGroupMember_rotatesWholeGroup_oneUndoStep', () => {
       editorSession.dispatch(new CreateShapeCommand(rectShape('a', 0, 4, 2)));
       editorSession.dispatch(new CreateShapeCommand(rectShape('b', 6, 2, 4)));
       editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
-      // Simulate selectedIds holding just one member (a click already expands
-      // it in practice — this proves rotateSelection stays correct even if
-      // it doesn't).
-      useSelectionStore.setState({ selectedIds: ['a'], primaryId: 'a', activeGroupId: null });
+      // Clicking one member selects the whole group, which is what makes the
+      // whole group rotate — `rotateSelection` itself trusts the selection.
+      useSelectionStore
+        .getState()
+        .setSelection(resolveClickSelection(editorSession.getDocument(), null, 'a').shapeIds);
       const beforeRotate = editorSession.getDocument();
 
       rotateSelection('cw');

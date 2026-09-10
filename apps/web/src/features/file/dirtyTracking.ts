@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { serializeDocument, type EditorDocument } from '@gridder/editor-core';
+import type { EditorDocument } from '@gridder/editor-core';
 import { editorSession } from '@/features/editor';
 
 /**
@@ -10,12 +10,18 @@ import { editorSession } from '@/features/editor';
  * comparing the current document against the one last written to disk. The
  * comparison is on content, not on history position: the document is immutable,
  * so an unchanged reference settles it immediately, and only when the reference
- * differs does the document get serialized and compared — which also makes an
- * undo back to exactly the saved state read as clean again.
+ * differs is the structure compared — which also makes an undo back to exactly
+ * the saved state read as clean again.
  *
- * Comparing `undoDepth` instead, as this once did, mistakes different documents
- * for the same one whenever they sit at the same depth: create, save, undo,
- * create something else lands back on the saved depth with a different
+ * That comparison ignores the order of record keys. `shapes` and `groups` are
+ * keyed lookups, not sequences — the visible order lives in `zOrder` — and a
+ * delete followed by an undo re-inserts the shape's key at the end. Comparing
+ * serialized JSON, as this once did, would call that identical document
+ * modified.
+ *
+ * Comparing `undoDepth` instead, as this originally did, mistakes different
+ * documents for the same one whenever they sit at the same depth: create, save,
+ * undo, create something else lands back on the saved depth with a different
  * document, and once the 100-entry history limit stops the depth growing, every
  * later edit looks saved. Depth counts steps; only the content says what is on
  * disk.
@@ -26,21 +32,42 @@ interface DirtyState {
 
 const useDirtyStore = create<DirtyState>(() => ({ isDirty: false }));
 
-/** The document version last written to disk, or `null` before the first save. */
-let saved: { readonly document: EditorDocument; readonly content: string } | null = null;
-
-const recompute = (): void => {
-  const isDirty = ((): boolean => {
-    if (saved === null) {
-      return true;
-    }
-    const current = editorSession.getDocument();
-    // The common case: nothing has replaced the saved document object.
-    if (current === saved.document) {
+/**
+ * Structural equality that treats plain objects as unordered maps. Arrays stay
+ * order-sensitive: `zOrder` and a polygon's rings are sequences, where order is
+ * the meaning.
+ */
+const isDeepEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) {
+    return true;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
       return false;
     }
-    return serializeDocument(current) !== saved.content;
-  })();
+    return a.every((item, index) => isDeepEqual(item, b[index]));
+  }
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
+    return false;
+  }
+  const aRecord = a as Record<string, unknown>;
+  const bRecord = b as Record<string, unknown>;
+  const aKeys = Object.keys(aRecord);
+  if (aKeys.length !== Object.keys(bRecord).length) {
+    return false;
+  }
+  return aKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(bRecord, key) && isDeepEqual(aRecord[key], bRecord[key])
+  );
+};
+
+/** The document version last written to disk, or `null` before the first save. */
+let savedDocument: EditorDocument | null = null;
+
+const recompute = (): void => {
+  const isDirty =
+    savedDocument === null || !isDeepEqual(editorSession.getDocument(), savedDocument);
 
   if (useDirtyStore.getState().isDirty !== isDirty) {
     useDirtyStore.setState({ isDirty });
@@ -48,7 +75,7 @@ const recompute = (): void => {
 };
 
 const rememberSaved = (document: EditorDocument): void => {
-  saved = { document, content: serializeDocument(document) };
+  savedDocument = document;
 };
 
 // A fresh, never-saved sketch with no edits yet is not "dirty" — there is
@@ -80,7 +107,7 @@ export const markSaved = (document: EditorDocument = editorSession.getDocument()
  * next real save, without needing a sentinel `isDirty` flag of its own.
  */
 export const markDirty = (): void => {
-  saved = null;
+  savedDocument = null;
   recompute();
 };
 

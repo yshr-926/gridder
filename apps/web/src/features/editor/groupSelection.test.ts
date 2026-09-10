@@ -6,7 +6,8 @@ import {
   type EditorShape,
 } from '@gridder/editor-core';
 import {
-  resolveSelectionForGroupActions,
+  expandSelectionForGroups,
+  resolveShiftClickSelection,
   groupContaining,
   resolveClickSelection,
   resolveDoubleClickTarget,
@@ -55,67 +56,76 @@ describe('groupContaining', () => {
   });
 });
 
-describe('resolveSelectionForGroupActions', () => {
-  it('test_resolveSelectionForGroupActions_ungroupedShape_isUnchanged', () => {
+describe('expandSelectionForGroups', () => {
+  it('test_expandSelectionForGroups_ungroupedShape_isUnchanged', () => {
     const document = documentWith(['a', 'b']);
-    expect(resolveSelectionForGroupActions(document, ['a'], null)).toEqual(['a']);
+    expect(expandSelectionForGroups(document, ['a'], null)).toEqual(['a']);
   });
 
-  it('test_resolveSelectionForGroupActions_groupedShape_expandsToWholeGroup', () => {
+  it('test_expandSelectionForGroups_groupedShape_expandsToWholeGroup', () => {
     const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b'] });
-    expect(resolveSelectionForGroupActions(document, ['a'], null)).toEqual(['a', 'b']);
+    expect(expandSelectionForGroups(document, ['a'], null)).toEqual(['a', 'b']);
   });
 
-  it('test_resolveSelectionForGroupActions_activeGroup_leavesItsMembersUnexpanded', () => {
+  it('test_expandSelectionForGroups_activeGroup_leavesItsMembersUnexpanded', () => {
     const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b'] });
-    expect(resolveSelectionForGroupActions(document, ['a'], 'group-1')).toEqual(['a']);
+    expect(expandSelectionForGroups(document, ['a'], 'group-1')).toEqual(['a']);
   });
 
-  it('test_resolveSelectionForGroupActions_multipleShapesAcrossGroups_expandsEach_dedup', () => {
+  it('test_expandSelectionForGroups_multipleShapesAcrossGroups_expandsEach_dedup', () => {
     const document = documentWith(['a', 'b', 'c', 'd'], {
       'group-1': ['a', 'b'],
       'group-2': ['c', 'd'],
     });
-    expect(resolveSelectionForGroupActions(document, ['a', 'c'], null)).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-    ]);
+    expect(expandSelectionForGroups(document, ['a', 'c'], null)).toEqual(['a', 'b', 'c', 'd']);
   });
 
-  it('test_resolveSelectionForGroupActions_bothMembersAlreadyGiven_noDuplicates', () => {
+  it('test_expandSelectionForGroups_bothMembersAlreadyGiven_noDuplicates', () => {
     const document = documentWith(['a', 'b'], { 'group-1': ['a', 'b'] });
-    expect(resolveSelectionForGroupActions(document, ['a', 'b'], null)).toEqual(['a', 'b']);
+    expect(expandSelectionForGroups(document, ['a', 'b'], null)).toEqual(['a', 'b']);
+  });
+});
+
+describe('resolveShiftClickSelection', () => {
+  it('test_resolveShiftClickSelection_ungroupedShape_notSelected_isAdded', () => {
+    const document = documentWith(['a', 'b']);
+    expect(resolveShiftClickSelection(document, ['a'], null, 'b')).toEqual(['a', 'b']);
   });
 
-  it('test_resolveSelectionForGroupActions_partiallySelectedGroup_isNotReExpanded', () => {
-    // A three-shape group with one member Shift-clicked out of the selection:
-    // the deselected member must stay out (spec §7 — it is visibly unselected).
+  it('test_resolveShiftClickSelection_ungroupedShape_alreadySelected_isRemoved', () => {
+    const document = documentWith(['a', 'b']);
+    expect(resolveShiftClickSelection(document, ['a', 'b'], null, 'b')).toEqual(['a']);
+  });
+
+  it('test_resolveShiftClickSelection_selectedGroupMember_removesOnlyThatShape', () => {
+    // The reported defect: with a two-member group, removing one member has
+    // to leave the other selected — and that lone member must not later be
+    // re-expanded back into the group by the action that follows.
+    const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b'] });
+    expect(resolveShiftClickSelection(document, ['a', 'b'], null, 'b')).toEqual(['a']);
+  });
+
+  it('test_resolveShiftClickSelection_unselectedGroupMember_addsEveryMember', () => {
+    const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b'] });
+    expect(resolveShiftClickSelection(document, ['c'], null, 'a')).toEqual(['c', 'a', 'b']);
+  });
+
+  it('test_resolveShiftClickSelection_memberOfEnteredGroup_togglesIndividually', () => {
+    const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b'] });
+    expect(resolveShiftClickSelection(document, ['a', 'b'], 'group-1', 'b')).toEqual(['a']);
+  });
+
+  it('test_resolveShiftClickSelection_partiallySelectedGroup_unselectedMember_addsTheRest', () => {
+    // 'c' is not selected, so this is an add: the group joins in full.
     const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b', 'c'] });
-    expect(resolveSelectionForGroupActions(document, ['a', 'b'], null)).toEqual(['a', 'b']);
+    expect(resolveShiftClickSelection(document, ['a', 'b'], null, 'c')).toEqual(['a', 'b', 'c']);
   });
 
-  it('test_resolveSelectionForGroupActions_partialGroupPlusOtherGroup_expandsOnlyTheOtherOne', () => {
-    const document = documentWith(['a', 'b', 'c', 'd', 'e'], {
-      'group-1': ['a', 'b', 'c'],
-      'group-2': ['d', 'e'],
-    });
-    expect(resolveSelectionForGroupActions(document, ['a', 'b', 'd'], null)).toEqual([
-      'a',
-      'b',
-      'd',
-      'e',
-    ]);
-  });
-
-  it('test_resolveSelectionForGroupActions_wholeGroupSelected_stillExpandsToEveryMember', () => {
+  it('test_resolveShiftClickSelection_narrowingAGroupOneMemberAtATime', () => {
     const document = documentWith(['a', 'b', 'c'], { 'group-1': ['a', 'b', 'c'] });
-    expect(resolveSelectionForGroupActions(document, ['a', 'b', 'c'], null)).toEqual([
-      'a',
-      'b',
-      'c',
-    ]);
+    const afterFirst = resolveShiftClickSelection(document, ['a', 'b', 'c'], null, 'c');
+    expect(afterFirst).toEqual(['a', 'b']);
+    expect(resolveShiftClickSelection(document, afterFirst, null, 'b')).toEqual(['a']);
   });
 });
 

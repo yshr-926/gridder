@@ -85,7 +85,8 @@ export {
 export { vertexEditPreview, handleTargetAt, type HandleTarget } from './interactionController';
 export {
   groupContaining,
-  resolveSelectionForGroupActions,
+  expandSelectionForGroups,
+  resolveShiftClickSelection,
   resolveClickSelection,
   resolveDoubleClickTarget,
   type ClickSelectionResult,

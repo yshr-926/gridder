@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { resolveClickSelection } from './groupSelection';
 import { useToastStore } from '@/hooks/useToast';
 import { combineSelection, subtractSelection } from './booleanCommands';
 import { editorSession } from './useEditorSession';
@@ -76,11 +77,14 @@ describe('combineSelection', () => {
     expect(useToastStore.getState().toasts).toHaveLength(0);
   });
 
-  it('test_combineSelection_oneGroupMemberSelected_combinesTheWholeGroup', () => {
+  it('test_combineSelection_clickOnOneGroupMember_combinesTheWholeGroup', () => {
     editorSession.dispatch(new CreateShapeCommand(rect('a', 0, 0, 2, 2)));
     editorSession.dispatch(new CreateShapeCommand(rect('b', 2, 0, 4, 2)));
     editorSession.dispatch(new GroupShapesCommand('group-1', ['a', 'b']));
-    useSelectionStore.setState({ selectedIds: ['a'], primaryId: 'a', activeGroupId: null });
+    // A click on one member selects the whole group.
+    useSelectionStore
+      .getState()
+      .setSelection(resolveClickSelection(editorSession.getDocument(), null, 'a').shapeIds);
 
     combineSelection();
 

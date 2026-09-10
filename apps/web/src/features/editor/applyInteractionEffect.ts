@@ -17,7 +17,11 @@ import { createRectShape, defaultShapeStyle } from './document';
 import type { EditorSession } from './editorSession';
 import type { InteractionEffect } from './interactionController';
 import { ringFromRect } from './hitTest';
-import { resolveClickSelection, resolveSelectionForGroupActions } from './groupSelection';
+import {
+  expandSelectionForGroups,
+  resolveClickSelection,
+  resolveShiftClickSelection,
+} from './groupSelection';
 
 /** Translate every vertex of a ring by a whole-grid-unit offset. */
 const translateRing = (ring: GridRing, delta: GridPoint): GridRing =>
@@ -113,11 +117,23 @@ export const applyInteractionEffect = (session: EditorSession, effect: Interacti
       }
       return;
     }
-    case 'toggleSelection':
-      selection.toggle(effect.shapeId);
+    case 'toggleSelection': {
+      // Shift+click toggles a whole group at once (spec §7), resolved here
+      // rather than by the store, which knows nothing about groups.
+      const shapeIds = resolveShiftClickSelection(
+        session.getDocument(),
+        selection.selectedIds,
+        selection.activeGroupId,
+        effect.shapeId
+      );
+      selection.setSelection(shapeIds);
       return;
+    }
     case 'setSelection':
-      selection.setSelection(effect.shapeIds);
+      // A marquee that caught part of a group takes the whole group.
+      selection.setSelection(
+        expandSelectionForGroups(session.getDocument(), effect.shapeIds, selection.activeGroupId)
+      );
       return;
     case 'clearSelection':
       selection.clear();
@@ -141,18 +157,19 @@ export const applyInteractionEffect = (session: EditorSession, effect: Interacti
         return;
       }
       const document = session.getDocument();
-      // A group moves as a rigid whole (spec §7): if the drag started on one
-      // member without the group already fully selected (`interactionController`
-      // only knows the single hit shape at that point), expand it here so
-      // every member gets the same delta in the same Command. A group the user
-      // has Shift-clicked part of moves as just that part — the drag carries
-      // the store selection whenever it starts on an already-selected shape,
-      // so the same rule that governs delete applies here.
-      const shapeIds = resolveSelectionForGroupActions(
-        document,
-        effect.shapeIds,
-        selection.activeGroupId
-      );
+      // A group moves as a rigid whole (spec §7). When the drag starts on a
+      // shape that was not already selected, `interactionController` knows
+      // only that one shape and emits `selectOnly` alongside this effect, so
+      // the group is resolved here the same way that click would. When it
+      // starts on an already-selected shape the effect carries the stored
+      // selection, which is already group-resolved and authoritative —
+      // expanding it again would drag shapes the user Shift-clicked away.
+      const isStoredSelection =
+        effect.shapeIds.length === selection.selectedIds.length &&
+        effect.shapeIds.every((id) => selection.selectedIds.includes(id));
+      const shapeIds = isStoredSelection
+        ? effect.shapeIds
+        : expandSelectionForGroups(document, effect.shapeIds, selection.activeGroupId);
       const commands: EditorCommand[] = [];
       for (const shapeId of shapeIds) {
         const shape = document.shapes[shapeId];

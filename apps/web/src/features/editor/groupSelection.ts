@@ -20,27 +20,31 @@ export const groupContaining = (document: EditorDocument, shapeId: string): Shap
 };
 
 /**
- * The shapes a group-aware action — move, delete, duplicate, copy, rotate, a
- * boolean operation — should act on, given a selection.
+ * Expand `shapeIds` so every member of a group any of them belongs to is
+ * included — "act on the group as a unit" (spec §7).
  *
- * A group is expanded to all its members ("select one, act on the whole
- * group", spec §7), *except* when the selection holds some but not all of
- * them. That partial state is only reachable deliberately, by Shift-clicking a
- * member out of a fully-selected group, and expanding it would act on shapes
- * the user just removed from the selection — deleting a shape that is visibly
- * unselected, for instance. `activeGroupId` is the group currently entered for
- * individual selection (issue #52's double-click mode); its members are never
- * expanded, since inside group mode they are meant to be handled individually.
+ * This resolves an *interaction* (a click, a Shift-click, a marquee release),
+ * where a shape standing in for its group is exactly the intent. It must not
+ * be applied to a selection the user has already shaped: once the selection is
+ * stored, a group holding only some of its members means those members were
+ * deliberately deselected, and re-expanding would act on shapes that are
+ * visibly unselected. Nothing in a stored selection distinguishes "one member
+ * clicked" from "deselected down to one member", so the two are separated by
+ * *when* they are resolved, not by inspecting the result — the selection
+ * itself is authoritative for every action that follows.
+ *
+ * `activeGroupId` is the group currently entered for individual selection
+ * (issue #52's double-click mode): its members are left as-is, since inside
+ * group mode they are meant to be handled individually.
  *
  * Order: the given IDs first, in their given order, then any added group
  * members, deduplicated.
  */
-export const resolveSelectionForGroupActions = (
+export const expandSelectionForGroups = (
   document: EditorDocument,
   shapeIds: readonly string[],
   activeGroupId: string | null
 ): readonly string[] => {
-  const selected = new Set(shapeIds);
   const result: string[] = [];
   const seen = new Set<string>();
 
@@ -54,23 +58,43 @@ export const resolveSelectionForGroupActions = (
   for (const shapeId of shapeIds) {
     add(shapeId);
     const group = groupContaining(document, shapeId);
-    if (group === null || group.id === activeGroupId) {
-      continue;
-    }
-    // Every member selected → a whole-group selection, expansion is a no-op.
-    // No other member selected → the group was selected via this one shape
-    // (e.g. from `selectOnly`), so expand as usual. In between the user has
-    // deselected members on purpose; honour that.
-    const isPartiallySelected = group.shapeIds.some((id) => id !== shapeId && selected.has(id));
-    const isWhollySelected = group.shapeIds.every((id) => selected.has(id));
-    if (isPartiallySelected && !isWhollySelected) {
-      continue;
-    }
-    for (const memberId of group.shapeIds) {
-      add(memberId);
+    if (group !== null && group.id !== activeGroupId) {
+      for (const memberId of group.shapeIds) {
+        add(memberId);
+      }
     }
   }
   return result;
+};
+
+/**
+ * What a Shift-click on `shapeId` should select, given the current selection
+ * (issue #52, spec §7).
+ *
+ * Adding works on the group as a unit: Shift-clicking a member of a group that
+ * is not in the selection brings in every member, matching a plain click.
+ * Removing works on the one shape clicked — that is how a selection is
+ * narrowed, and re-adding the rest would make a group's members impossible to
+ * separate. Inside the entered group (`activeGroupId`) both directions act on
+ * the single shape, matching that mode's intent.
+ *
+ * Resolving here is what lets every later action trust `selectedIds` verbatim:
+ * the group rule is applied while the click is still the thing being
+ * interpreted. See {@link expandSelectionForGroups}.
+ */
+export const resolveShiftClickSelection = (
+  document: EditorDocument,
+  selectedIds: readonly string[],
+  activeGroupId: string | null,
+  shapeId: string
+): readonly string[] => {
+  if (selectedIds.includes(shapeId)) {
+    return selectedIds.filter((id) => id !== shapeId);
+  }
+
+  const group = groupContaining(document, shapeId);
+  const added = group === null || group.id === activeGroupId ? [shapeId] : group.shapeIds;
+  return [...selectedIds, ...added.filter((id) => !selectedIds.includes(id))];
 };
 
 /**

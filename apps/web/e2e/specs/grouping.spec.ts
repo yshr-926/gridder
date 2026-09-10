@@ -37,6 +37,56 @@ test.describe('grouping and ungrouping', () => {
     await expect.poll(async () => (await readDocument(page)).shapeCount).toBe(2);
   });
 
+  test('Shift-clicking a member out of a two-shape group leaves it unselected and undeleted', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 5, 5);
+    await canvasHelper.dragGrid(10, 2, 13, 5);
+    const document = await readDocument(page);
+    const [first, second] = document.shapes;
+
+    await canvasHelper.clickGrid(3, 3);
+    await canvasHelper.clickGrid(11, 3, { modifiers: ['Shift'] });
+    await page.keyboard.press('ControlOrMeta+g');
+    await expect.poll(async () => (await readDocument(page)).groupCount).toBe(1);
+
+    // Clicking one member selects the whole group; Shift-clicking the other
+    // takes it back out. With only two members the selection is down to a
+    // single shape, which must not read as "one member clicked".
+    await canvasHelper.clickGrid(3, 3);
+    await expect.poll(async () => (await readSelection(page)).selectedIds).toHaveLength(2);
+    await canvasHelper.clickGrid(11, 3, { modifiers: ['Shift'] });
+    await expect.poll(async () => (await readSelection(page)).selectedIds).toEqual([first.id]);
+
+    await page.keyboard.press('Delete');
+
+    // Only the still-selected shape is gone.
+    await expect.poll(async () => (await readDocument(page)).shapeCount).toBe(1);
+    expect((await readDocument(page)).shapes[0].id).toBe(second.id);
+  });
+
+  test('Shift-clicking an unselected group adds every member at once', async ({
+    page,
+    canvasHelper,
+  }) => {
+    await canvasHelper.dragGrid(2, 2, 5, 5);
+    await canvasHelper.dragGrid(10, 2, 13, 5);
+    await canvasHelper.dragGrid(18, 2, 21, 5);
+
+    // Group the first two, then Shift-click the group while the third is
+    // selected: the whole group joins the selection.
+    await canvasHelper.clickGrid(3, 3);
+    await canvasHelper.clickGrid(11, 3, { modifiers: ['Shift'] });
+    await page.keyboard.press('ControlOrMeta+g');
+
+    await canvasHelper.clickGrid(19, 3);
+    await expect.poll(async () => (await readSelection(page)).selectedIds).toHaveLength(1);
+    await canvasHelper.clickGrid(3, 3, { modifiers: ['Shift'] });
+
+    await expect.poll(async () => (await readSelection(page)).selectedIds).toHaveLength(3);
+  });
+
   test('Cmd/Ctrl+Shift+G ungroups; members become independently selectable', async ({
     page,
     canvasHelper,

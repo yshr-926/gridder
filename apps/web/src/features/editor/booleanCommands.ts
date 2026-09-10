@@ -10,7 +10,6 @@ import {
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useToastStore } from '@/hooks/useToast';
 import { editorSession } from './useEditorSession';
-import { resolveSelectionForGroupActions } from './groupSelection';
 
 /**
  * Combine / subtract the current selection (issue #62, spec §7, ADR-0006).
@@ -24,16 +23,12 @@ const booleanEngine: PolygonBooleanEngine = createPolygonClippingEngine();
 const MIN_OPERAND_COUNT = 2;
 
 /**
- * Selected shape ids resolved against the live document, expanded to whole
- * groups the same way copy / delete are (issue #52) — normally a no-op,
- * since a click already selects a whole group.
+ * Selected shape ids resolved against the live document. Taken verbatim: group
+ * membership was already applied when the selection was made (issue #52, see
+ * `groupSelection.ts`).
  */
-const selectedOperandIds = (document: EditorDocument): readonly string[] => {
-  const { selectedIds, activeGroupId } = useSelectionStore.getState();
-  return resolveSelectionForGroupActions(document, selectedIds, activeGroupId).filter(
-    (id) => document.shapes[id] !== undefined
-  );
-};
+const selectedOperandIds = (document: EditorDocument): readonly string[] =>
+  useSelectionStore.getState().selectedIds.filter((id) => document.shapes[id] !== undefined);
 
 /**
  * Union the selection into one shape and select it. Refused with a toast —

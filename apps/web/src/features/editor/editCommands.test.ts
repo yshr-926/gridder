@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { resolveClickSelection } from './groupSelection';
 import { clearClipboardForTests, readClipboard } from './clipboard';
 import {
   bringForward,
@@ -330,11 +331,13 @@ describe('editCommands', () => {
       expect(restored.groups['group-1']?.shapeIds).toEqual(['a', 'b']);
     });
 
-    it('test_deleteSelection_ungroupedMemberOnly_selectedIdsHeldJustOneShape_stillExpandsToGroup', () => {
+    it('test_deleteSelection_clickOnOneGroupMember_deletesTheWholeGroup', () => {
       setupGroup();
-      // Even if selectedIds somehow held just one member (not expanded), the
-      // group must still be deleted as a whole.
-      useSelectionStore.setState({ selectedIds: ['a'], primaryId: 'a', activeGroupId: null });
+      // Clicking one member selects the whole group; the delete then acts on
+      // exactly what is selected.
+      useSelectionStore
+        .getState()
+        .setSelection(resolveClickSelection(editorSession.getDocument(), null, 'a').shapeIds);
 
       deleteSelection();
 
@@ -375,6 +378,21 @@ describe('editCommands', () => {
       expect(document.shapes['a']).toBeUndefined();
       expect(document.shapes['b']).toBeUndefined();
       expect(document.shapes['c']).toBeDefined();
+    });
+
+    it('test_deleteSelection_twoMemberGroup_shiftDeselectedMember_isNotDeleted', () => {
+      // [A, B] selected as a group, then B Shift-clicked out: only A goes.
+      // The selection is down to a single shape, which must not be mistaken
+      // for "one member clicked, expand to the group".
+      setupGroup();
+      useSelectionStore.getState().setSelection(['a', 'b']);
+      useSelectionStore.getState().toggle('b');
+
+      deleteSelection();
+
+      const document = editorSession.getDocument();
+      expect(document.shapes['a']).toBeUndefined();
+      expect(document.shapes['b']).toBeDefined();
     });
 
     it('test_deleteSelection_oneMemberOfSurvivingGroup_undo_restoresGroupMembership', () => {
