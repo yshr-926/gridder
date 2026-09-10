@@ -63,3 +63,6 @@ AGENTS.md
 
 # Packages build outputs
 packages/*/dist/
+
+# Wrangler
+.wrangler/

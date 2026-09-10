@@ -103,7 +103,7 @@
 ### 3. リリースコミット
 
 ```bash
-git add package.json package-lock.json CHANGELOG.md
+git add package.json pnpm-lock.yaml CHANGELOG.md
 git commit -m "chore: release v1.0.0"
 git tag v1.0.0
 git push origin main --tags
@@ -120,8 +120,8 @@ git push origin main --tags
 
 ### 5. デプロイ
 
-1. [デプロイ手順書](./deployment-guide.md) に従ってデプロイを実行
-2. [デプロイ後チェックリスト](./deployment-checklist.md) を実行して動作確認
+1. `main` へのプッシュで Cloudflare が自動デプロイする（[デプロイ手順](./deployment.md)）
+2. 同ドキュメントの「デプロイ後チェックリスト」を実行して動作確認
 
 ## CHANGELOG 記載ルール
 
@@ -189,6 +189,7 @@ git push origin main --tags
 ## 関連ドキュメント
 
 - [CHANGELOG.md](../CHANGELOG.md)
+- [デプロイ手順](./deployment.md)
 - [第一リリース仕様](./spec.md)
 - [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - [Semantic Versioning](https://semver.org/spec/v2.0.0.html)

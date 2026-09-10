@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/logo.svg" alt="Gridder" width="280"></p>
+
 # Gridder
 
 Gridder は、空間的なアイデアをグリッド上で素早く形にし、画像で共有するためのデスクトップ向けビジュアルスケッチツールです。
@@ -155,6 +157,7 @@ gridder/
 - [エディタ技術調査](docs/architecture/editor-stack-research.md)
 - [性能基準と実測値](docs/performance.md)
 - [リリースワークフロー](docs/release-workflow.md)
+- [デプロイ手順（Cloudflare）](docs/deployment.md)
 
 文書間に差異がある場合は、第一リリース仕様と Accepted の ADR を優先します。`docs/plan/`、`docs/design/phase18/`、`docs/review/` はセル集合・Rust バックエンド・共同編集を前提とする旧計画であり、歴史的資料としてのみ扱います。
 

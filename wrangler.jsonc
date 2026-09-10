@@ -1,0 +1,10 @@
+// Cloudflare Workers (Static Assets) 設定。手順は docs/deployment.md を参照。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gridder",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./apps/web/dist",
+    "not_found_handling": "single-page-application"
+  }
+}
