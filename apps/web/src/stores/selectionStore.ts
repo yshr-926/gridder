@@ -26,10 +26,13 @@ interface SelectionState {
 
   /** Replace the selection with exactly this shape. Exits group mode. */
   selectOnly: (shapeId: string) => void;
-  /** Replace the selection with exactly these shapes (order preserved). Exits group mode. */
+  /**
+   * Replace the selection with exactly these shapes (order preserved). Exits
+   * group mode. Shift+click goes through here too: what it adds or removes is
+   * decided by `resolveShiftClickSelection`, which knows the group rules this
+   * store deliberately does not.
+   */
   setSelection: (shapeIds: readonly string[]) => void;
-  /** Add the shape if absent, remove it if present (Shift+click). Exits group mode. */
-  toggle: (shapeId: string) => void;
   /** Clear the selection. Exits group mode. */
   clear: () => void;
   /**
@@ -67,15 +70,6 @@ export const useSelectionStore = create<SelectionState>((set) => ({
       ...withPrimary([...shapeIds], shapeIds[shapeIds.length - 1] ?? null),
       activeGroupId: null,
     })),
-
-  toggle: (shapeId) =>
-    set((state) => {
-      const isSelected = state.selectedIds.includes(shapeId);
-      const selectedIds = isSelected
-        ? state.selectedIds.filter((id) => id !== shapeId)
-        : [...state.selectedIds, shapeId];
-      return { ...withPrimary(selectedIds, isSelected ? null : shapeId), activeGroupId: null };
-    }),
 
   clear: () => set({ selectedIds: [], primaryId: null, activeGroupId: null }),
 

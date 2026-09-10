@@ -15,23 +15,22 @@ describe('useSelectionStore', () => {
     expect(state.primaryId).toBe('b');
   });
 
-  it('test_toggle_addsWhenAbsent_removesWhenPresent', () => {
-    const { toggle } = useSelectionStore.getState();
-    toggle('a');
-    toggle('b');
-    expect(useSelectionStore.getState().selectedIds).toEqual(['a', 'b']);
+  it('test_setSelection_droppingThePrimary_fallsBackToTheLastRemainingShape', () => {
+    // What a Shift+click removal ends up doing: the shape it took out was the
+    // primary, so the primary moves to what is left.
+    const { setSelection } = useSelectionStore.getState();
+    setSelection(['a', 'b']);
     expect(useSelectionStore.getState().primaryId).toBe('b');
 
-    toggle('b');
+    setSelection(['a']);
     expect(useSelectionStore.getState().selectedIds).toEqual(['a']);
-    // Removing the primary falls back to the last remaining member.
     expect(useSelectionStore.getState().primaryId).toBe('a');
   });
 
-  it('test_toggle_toEmpty_clearsPrimary', () => {
-    const { toggle } = useSelectionStore.getState();
-    toggle('a');
-    toggle('a');
+  it('test_setSelection_toEmpty_clearsPrimary', () => {
+    const { setSelection } = useSelectionStore.getState();
+    setSelection(['a']);
+    setSelection([]);
     expect(useSelectionStore.getState().selectedIds).toEqual([]);
     expect(useSelectionStore.getState().primaryId).toBeNull();
   });
@@ -83,12 +82,6 @@ describe('useSelectionStore', () => {
     it('test_setSelection_exitsGroupMode', () => {
       useSelectionStore.getState().enterGroup('group-1', ['a']);
       useSelectionStore.getState().setSelection(['x', 'y']);
-      expect(useSelectionStore.getState().activeGroupId).toBeNull();
-    });
-
-    it('test_toggle_exitsGroupMode', () => {
-      useSelectionStore.getState().enterGroup('group-1', ['a']);
-      useSelectionStore.getState().toggle('z');
       expect(useSelectionStore.getState().activeGroupId).toBeNull();
     });
 

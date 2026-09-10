@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreateShapeCommand, GroupShapesCommand, type EditorShape } from '@gridder/editor-core';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { resolveClickSelection } from './groupSelection';
+import { resolveClickSelection, resolveShiftClickSelection } from './groupSelection';
 import { clearClipboardForTests, readClipboard } from './clipboard';
 import {
   bringForward,
@@ -369,8 +369,11 @@ describe('editCommands', () => {
       // Select the whole group, then Shift-click one member out of it: the
       // deselected shape must survive the delete (spec §7).
       setupGroupOfThree();
-      useSelectionStore.getState().setSelection(['a', 'b', 'c']);
-      useSelectionStore.getState().toggle('c');
+      const selection = useSelectionStore.getState();
+      selection.setSelection(['a', 'b', 'c']);
+      selection.setSelection(
+        resolveShiftClickSelection(editorSession.getDocument(), ['a', 'b', 'c'], null, 'c')
+      );
 
       deleteSelection();
 
@@ -385,8 +388,11 @@ describe('editCommands', () => {
       // The selection is down to a single shape, which must not be mistaken
       // for "one member clicked, expand to the group".
       setupGroup();
-      useSelectionStore.getState().setSelection(['a', 'b']);
-      useSelectionStore.getState().toggle('b');
+      const selection = useSelectionStore.getState();
+      selection.setSelection(['a', 'b']);
+      selection.setSelection(
+        resolveShiftClickSelection(editorSession.getDocument(), ['a', 'b'], null, 'b')
+      );
 
       deleteSelection();
 
