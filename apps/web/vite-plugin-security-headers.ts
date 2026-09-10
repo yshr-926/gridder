@@ -6,7 +6,12 @@
  */
 
 import type { Plugin } from 'vite';
-import { getCSPDirectives, generateCSPHeader, SECURITY_HEADERS } from './src/config/security';
+import {
+  getCSPDirectives,
+  generateCSPHeader,
+  getMetaCSPHeader,
+  SECURITY_HEADERS,
+} from './src/config/security';
 
 /**
  * Vite plugin that adds security headers to development server
@@ -43,7 +48,9 @@ export function securityHeadersPlugin(): Plugin {
         return html; // Skip in dev mode
       }
 
-      const csp = generateCSPHeader(getCSPDirectives('production'));
+      // `frame-ancestors` is served only via the HTTP header (public/_headers);
+      // browsers ignore it in <meta> and log a console error.
+      const csp = getMetaCSPHeader('production');
 
       // Insert CSP meta tag after the opening <head> tag
       return html.replace(

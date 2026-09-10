@@ -74,6 +74,31 @@ export const getCSPHeader = (env: Environment): string => {
 };
 
 /**
+ * CSP directives that browsers ignore when delivered via a `<meta>` element
+ * (and log a console error for). They are still delivered via the HTTP
+ * header from `public/_headers`.
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy#directives_not_supported_in_meta_elements
+ */
+const META_UNSUPPORTED_DIRECTIVES: ReadonlyArray<keyof CSPDirectives> = ['frame-ancestors'];
+
+/**
+ * Generate the CSP value for the `<meta http-equiv>` tag injected into
+ * `index.html`: the environment's directives minus those `<meta>` cannot carry.
+ *
+ * @param env - The environment
+ * @returns CSP value string suitable for a `<meta>` element
+ */
+export const getMetaCSPHeader = (env: Environment): string => {
+  const directives = getCSPDirectives(env);
+  const supported = Object.fromEntries(
+    Object.entries(directives).filter(
+      ([key]) => !META_UNSUPPORTED_DIRECTIVES.includes(key as keyof CSPDirectives)
+    )
+  ) as CSPDirectives;
+  return generateCSPHeader(supported);
+};
+
+/**
  * Security headers that should be set on all responses
  *
  * These headers provide additional security protections:
