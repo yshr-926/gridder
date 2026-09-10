@@ -19,7 +19,7 @@ Gridder はバックエンドを持たない静的サイトとして配信する
    | Deploy command | `npx wrangler deploy` |
    | Root directory | `/` |
 
-3. 環境変数に `NODE_VERSION=20` を設定する。pnpm のバージョンはルート `package.json` の `packageManager` から自動で解決される。
+3. 環境変数に `NODE_VERSION=22` を設定する。pnpm のバージョンはルート `package.json` の `packageManager` から自動で解決される。
 4. 本番ブランチを `main` に設定する。`main` 以外へのプッシュはプレビュー環境として個別 URL に配信される。
 
 Wrangler の設定はリポジトリ直下の `wrangler.jsonc` に置く。
