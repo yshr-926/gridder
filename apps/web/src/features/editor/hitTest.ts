@@ -311,8 +311,7 @@ export const ringFromRect = (bounds: GridRect): GridRing => [
  * a caller says *which* ring a vertex or edge index belongs to.
  */
 export type PolygonRingRef =
-  | { readonly kind: 'outer' }
-  | { readonly kind: 'inner'; readonly holeIndex: number };
+  { readonly kind: 'outer' } | { readonly kind: 'inner'; readonly holeIndex: number };
 
 /** One vertex of a polygon, identified by ring and index within that ring. */
 export interface PolygonVertexRef {
