@@ -2,6 +2,12 @@
 
 Gridder はバックエンドを持たない静的サイトとして配信する。本ドキュメントは Cloudflare Workers（Static Assets）へのデプロイ手順と、デプロイ後の確認項目を定義する。
 
+## 配信 URL
+
+本番は https://gridder.hirotoyoshihara.dev/ で配信する。カスタムドメインを Worker に紐づけ、Workers 既定ドメイン（`*.workers.dev`）は Settings → Domains & Routes で無効化している。URL を一本化するため、既定ドメインは再度有効にしない。
+
+HTTP アクセスは Always Use HTTPS で 301 リダイレクトし、HSTS（max-age 6 か月、サブドメイン適用なし、Preload なし）を付与している。
+
 ## 前提
 
 - ビルド成果物は `apps/web/dist` に生成される。
@@ -20,7 +26,10 @@ Gridder はバックエンドを持たない静的サイトとして配信する
    | Root directory | `/` |
 
 3. 環境変数に `NODE_VERSION=22` を設定する。pnpm のバージョンはルート `package.json` の `packageManager` から自動で解決される。
-4. 本番ブランチを `main` に設定する。`main` 以外へのプッシュはプレビュー環境として個別 URL に配信される。
+4. 本番ブランチを `main` に設定する。
+5. Worker の **Settings → Domains & Routes** でカスタムドメイン `gridder.hirotoyoshihara.dev` を追加する。DNS レコードと証明書は Cloudflare が自動で用意する。
+6. ドメインの **SSL/TLS → Edge Certificates** で **Always Use HTTPS** と **HSTS**（サブドメイン適用と Preload は無効）を有効にする。
+7. Worker の **Settings → Domains & Routes** で `workers.dev` の既定ドメインを無効にする。`main` 以外へのプッシュはプレビュー環境として個別 URL に配信される。
 
 Wrangler の設定はリポジトリ直下の `wrangler.jsonc` に置く。
 
